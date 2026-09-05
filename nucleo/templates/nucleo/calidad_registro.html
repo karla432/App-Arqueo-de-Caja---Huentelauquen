@@ -1,0 +1,65 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Calidad de registro{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 34px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+    <div>
+      <div class="kick">Módulo M10 · gestión, no arqueo</div>
+      <h2 style="font-size:27px;margin-top:2px">{{ fecha_desde }} → {{ fecha_hasta }}</h2>
+      <div style="font-size:13px;color:var(--hu-gray);margin-top:4px;max-width:640px">Nada de esta pantalla bloquea un cierre. Existe porque si el POS se registra bien, el volumen de excepciones cae.</div>
+    </div>
+    <form method="get" style="display:flex;gap:8px;align-items:center;font-size:13px">
+      <input type="date" name="desde" value="{{ fecha_desde|date:'Y-m-d' }}" style="border:1px solid var(--hu-card-line);padding:8px 12px">
+      <span style="color:var(--hu-gray)">→</span>
+      <input type="date" name="hasta" value="{{ fecha_hasta|date:'Y-m-d' }}" style="border:1px solid var(--hu-card-line);padding:8px 12px">
+      <button type="submit" class="btn btn-2">Aplicar</button>
+    </form>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px">
+    <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Conciliado automático</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ pct_automatico|floatformat:1 }}%</div></div>
+    <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Score promedio</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ score_promedio|floatformat:0 }}</div></div>
+    <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Ventas sin autorización</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ pct_sin_autorizacion|floatformat:1 }}%</div><div style="font-size:12px;color:var(--hu-maroon)">el POS no captura autorización — ver D1</div></div>
+    <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Medios mal declarados</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ medios_mal_declarados }}</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:24px">
+    <div>
+      <div class="kick" style="margin-bottom:10px">Por caja</div>
+      <table class="tbl">
+        <thead><tr><th>Caja</th><th>Turno</th><th class="n">Comandas</th><th class="n">Medio mal declarado</th></tr></thead>
+        <tbody>
+          {% for c in por_caja %}
+          <tr><td>{{ c.caja }}</td><td>{{ c.turno }}</td><td class="n">{{ c.comandas }}</td><td class="n">{{ c.medios_mal_declarados }}</td></tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align:center;color:var(--hu-gray);padding:14px">Sin datos en el período.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="font-size:12px;color:var(--hu-gray);margin-top:8px">El POS entrega TURNO, pero no identifica al cajero individualmente — atribuir por persona exige que el POS lo registre, o cargar la planilla de turnos aparte.</div>
+
+      <div class="kick" style="margin:26px 0 10px">Excepciones del período por tipo</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        {% for valor, etiqueta, n in excepciones_por_tipo %}
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">{{ etiqueta }}</span><strong style="font-size:13px">{{ n }}</strong></div>
+        {% empty %}
+        <div style="color:var(--hu-gray);font-size:13px">Sin excepciones en el período.</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <div class="kick" style="margin-bottom:10px">Días con observaciones</div>
+      <table class="tbl">
+        <thead><tr><th>Día</th><th>Observación</th></tr></thead>
+        <tbody>
+          {% for dia, obs in dias_con_observaciones %}
+          <tr><td><a href="{% url 'dashboard_dia' fecha=dia.fecha|date:'Y-m-d' %}">{{ dia.fecha }}</a></td><td>{{ obs }}</td></tr>
+          {% empty %}
+          <tr><td colspan="2" style="text-align:center;color:var(--hu-gray);padding:14px">Ninguno.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

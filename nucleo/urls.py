@@ -14,4 +14,7 @@ urlpatterns = [
     path("cierre/<str:fecha>/aprobar/", views.aprobar_dia_view, name="aprobar_dia"),
     path("cierre/<str:fecha>/reabrir/", views.reabrir_dia_view, name="reabrir_dia"),
     path("cierre/<str:fecha>/exportar/", views.generar_exportacion_view, name="generar_exportacion"),
+    path("dashboard/<str:fecha>/", views.dashboard_dia, name="dashboard_dia"),
+    path("historico/", views.historico, name="historico"),
+    path("calidad/", views.calidad_registro, name="calidad_registro"),
 ]

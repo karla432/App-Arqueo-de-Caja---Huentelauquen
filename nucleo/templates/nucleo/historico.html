@@ -1,0 +1,116 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Histórico{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 34px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px">
+    <div>
+      <div class="kick">Estado del proceso</div>
+      <h2 style="font-size:27px;margin-top:2px">{{ anio }}-{{ mes|stringformat:"02d" }}</h2>
+    </div>
+    <form method="get" style="display:flex;gap:8px">
+      <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar por comanda, comprobante, autorización o monto…" style="padding:8px 12px;border:1px solid var(--hu-card-line);width:340px">
+      <button type="submit" class="btn btn-2">Buscar</button>
+    </form>
+  </div>
+
+  {% if resultados %}
+  <div class="card" style="padding:16px 18px;margin-bottom:24px">
+    <div class="kick" style="margin-bottom:8px">Resultados para "{{ busqueda }}"</div>
+    {% if resultados.ventas %}
+    <table class="tbl" style="margin-bottom:12px">
+      <thead><tr><th>Día</th><th>Comanda</th><th>Comprobante</th><th class="n">Total</th></tr></thead>
+      <tbody>
+        {% for v in resultados.ventas %}
+        <tr><td><a href="{% url 'dashboard_dia' fecha=v.dia.fecha|date:'Y-m-d' %}">{{ v.dia.fecha }}</a></td><td>{{ v.n_interno }}</td><td>{{ v.nro_comprobante }}</td><td class="n">{{ v.total_comanda|floatformat:0 }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if resultados.movimientos %}
+    <table class="tbl">
+      <thead><tr><th>Día</th><th>Hora</th><th>Autorización</th><th class="n">Monto</th></tr></thead>
+      <tbody>
+        {% for m in resultados.movimientos %}
+        <tr><td><a href="{% url 'dashboard_dia' fecha=m.dia.fecha|date:'Y-m-d' %}">{{ m.dia.fecha }}</a></td><td>{{ m.fecha_hora|date:"H:i" }}</td><td>{{ m.autorizacion }}</td><td class="n">{{ m.monto_venta_valido_abono|floatformat:0 }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if not resultados.ventas and not resultados.movimientos %}
+    <div style="color:var(--hu-gray)">Sin resultados.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:12px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Lun</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Mar</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Mié</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Jue</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Vie</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Sáb</div>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Dom</div>
+    {% for semana in semanas %}
+      {% for celda in semana %}
+        {% if celda is None %}
+        <div class="card" style="padding:10px;min-height:70px;opacity:.3"></div>
+        {% elif celda.dia %}
+        <a href="{% url 'dashboard_dia' fecha=celda.fecha|date:'Y-m-d' %}" class="card" style="padding:10px;min-height:70px;display:block;color:inherit;text-decoration:none">
+          <div style="display:flex;justify-content:space-between"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">{{ celda.fecha.day }}</span>
+          <span class="dot" style="background:{% if celda.dia.estado == 'exportado' or celda.dia.estado == 'cerrado' %}var(--hu-ok){% elif celda.dia.estado == 'sin_cargar' %}var(--hu-gray){% else %}var(--hu-warn){% endif %}"></span></div>
+          <div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">{{ celda.dia.get_estado_display }}</div>
+        </a>
+        {% else %}
+        <div class="card" style="padding:10px;min-height:70px"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-gray)">{{ celda.fecha.day }}</span><div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">Sin cargar</div></div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+  <div style="display:flex;gap:20px;font-size:12px;color:var(--hu-gray);margin-bottom:24px">
+    <span style="display:flex;gap:7px;align-items:center"><span class="dot" style="background:var(--hu-ok)"></span>Cerrado y exportado</span>
+    <span style="display:flex;gap:7px;align-items:center"><span class="dot" style="background:var(--hu-warn)"></span>Pendiente de acción</span>
+    <span style="display:flex;gap:7px;align-items:center"><span class="dot" style="background:var(--hu-gray)"></span>Sin cargar</span>
+  </div>
+
+  <div class="kick" style="margin-bottom:10px">Últimos días</div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th rowspan="2" style="vertical-align:bottom">Día</th>
+        <th rowspan="2" class="n" style="vertical-align:bottom">Venta</th>
+        <th colspan="3" style="text-align:center;background:var(--hu-maroon)">Desglose por forma de pago</th>
+        <th rowspan="2" class="n" style="vertical-align:bottom">Conciliado auto</th>
+        <th rowspan="2" class="n" style="vertical-align:bottom">Excep.</th>
+        <th rowspan="2" class="n" style="vertical-align:bottom">Dif. de caja</th>
+        <th rowspan="2" style="vertical-align:bottom">Estado</th>
+        <th rowspan="2" style="vertical-align:bottom">Exportación</th>
+      </tr>
+      <tr><th class="n">Transbank</th><th class="n">Efectivo</th><th class="n">Mercado Pago</th></tr>
+    </thead>
+    <tbody>
+      {% for f in dias %}
+      <tr>
+        <td><a href="{% url 'dashboard_dia' fecha=f.dia.fecha|date:'Y-m-d' %}">{{ f.dia.fecha }}</a></td>
+        <td class="n">{{ f.venta_total|floatformat:0 }}</td>
+        <td class="n">{{ f.transbank|floatformat:0 }}</td>
+        <td class="n">{{ f.efectivo|floatformat:0 }}</td>
+        <td class="n" style="color:var(--hu-gray)">{{ f.mercado_pago|floatformat:0 }}</td>
+        <td class="n">{{ f.pct_automatico|floatformat:1 }}%</td>
+        <td class="n">{{ f.excepciones_abiertas }}</td>
+        <td class="n">{{ f.diferencia_caja|floatformat:0 }}</td>
+        <td>
+          {% if f.dia.estado == "exportado" %}<span class="pill p-ok">Exportado</span>
+          {% elif f.excepciones_abiertas > 0 %}<span class="pill p-red">Excepciones</span>
+          {% elif not f.tiene_deposito %}<span class="pill p-warn">Sin depósito</span>
+          {% else %}<span class="pill p-grey">{{ f.dia.get_estado_display }}</span>{% endif %}
+        </td>
+        <td>{% if f.exportacion %}v{{ f.exportacion.version }} · {{ f.exportacion.get_acuse_estado_display }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="text-align:center;color:var(--hu-gray);padding:20px">Sin días en este rango.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.55">Las columnas de forma de pago suman la venta del día. Mercado Pago es Fase 2 y llega en cero hasta entonces.</div>
+</div>
+{% endblock %}

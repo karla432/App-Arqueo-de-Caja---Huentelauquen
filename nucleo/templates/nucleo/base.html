@@ -60,13 +60,13 @@ form.inline{display:inline}
       <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#D9A3AD;margin-top:6px">Arqueo diario</div>
     </div>
     <a class="nav-i" href="#">Ventas · mensual y anual</a>
-    <a class="nav-i" href="#">Dashboard del día</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'dashboard_dia' %} nav-on{% endif %}" href="{% url 'dashboard_dia' fecha='2026-09-02' %}">Dashboard del día</a>
     <a class="nav-i" href="#">Carga de archivos</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha='2026-09-02' %}">Arqueo de efectivo</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'cierre_y_exportacion' %} nav-on{% endif %}" href="{% url 'cierre_y_exportacion' fecha='2026-09-02' %}">Cierre y exportación</a>
-    <a class="nav-i" href="#">Histórico</a>
-    <a class="nav-i" href="#">Calidad de registro</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'historico' %} nav-on{% endif %}" href="{% url 'historico' %}">Histórico</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'calidad_registro' %} nav-on{% endif %}" href="{% url 'calidad_registro' %}">Calidad de registro</a>
     <div style="margin-top:32px;padding:16px 20px 0;border-top:1px solid #7A0021">
       <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:6px">Sesión</div>
       <div style="font-size:13px;color:#fff">{{ user.get_full_name|default:user.username }}</div>

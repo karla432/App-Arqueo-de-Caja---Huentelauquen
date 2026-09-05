@@ -12,7 +12,10 @@ from nucleo.arqueo_servicio import (
 )
 from nucleo.cierre_servicio import CierreInvalido, aprobar_y_cerrar_dia, estado_checklist, puede_aprobar, reabrir_dia
 from nucleo.conciliacion_servicio import ejecutar_conciliacion
+from nucleo.dashboard_servicio import resumen_dia
 from nucleo.exportacion_servicio import ExportacionInvalida, generar_exportacion
+from nucleo.historico_servicio import buscar_transversal, calendario_mes, resumen_dias
+from nucleo.calidad_servicio import resumen_calidad
 from nucleo.models import ArqueoEfectivo, DiaArqueo, Excepcion, MotivoResolucion, MovimientoProveedor
 from nucleo.resolucion_servicio import ResolucionInvalida, resolver_excepcion
 
@@ -277,3 +280,46 @@ def generar_exportacion_view(request, fecha):
     except ExportacionInvalida as exc:
         messages.error(request, str(exc))
     return redirect("cierre_y_exportacion", fecha=fecha)
+
+
+@login_required
+def dashboard_dia(request, fecha):
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    contexto = resumen_dia(dia)
+    contexto["puede_aprobar_rol"] = request.user.is_superuser
+    return render(request, "nucleo/dashboard_dia.html", contexto)
+
+
+@login_required
+def historico(request):
+    from datetime import timedelta
+    hoy = date.today()
+    fecha_hasta = date.fromisoformat(request.GET.get("hasta")) if request.GET.get("hasta") else hoy
+    fecha_desde = date.fromisoformat(request.GET.get("desde")) if request.GET.get("desde") else fecha_hasta - timedelta(days=30)
+    anio = int(request.GET.get("anio", fecha_hasta.year))
+    mes = int(request.GET.get("mes", fecha_hasta.month))
+
+    contexto = {
+        "dias": resumen_dias(fecha_desde, fecha_hasta),
+        "semanas": calendario_mes(anio, mes),
+        "anio": anio,
+        "mes": mes,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "busqueda": request.GET.get("q", ""),
+        "resultados": buscar_transversal(request.GET.get("q", "")) if request.GET.get("q") else None,
+    }
+    return render(request, "nucleo/historico.html", contexto)
+
+
+@login_required
+def calidad_registro(request):
+    from datetime import timedelta
+    hoy = date.today()
+    fecha_hasta = date.fromisoformat(request.GET.get("hasta")) if request.GET.get("hasta") else hoy
+    fecha_desde = date.fromisoformat(request.GET.get("desde")) if request.GET.get("desde") else fecha_hasta - timedelta(days=30)
+
+    contexto = resumen_calidad(fecha_desde, fecha_hasta)
+    contexto["fecha_desde"] = fecha_desde
+    contexto["fecha_hasta"] = fecha_hasta
+    return render(request, "nucleo/calidad_registro.html", contexto)

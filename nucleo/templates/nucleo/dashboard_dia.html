@@ -1,0 +1,128 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Dashboard · {{ dia.fecha }}{% endblock %}
+{% block contenido %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--hu-card-line)">
+  <div>
+    <div class="kick">Sala de Ventas · día operativo</div>
+    <h2 style="font-size:29px;margin-top:2px">{{ dia.fecha|date:"l j \d\e F \d\e Y"|capfirst }}</h2>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="dot" style="width:14px;height:14px;background:{% if semaforo == 'verde' %}var(--hu-ok){% elif semaforo == 'ambar' %}var(--hu-warn){% else %}var(--hu-red){% endif %}"></span>
+    <span class="pill {% if dia.estado == 'exportado' or dia.estado == 'cerrado' %}p-ok{% elif dia.estado == 'sin_cargar' %}p-grey{% else %}p-warn{% endif %}" style="font-size:12px;padding:6px 12px">{{ dia.get_estado_display }}</span>
+    <form method="post" action="{% url 'reconciliar_dia' fecha=dia.fecha|date:'Y-m-d' %}">{% csrf_token %}<button type="submit" class="btn btn-2">Reconciliar</button></form>
+  </div>
+</div>
+
+{% if semaforo != "verde" %}
+<div style="display:flex;align-items:flex-start;gap:14px;margin:24px 32px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:14px 18px">
+  <div style="font-size:13.5px;line-height:1.6">
+    <strong style="color:var(--hu-maroon)">El día no puede aprobarse todavía.</strong>
+    {% if not checklist.sin_excepciones_bloqueantes.ok %}{{ checklist.sin_excepciones_bloqueantes.detalle }}. {% endif %}
+    {% if not checklist.arqueo_completo.ok %}{{ checklist.arqueo_completo.detalle }}. {% endif %}
+    {% if not checklist.diferencias_autorizadas.ok %}{{ checklist.diferencias_autorizadas.detalle }}.{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 32px">
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Venta del día</div>
+    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ venta_total|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-gray)">{{ cantidad_comandas }} comandas</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Conciliado automático</div>
+    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ calidad.pct_automatico|floatformat:1 }}%</div>
+    <div style="font-size:12px;color:var(--hu-gray)">score {{ calidad.score_promedio|floatformat:0 }}</div>
+  </div>
+  <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Excepciones abiertas</div>
+    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ calidad.total_excepciones_abiertas }}</div>
+    <div style="font-size:12px;color:var(--hu-maroon)">${{ calidad.monto_en_juego|floatformat:0 }} en juego</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Diferencia de caja</div>
+    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ efectivo.diferencia|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-gray)">umbral $5.000</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.55fr 1fr;gap:24px;padding:28px 32px">
+  <div>
+    <div class="kick" style="margin-bottom:10px">Cuadre por medio de pago</div>
+    <table class="tbl">
+      <thead><tr><th>Medio</th><th class="n">Declarado POS</th><th class="n">Proveedor</th><th class="n">Conciliado</th><th class="n">Diferencia</th></tr></thead>
+      <tbody>
+        {% for f in cuadre_por_medio %}
+        <tr>
+          <td style="text-transform:capitalize">{{ f.medio }}</td>
+          <td class="n">{{ f.declarado_pos|floatformat:0 }}</td>
+          <td class="n">{% if f.proveedor is not None %}{{ f.proveedor|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">sin contraparte</span>{% endif %}</td>
+          <td class="n">{% if f.conciliado is not None %}{{ f.conciliado|floatformat:0 }}{% else %}—{% endif %}</td>
+          <td class="n" {% if f.diferencia %}style="color:var(--hu-red);font-weight:700"{% endif %}>{% if f.diferencia is not None %}{{ f.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td>Efectivo</td>
+          <td class="n">{{ efectivo.teorico|floatformat:0 }}</td>
+          <td class="n" style="color:var(--hu-gray)">sin contraparte</td>
+          <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.contado|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
+          <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="kick" style="margin:26px 0 10px">Cajas y turnos</div>
+    <table class="tbl">
+      <thead><tr><th>Caja</th><th class="n">Efectivo teórico</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for a in cajas %}
+        <tr>
+          <td>{{ a.caja }}</td>
+          <td class="n">{{ a.teorico|floatformat:0 }}</td>
+          <td class="n">{% if a.contado is not None %}{{ a.contado|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
+          <td class="n">{% if a.diferencia is not None %}{{ a.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
+          <td>
+            {% if a.estado == "pendiente" %}<span class="pill p-grey">Pendiente</span>
+            {% elif a.estado == "cuadrada" %}<span class="pill p-ok">Cuadrada</span>
+            {% elif a.estado == "dentro_de_umbral" %}<span class="pill p-warn">Dentro de umbral</span>
+            {% elif a.estado == "requiere_autorizacion" %}<span class="pill p-red">Requiere autorización</span>
+            {% else %}<span class="pill p-ok">Autorizada</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div>
+    <div class="kick" style="margin-bottom:10px">Excepciones abiertas por tipo</div>
+    <div class="card" style="padding:16px 18px;margin-bottom:14px">
+      {% for valor, etiqueta, n in calidad.excepciones_por_tipo %}
+      <div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span>{{ etiqueta }}</span><strong>{{ n }}</strong></div>
+      {% empty %}
+      <div style="color:var(--hu-gray);font-size:13px">Sin excepciones abiertas.</div>
+      {% endfor %}
+    </div>
+
+    <div style="background:var(--hu-pink-2);border:1px solid var(--hu-line);padding:16px 18px">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:10px">Para cerrar el día</div>
+      <div style="font-size:13px;line-height:1.9">
+        <div>{% if checklist.sin_excepciones_bloqueantes.ok %}✓{% else %}✗{% endif %}&nbsp; Resolver excepciones bloqueantes</div>
+        <div>{% if checklist.arqueo_completo.ok %}✓{% else %}✗{% endif %}&nbsp; Registrar arqueo en todas las cajas</div>
+        <div>{% if checklist.diferencias_autorizadas.ok %}✓{% else %}✗{% endif %}&nbsp; Autorizar diferencias sobre el umbral</div>
+        <div>{% if checklist.deposito_registrado.ok %}✓{% else %}!{% endif %}&nbsp; Registrar depósito bancario</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <a href="{% url 'bandeja_excepciones' fecha=dia.fecha|date:'Y-m-d' %}" class="btn" style="flex:1;justify-content:center">Ir a excepciones</a>
+        {% if puede_aprobar and puede_aprobar_rol %}
+        <a href="{% url 'cierre_y_exportacion' fecha=dia.fecha|date:'Y-m-d' %}" class="btn" style="flex:1;justify-content:center">Aprobar</a>
+        {% else %}
+        <span class="btn btn-off" style="flex:1;justify-content:center" title="Resuelve la lista de verificación primero">Aprobar</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
