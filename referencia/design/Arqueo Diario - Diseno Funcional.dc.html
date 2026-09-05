@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&display=swap">
+<link rel="stylesheet" href="_ds/broadsheet-c4a67929-ee50-4faf-82d1-0d36c6e2f96e/styles.css">
+<script src="_ds/broadsheet-c4a67929-ee50-4faf-82d1-0d36c6e2f96e/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>
+doc-page:not(:defined){visibility:hidden}
+body{margin:0;background:var(--color-neutral-300)}
+a{color:var(--color-accent-700)}
+a:hover{color:var(--color-accent-800)}
+.k{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)}
+.lede{font-size:16px;line-height:1.6;max-width:34em}
+h2{font-size:26px;margin:0 0 var(--space-2)}
+h3{font-size:17px;margin:var(--space-4) 0 var(--space-1)}
+h4{font-size:14px;letter-spacing:0.04em;text-transform:uppercase;color:var(--color-neutral-700);margin:var(--space-3) 0 var(--space-1)}
+p,li{font-size:13.5px;line-height:1.62}
+.sec{break-before:page;padding-top:var(--space-2)}
+.table{font-size:12px}
+.table th{font-size:9.5px}
+.table td{padding:6px var(--space-2)}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.note{border-left:2px solid var(--color-accent-2);padding-left:var(--space-3);margin:var(--space-3) 0}
+.note p{margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6)}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-4)}
+ul{margin:0 0 var(--space-3);padding-left:1.1em}
+li{margin-bottom:3px}
+.wf{font-family:var(--font-heading);font-size:11px;line-height:1.3}
+.box{border:1px solid var(--color-neutral-400);padding:8px 10px}
+</style>
+</helmet>
+<doc-page margin="0.75in">
+
+<div slot="header" style="display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:0.04em;color:var(--color-neutral-600);padding-bottom:6px">
+<span>Hacienda Huentelauquén · Administración y Finanzas</span>
+<span>DF-ARQ-001 · v1.0</span>
+</div>
+<div slot="footer" style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--color-neutral-600);padding-top:6px">
+<span>Arqueo Diario de Caja y Conciliación de Ventas — Sala de Ventas</span>
+<span>Documento de trabajo · diseño funcional, sin desarrollo</span>
+</div>
+
+<div style="min-height:8.4in;display:flex;flex-direction:column;justify-content:space-between">
+<div>
+<img src="assets/logo-huentelauquen.png" alt="Hacienda Huentelauquén" style="width:132px;margin-bottom:var(--space-8)">
+<div class="k" style="margin-bottom:var(--space-6)">Diseño funcional · documento de trabajo</div>
+<h1 style="font-size:52px;line-height:1.04;max-width:9.5em;margin:0 0 var(--space-4)">Arqueo Diario de Caja y Conciliación de Ventas</h1>
+<div style="font-size:21px;color:var(--color-neutral-700);margin-bottom:var(--space-6);font-style:italic">Sala de Ventas Huentelauquén</div>
+<p class="lede" style="max-width:30em">Definición funcional previa al desarrollo: alcance, arquitectura, modelo de datos, motor de conciliación multi‑señal, excepciones, arqueo de efectivo, pantallas, auditoría y exportación a Odoo. Todo lo que sigue está anclado en la lectura completa de los archivos reales del <strong>2 de septiembre de 2026</strong>. Lo que no pudo deducirse aparece marcado como decisión pendiente y consolidado en la sección 28.</p>
+</div>
+<table class="table" style="max-width:4.6in">
+<tbody>
+<tr><td style="color:var(--color-neutral-600)">Código</td><td>DF‑ARQ‑001</td></tr>
+<tr><td style="color:var(--color-neutral-600)">Versión</td><td>1.0 — 5 de septiembre de 2026</td></tr>
+<tr><td style="color:var(--color-neutral-600)">Responsable</td><td>Gerencia de Administración y Finanzas</td></tr>
+<tr><td style="color:var(--color-neutral-600)">Evidencia base</td><td>Captura_Ventas_Sala_de_Ventas_02.09.26.xlsx · Cartola_Movimientos_02‑sep‑2026.xlsx</td></tr>
+<tr><td style="color:var(--color-neutral-600)">Estado</td><td>Para revisión funcional</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="sec">
+<h2>Contenido</h2>
+<div style="column-count:2;column-gap:var(--space-8);font-size:12.5px;line-height:1.85;margin-top:var(--space-3)">
+<div>0 · Hallazgos de los archivos reales</div>
+<div>1 · Definición funcional</div>
+<div>2 · Alcance</div>
+<div>3 · Arquitectura funcional</div>
+<div>4 · Módulos</div>
+<div>5 · Flujo de usuario</div>
+<div>6 · Modelo de estados del día</div>
+<div>7 · Modelo lógico de datos</div>
+<div>8 · Normalización de las fuentes</div>
+<div>9 · Conciliación por niveles</div>
+<div>10 · Matching global</div>
+<div>11 · Autorización incorrecta</div>
+<div>12 · Montos repetidos</div>
+<div>13 · Diferencia de hora</div>
+<div>14 · Score de confianza</div>
+<div>15 · Excepciones</div>
+<div>16 · Arqueo de efectivo</div>
+<div>17 · Dashboard del día</div>
+<div>18 · Pantallas y wireframes</div>
+<div>19 · Histórico e indicadores</div>
+<div>20 · Auditoría y trazabilidad</div>
+<div>21 · Exportación a Odoo</div>
+<div>22 · Extensión a Mercado Pago</div>
+<div>23 · Criterios de aceptación</div>
+<div>24 · Casos de prueba</div>
+<div>25 · Riesgos</div>
+<div>26 · Supuestos</div>
+<div>27 · Controles obligatorios</div>
+<div>28 · Decisiones pendientes</div>
+</div>
+<div class="note" style="margin-top:var(--space-6)">
+<p><strong>Cómo leer este documento.</strong> No contiene código ni compromisos de implementación. Las cifras de la sección 0 son mediciones sobre los archivos entregados, no estimaciones; el resto del diseño se justifica en ellas.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="k">Sección 0</div>
+<h2>Hallazgos de los archivos reales</h2>
+<p class="lede">Se leyeron íntegros ambos archivos del 02‑09‑2026 antes de definir cualquier regla. Estos hallazgos son la base empírica del diseño.</p>
+
+<h3>0.1 Estructura del archivo POS</h3>
+<table class="table">
+<thead><tr><th>Hoja</th><th>Tamaño real</th><th>Rol en el diseño</th></tr></thead>
+<tbody>
+<tr><td><strong>VENTAS POR ARTICULO</strong></td><td>686 líneas de artículo · 336 comandas · 24 columnas</td><td>Fuente primaria de venta y de medio de pago declarado.</td></tr>
+<tr><td><strong>VENTA CONSOLIDADA</strong></td><td>341 filas · 54 columnas</td><td>Fuente complementaria: autorización, cupón, tipo de tarjeta, cierre.</td></tr>
+<tr><td><strong>Captura Odoo1</strong></td><td>558 filas · 12 columnas</td><td>Formato de salida objetivo para importación a Odoo.</td></tr>
+<tr><td><strong>Tabla Descuentos</strong></td><td>18 filas · Producto / Descuento</td><td>Tabla auxiliar; uso por confirmar (§28‑D6).</td></tr>
+<tr><td>8 hojas ocultas + 3 dinámicas</td><td>≈34 MB de caché</td><td>Andamiaje manual actual. La aplicación lo reemplaza; no se lee.</td></tr>
+</tbody>
+</table>
+
+<div class="note">
+<p><strong>Hallazgo crítico de normalización.</strong> En <em>VENTAS POR ARTICULO</em> las columnas de pago (EFECTVO, TRANSFERENCIAS, TARJETA DE DEBITO, TARJETA DE CREDITO) y el TOTAL_COMANDA se repiten idénticos en <strong>cada línea de artículo</strong> de la misma comanda. Sumar por línea multiplica la venta por la cantidad de artículos. El importador debe deduplicar por <strong>N_INTERNO</strong> antes de sumar cualquier medio de pago. Es el error número uno a evitar.</p>
+</div>
+
+<h3>0.2 Llaves de enlace verificadas</h3>
+<ul>
+<li><strong>N_INTERNO</strong> (VENTAS POR ARTICULO) = <strong>N_INTERNO</strong> (VENTA CONSOLIDADA) = <strong>ID de pago externo</strong> (Captura Odoo1). Verificado con 654747.</li>
+<li><strong>NRO. COMPROBANTE</strong> (p. ej. B0390301666467) = <strong>N_COMP</strong> en VENTA CONSOLIDADA; sus 7 últimos dígitos son el <strong>número de documento externo</strong> en Odoo (1666467).</li>
+<li><strong>FECHA</strong> llega como serial Excel (46267 = 02/09/2026); las horas como texto «10:23 HS.».</li>
+</ul>
+<p>Consecuencia: la venta normalizada se construye desde VENTAS POR ARTICULO y se <em>enriquece</em> con VENTA CONSOLIDADA por N_INTERNO. Nunca al revés.</p>
+
+<h3>0.3 Inconsistencia entre las dos hojas POS</h3>
+<table class="table">
+<thead><tr><th>Comprobante B0390301666467 · N_INTERNO 654747</th><th>VENTAS POR ARTICULO</th><th>VENTA CONSOLIDADA</th></tr></thead>
+<tbody>
+<tr><td>Monto</td><td>Total comanda $17.600</td><td>DEBE $29.000</td></tr>
+<tr><td>Medio</td><td>Tarjeta de débito</td><td>DESC_CTA «TARJETA DE CREDITO»</td></tr>
+<tr><td>Caja</td><td>CAJA 4</td><td>COD_CAJA 2</td></tr>
+</tbody>
+</table>
+<p>Además la fila de encabezado de VENTA CONSOLIDADA está corrida (la columna E trae «2142» en lugar de un nombre de campo). Conclusión: <strong>VENTA CONSOLIDADA no es confiable en monto ni en medio</strong>. Se usa solo para autorización, cupón, tipo de tarjeta y hora de cierre, y cada campo debe validarse antes de emplearse como señal (§28‑D1).</p>
+</div>
+
+<div class="sec">
+<h3 style="margin-top:0">0.4 Medición del archivo Transbank</h3>
+<div class="grid3" style="margin-bottom:var(--space-4)">
+<div><div class="k">Movimientos</div><div style="font-family:var(--font-heading);font-size:34px;line-height:1.1">295</div><div style="font-size:11.5px;color:var(--color-neutral-700)">todos «Venta»; 0 anulaciones</div></div>
+<div><div class="k">Válido para abono</div><div style="font-family:var(--font-heading);font-size:34px;line-height:1.1">$4.968.393</div><div style="font-size:11.5px;color:var(--color-neutral-700)">igual al monto original; sin propina ni vuelto</div></div>
+<div><div class="k">Ventana horaria</div><div style="font-family:var(--font-heading);font-size:34px;line-height:1.1">10:24–19:30</div><div style="font-size:11.5px;color:var(--color-neutral-700)">peak 14:00 h con 54 movimientos</div></div>
+</div>
+<div class="grid2">
+<table class="table">
+<thead><tr><th>Medio / tarjeta</th><th class="num">N°</th><th class="num">Monto</th></tr></thead>
+<tbody>
+<tr><td>Débito</td><td class="num">223</td><td class="num">3.821.086</td></tr>
+<tr><td>Crédito Mastercard</td><td class="num">33</td><td class="num">655.823</td></tr>
+<tr><td>Crédito VISA</td><td class="num">27</td><td class="num">384.681</td></tr>
+<tr><td>Prepago</td><td class="num">11</td><td class="num">92.591</td></tr>
+<tr><td>Crédito American</td><td class="num">1</td><td class="num">14.212</td></tr>
+</tbody>
+</table>
+<table class="table">
+<thead><tr><th>Terminal</th><th class="num">N°</th><th class="num">Monto</th></tr></thead>
+<tbody>
+<tr><td>A2885575</td><td class="num">94</td><td class="num">1.402.452</td></tr>
+<tr><td>A2885576</td><td class="num">90</td><td class="num">1.717.320</td></tr>
+<tr><td>A2380302</td><td class="num">56</td><td class="num">1.100.622</td></tr>
+<tr><td>A2885577</td><td class="num">55</td><td class="num">747.999</td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-top:var(--space-2)">La serie <strong>A2380302</strong> no pertenece al bloque A28855xx: puede ser un cuarto POS, un terminal de reemplazo o un punto de venta distinto. Debe resolverse antes de asignar terminales a cajas (§28‑D2).</p>
+
+<h3>0.5 Cinco mediciones que definen el motor de conciliación</h3>
+<table class="table">
+<thead><tr><th style="width:38%">Medición</th><th>Consecuencia funcional</th></tr></thead>
+<tbody>
+<tr><td><strong>197 montos distintos</strong> en 295 movimientos — 33 % comparte monto con otro</td><td>El monto por sí solo no identifica. Se requiere matching global, no fila por fila (§10).</td></tr>
+<tr><td><strong>18 de 295</strong> tienen otro movimiento de igual monto dentro de ±10 min; <strong>9</strong> dentro de ±3 min</td><td>La ambigüedad real es acotada (≈6 %). Monto + ventana temporal resuelve la gran mayoría automáticamente; el resto va a revisión asistida.</td></tr>
+<tr><td><strong>9 autorizaciones alfanuméricas</strong> (B93179, FH00DZ, ORAVPZ…)</td><td>Un campo POS numérico no puede contenerlas: confirma que la autorización no puede ser llave obligatoria (§11).</td></tr>
+<tr><td><strong>0 autorizaciones duplicadas</strong> en Transbank</td><td>Cuando la autorización sí coincide es evidencia unívoca: justifica su peso alto en el score.</td></tr>
+<tr><td><strong>233 PENDIENTE / 62 ABONADA</strong>, con fecha de abono 04‑09</td><td>La conciliación usa <strong>fecha de movimiento</strong>, nunca fecha ni estado de abono. El abono se controla aparte, contra cartola bancaria.</td></tr>
+</tbody>
+</table>
+<p>Columnas presentes pero en cero ese día — <strong>monto vuelto, propina, monto anulado, monto exento, monto cuota</strong> — deben normalizarse desde el día uno: son causas estructurales de diferencia POS↔proveedor que aparecerán en otros días.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 1</div>
+<h2>Definición funcional</h2>
+<p class="lede">La aplicación es una herramienta de control financiero diario que reconstruye la venta de la Sala de Ventas, la coteja contra los medios de pago electrónicos del proveedor, resuelve las excepciones con decisión humana trazable, determina el efectivo esperado, lo controla contra el depósito y — solo una vez aprobado el día — genera el archivo de importación a Odoo.</p>
+<div class="note">
+<p><strong>Principio rector.</strong> La exportación a Odoo es la consecuencia de un día conciliado y aprobado, no el objetivo del sistema. Un día con excepciones sin resolver no se exporta.</p>
+</div>
+<h4>Objetivos</h4>
+<ul>
+<li>Reconstruir la venta del día (cabecera, líneas y medio declarado) sin intervención manual en Excel.</li>
+<li>Cotejar cada venta con tarjeta contra el movimiento del proveedor mediante evidencia múltiple, no por una sola llave.</li>
+<li>Reducir el arqueo a una lista corta de excepciones con decisión propuesta, en lugar de una revisión completa.</li>
+<li>Determinar el efectivo teórico y esperado, y contrastarlo con el depósito.</li>
+<li>Dejar registro íntegro de qué se decidió, quién y con qué evidencia.</li>
+<li>Generar el archivo Odoo únicamente desde datos aprobados.</li>
+</ul>
+<h4>Usuarios y separación de funciones</h4>
+<table class="table">
+<thead><tr><th style="width:22%">Rol</th><th>Puede</th><th>No puede</th></tr></thead>
+<tbody>
+<tr><td><strong>Operador de arqueo</strong></td><td>Cargar archivos, ejecutar conciliación, resolver excepciones, registrar depósito.</td><td>Aprobar el día, cerrar con diferencia, exportar a Odoo.</td></tr>
+<tr><td><strong>Aprobador</strong><br><span style="color:var(--color-neutral-600)">Adm. y Finanzas</span></td><td>Revisar, autorizar diferencias, aprobar, cerrar, exportar, reabrir.</td><td>Eliminar evidencia original ni editar la bitácora.</td></tr>
+<tr><td><strong>Consulta</strong></td><td>Ver histórico, indicadores y trazabilidad.</td><td>Modificar nada.</td></tr>
+</tbody>
+</table>
+<p>La regla es una sola: <strong>quien opera no aprueba</strong>. Si por dotación una misma persona tiene ambos roles, la aplicación lo permite pero lo registra como excepción de control en el cierre.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 2</div>
+<h2>Alcance</h2>
+<div class="grid2" style="margin-top:var(--space-4)">
+<div>
+<h4 style="margin-top:0;color:var(--color-accent-700)">Dentro — Fase 1</h4>
+<ul>
+<li>Importación POS: VENTAS POR ARTICULO + VENTA CONSOLIDADA.</li>
+<li>Importación Transbank: cartola de movimientos.</li>
+<li>Normalización a un modelo interno propio.</li>
+<li>Motor de conciliación multi‑señal por niveles con score.</li>
+<li>Bandeja de excepciones y resolución manual trazable.</li>
+<li>Reclasificación de medio de pago, solo manual.</li>
+<li>Arqueo de efectivo y control de depósito.</li>
+<li>Aprobación, cierre y exportación a Odoo.</li>
+<li>Histórico, auditoría y calidad de registro POS.</li>
+<li>Arquitectura extensible a Mercado Pago.</li>
+</ul>
+</div>
+<div>
+<h4 style="margin-top:0;color:var(--color-neutral-700)">Fuera — Fase 1</h4>
+<ul>
+<li>Integración en línea con el POS o con Transbank vía API.</li>
+<li>Escritura automática dentro de Odoo: se entrega archivo.</li>
+<li>Conciliación bancaria del abono Transbank.</li>
+<li>Control de inventario, costos o márgenes.</li>
+<li>Gestión de propinas o comisiones del adquirente.</li>
+<li>Arqueo de otras sucursales o puntos de venta.</li>
+<li>Aplicación móvil: el diseño es de escritorio.</li>
+</ul>
+</div>
+</div>
+<p style="margin-top:var(--space-4)">El límite de la Fase 1 es deliberado: el sistema resuelve el día operativo. La conciliación del abono bancario es un proceso distinto, con otra periodicidad y otra fuente, y mezclarlo aquí haría que un día no cerrara por razones ajenas a la caja.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 3</div>
+<h2>Arquitectura funcional</h2>
+<p class="lede">Cada etapa consume el modelo de la anterior. Ninguna regla de negocio se escribe sobre columnas de Excel: los importadores son la única capa que conoce nombres de columna.</p>
+<div style="margin:var(--space-4) 0">
+<div style="display:flex;gap:8px;margin-bottom:6px">
+<div class="box wf" style="flex:1"><strong>Importador POS</strong><br><span style="color:var(--color-neutral-600)">lee columnas, no interpreta</span></div>
+<div class="box wf" style="flex:1"><strong>Importador Transbank</strong><br><span style="color:var(--color-neutral-600)">uno por proveedor</span></div>
+<div class="box wf" style="flex:1;border-style:dashed;color:var(--color-neutral-600)"><strong>Importador Mercado Pago</strong><br><span>futuro · misma interfaz</span></div>
+</div>
+<div style="text-align:center;color:var(--color-accent);font-size:13px;line-height:1.4">▼</div>
+<div style="display:flex;gap:8px;margin:6px 0">
+<div class="box wf" style="flex:1;background:var(--color-accent-100);border-color:var(--color-accent-300)"><strong>Ventas normalizadas</strong> + <strong>Pagos declarados</strong><br><span style="color:var(--color-neutral-700)">una venta por N_INTERNO, líneas, medios</span></div>
+<div class="box wf" style="flex:1;background:var(--color-accent-100);border-color:var(--color-accent-300)"><strong>Movimientos de proveedor</strong><br><span style="color:var(--color-neutral-700)">normalizados, agnósticos del origen</span></div>
+</div>
+<div style="text-align:center;color:var(--color-accent);font-size:13px;line-height:1.4">▼</div>
+<div class="box wf" style="margin:6px 0;background:var(--color-accent-2-100);border-color:var(--color-accent-2-300)"><strong>Motor de conciliación</strong> — niveles 1 a 6, matching global, score de confianza<br><span style="color:var(--color-neutral-700)">sin lógica específica de ningún proveedor</span></div>
+<div style="text-align:center;color:var(--color-accent);font-size:13px;line-height:1.4">▼</div>
+<div style="display:flex;gap:8px;margin:6px 0">
+<div class="box wf" style="flex:1"><strong>Coincidencias</strong></div>
+<div class="box wf" style="flex:1"><strong>Excepciones</strong></div>
+<div class="box wf" style="flex:1"><strong>Arqueo de efectivo</strong></div>
+</div>
+<div style="text-align:center;color:var(--color-accent);font-size:13px;line-height:1.4">▼</div>
+<div style="display:flex;gap:8px">
+<div class="box wf" style="flex:1"><strong>Aprobación y cierre</strong></div>
+<div class="box wf" style="flex:1"><strong>Exportador Odoo</strong></div>
+<div class="box wf" style="flex:1"><strong>Bitácora de auditoría</strong></div>
+</div>
+</div>
+<p>Tres consecuencias de esta separación: incorporar un proveedor nuevo es escribir un importador, no tocar el motor; un cambio de formato del POS no propaga a las reglas; y el mismo motor puede reprocesar un día histórico sin volver a leer los Excel originales.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 4</div>
+<h2>Módulos</h2>
+<table class="table">
+<thead><tr><th style="width:24%">Módulo</th><th>Responsabilidad</th><th style="width:26%">Entrega</th></tr></thead>
+<tbody>
+<tr><td><strong>M1 · Carga</strong></td><td>Recibir los archivos del día, validar que corresponden a la fecha declarada, detectar recargas y conservar el original.</td><td>Lote de carga con huella e historial.</td></tr>
+<tr><td><strong>M2 · Normalización</strong></td><td>Deduplicar por N_INTERNO, construir cabeceras, líneas y pagos declarados; convertir fechas y horas; enriquecer con VENTA CONSOLIDADA.</td><td>Modelo interno del día.</td></tr>
+<tr><td><strong>M3 · Conciliación</strong></td><td>Ejecutar niveles 1–6, resolver el matching global, calcular score y clasificar cada par.</td><td>Coincidencias y excepciones.</td></tr>
+<tr><td><strong>M4 · Excepciones</strong></td><td>Presentar cada caso con su evidencia y su decisión propuesta; registrar la resolución.</td><td>Excepciones resueltas y trazadas.</td></tr>
+<tr><td><strong>M5 · Efectivo</strong></td><td>Calcular efectivo teórico y esperado, capturar el arqueo físico y el depósito, y cuantificar la diferencia.</td><td>Acta de arqueo del día.</td></tr>
+<tr><td><strong>M6 · Cierre</strong></td><td>Aprobar, cerrar, reabrir con motivo y bloquear el día.</td><td>Día cerrado.</td></tr>
+<tr><td><strong>M7 · Exportación</strong></td><td>Generar el archivo con el formato de Captura Odoo1 solo desde días aprobados.</td><td>Archivo Odoo y su acuse.</td></tr>
+<tr><td><strong>M8 · Histórico</strong></td><td>Consultar días anteriores, indicadores y tendencias de diferencias.</td><td>Tableros y consultas.</td></tr>
+<tr><td><strong>M9 · Auditoría</strong></td><td>Registrar toda acción con usuario, hora, valor anterior y posterior.</td><td>Bitácora inmutable.</td></tr>
+<tr><td><strong>M10 · Calidad POS</strong></td><td>Medir errores de registro por caja y cajero: medio mal declarado, autorización ausente, comandas sin cierre.</td><td>Informe de calidad mensual.</td></tr>
+</tbody>
+</table>
+<p>M10 no es un accesorio. Si el POS se registra bien, el volumen de excepciones cae y el arqueo se hace en minutos; medir la calidad del registro es lo que hace que el sistema mejore con el tiempo en lugar de solo absorber errores.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 5</div>
+<h2>Flujo de usuario</h2>
+<table class="table">
+<thead><tr><th style="width:6%">#</th><th style="width:26%">Paso</th><th>Qué ocurre</th><th style="width:16%">Rol</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Cargar archivos del día</td><td>Se sube el Excel POS y la cartola del proveedor. El sistema valida fecha, detecta duplicados y conserva el original.</td><td>Operador</td></tr>
+<tr><td>2</td><td>Revisar normalización</td><td>Se muestra el resumen: comandas, líneas, venta total, desglose por medio declarado y avisos de calidad.</td><td>Operador</td></tr>
+<tr><td>3</td><td>Ejecutar conciliación</td><td>El motor corre los niveles y entrega coincidencias con score y una lista de excepciones ordenada por impacto.</td><td>Operador</td></tr>
+<tr><td>4</td><td>Resolver excepciones</td><td>Cada caso se acepta, se rechaza o se vincula manualmente, con motivo obligatorio.</td><td>Operador</td></tr>
+<tr><td>5</td><td>Arqueo de efectivo</td><td>Se registra el conteo físico, el fondo de caja y el depósito; el sistema calcula la diferencia.</td><td>Operador</td></tr>
+<tr><td>6</td><td>Revisión y aprobación</td><td>El aprobador ve el día completo, autoriza diferencias con justificación y aprueba.</td><td>Aprobador</td></tr>
+<tr><td>7</td><td>Cierre</td><td>El día queda bloqueado. Reabrirlo exige motivo y queda en bitácora.</td><td>Aprobador</td></tr>
+<tr><td>8</td><td>Exportación a Odoo</td><td>Se genera el archivo y se registra el acuse de importación.</td><td>Aprobador</td></tr>
+</tbody>
+</table>
+<div class="note">
+<p>El paso 3 puede repetirse cuantas veces se quiera antes del paso 6: reconciliar es idempotente y no borra decisiones manuales ya tomadas, solo recalcula lo automático.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="k">Sección 6</div>
+<h2>Modelo de estados del día</h2>
+<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:var(--space-4) 0;font-family:var(--font-heading);font-size:11.5px">
+<span class="tag tag-neutral">Sin cargar</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-neutral">Cargado</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-neutral">Normalizado</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-accent">Conciliado con excepciones</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-accent">Excepciones resueltas</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-accent-2">Aprobado</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-accent-2">Cerrado</span><span style="color:var(--color-accent)">→</span>
+<span class="tag tag-outline">Exportado</span>
+</div>
+<table class="table">
+<thead><tr><th style="width:28%">Estado</th><th>Condición para salir</th><th style="width:22%">Reversible</th></tr></thead>
+<tbody>
+<tr><td>Cargado</td><td>Ambas fuentes presentes y de la fecha correcta.</td><td>Sí, recargando</td></tr>
+<tr><td>Normalizado</td><td>Sin errores bloqueantes de estructura.</td><td>Sí</td></tr>
+<tr><td>Conciliado con excepciones</td><td>Motor ejecutado.</td><td>Sí, reconciliando</td></tr>
+<tr><td>Excepciones resueltas</td><td>Cero excepciones abiertas.</td><td>Sí</td></tr>
+<tr><td>Aprobado</td><td>Aprobador distinto del operador, diferencias autorizadas.</td><td>Solo reapertura con motivo</td></tr>
+<tr><td>Cerrado</td><td>—</td><td>Solo reapertura con motivo</td></tr>
+<tr><td>Exportado</td><td>—</td><td>No: se genera nueva versión</td></tr>
+</tbody>
+</table>
+<p><strong>Regla de no retroceso silencioso:</strong> reabrir un día aprobado invalida su exportación previa y obliga a regenerarla. Una exportación nunca se edita.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 7</div>
+<h2>Modelo lógico de datos</h2>
+<table class="table">
+<thead><tr><th style="width:24%">Entidad</th><th>Contenido</th><th style="width:20%">Clave</th></tr></thead>
+<tbody>
+<tr><td><strong>Día de arqueo</strong></td><td>Fecha, estado, totales, quién operó y quién aprobó.</td><td>Fecha + local</td></tr>
+<tr><td><strong>Lote de carga</strong></td><td>Archivo, huella, fuente, fecha declarada, versión.</td><td>Id de lote</td></tr>
+<tr><td><strong>Venta</strong></td><td>Cabecera de comanda: comprobante, caja, cajero, turno, apertura, cierre, tipo de documento, estado, total.</td><td>N_INTERNO</td></tr>
+<tr><td><strong>Línea de venta</strong></td><td>Producto, cantidad, precio, total de línea, descuento.</td><td>N_INTERNO + n.º línea</td></tr>
+<tr><td><strong>Pago declarado</strong></td><td>Un registro por medio con monto &gt; 0 en la comanda: efectivo, transferencia, débito, crédito.</td><td>N_INTERNO + medio</td></tr>
+<tr><td><strong>Movimiento de proveedor</strong></td><td>Fecha, hora, tipo, medio, tarjeta, terminal, autorización, monto original, propina, vuelto, anulado, monto de abono, estado.</td><td>Id interno</td></tr>
+<tr><td><strong>Coincidencia</strong></td><td>Vínculo pago↔movimiento, nivel que lo resolvió, score, diferencia de monto y de hora, origen automático o manual.</td><td>Id de coincidencia</td></tr>
+<tr><td><strong>Excepción</strong></td><td>Tipo, severidad, monto en juego, evidencia, decisión propuesta, resolución, motivo, usuario.</td><td>Id de excepción</td></tr>
+<tr><td><strong>Arqueo de efectivo</strong></td><td>Teórico, contado, fondo, depósito, diferencia, comentario.</td><td>Día + caja</td></tr>
+<tr><td><strong>Exportación</strong></td><td>Versión, archivo generado, usuario, fecha, acuse.</td><td>Id de exportación</td></tr>
+<tr><td><strong>Evento de auditoría</strong></td><td>Entidad, acción, valor anterior, valor posterior, usuario, hora.</td><td>Id de evento</td></tr>
+</tbody>
+</table>
+<p>Un <strong>pago declarado</strong> por medio y no por comanda es la decisión estructural más importante del modelo: permite que una comanda pagada mitad en efectivo y mitad con tarjeta concilie parcialmente, con un lado cuadrado y el otro en excepción. Un modelo de un solo medio por venta haría imposible ese caso.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 8</div>
+<h2>Normalización de las fuentes</h2>
+<h4>POS · VENTAS POR ARTICULO</h4>
+<ul>
+<li><strong>Deduplicar por N_INTERNO</strong> antes de sumar. La cabecera y los cuatro montos de pago se toman de la primera línea; las líneas se acumulan aparte.</li>
+<li><strong>Validar la identidad</strong> total de comanda = suma de líneas, y total = suma de medios declarados. Toda desviación genera aviso, no rechazo.</li>
+<li><strong>Convertir</strong> el serial Excel a fecha y «10:23 HS.» a hora local.</li>
+<li><strong>Generar un pago declarado</strong> por cada medio con monto positivo. Comandas con dos o más medios se marcan como pago mixto.</li>
+<li><strong>Clasificar el tipo de documento</strong> (boleta, factura, nota) y el estado, para excluir del arqueo lo anulado.</li>
+</ul>
+<h4>POS · VENTA CONSOLIDADA</h4>
+<ul>
+<li>Se usa <strong>solo para enriquecer</strong>: autorización, cupón, tipo de tarjeta y hora de cierre.</li>
+<li>Cada campo se valida antes de emplearse como señal. Si el medio de esta hoja contradice el de VENTAS POR ARTICULO, se registra la contradicción y prevalece VENTAS POR ARTICULO.</li>
+<li>Los montos de esta hoja <strong>no se usan nunca</strong> para cuadrar (§0.3).</li>
+</ul>
+<h4>Proveedor · cartola Transbank</h4>
+<ul>
+<li>Se conservan por separado <strong>monto original</strong>, <strong>propina</strong>, <strong>vuelto</strong>, <strong>anulado</strong>, <strong>exento</strong>, <strong>cuota</strong> y <strong>monto de abono</strong>.</li>
+<li>El monto que se coteja contra el POS es el <strong>monto de venta neto de propina y vuelto</strong>. El monto de abono se guarda pero no concilia.</li>
+<li>Las anulaciones se tratan como movimientos con signo, no se eliminan.</li>
+<li>Se normalizan medio y tarjeta a un vocabulario propio: débito, crédito, prepago; VISA, Mastercard, American, otro.</li>
+<li>Se conserva el terminal para reconstruir la caja de origen (§28‑D2).</li>
+</ul>
+<div class="note">
+<p><strong>Regla de conservación.</strong> Ningún importador descarta filas. Lo que no se entiende se marca «no interpretado» y se cuenta en el resumen de carga. Un archivo del que se descartan filas en silencio es un arqueo que cuadra por omisión.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="k">Sección 9</div>
+<h2>Conciliación por niveles</h2>
+<p class="lede">El motor recorre seis niveles en orden. Cada nivel solo puede emparejar pagos y movimientos que los niveles anteriores dejaron libres, y cada nivel deja registrado por qué emparejó.</p>
+<table class="table">
+<thead><tr><th style="width:8%">Nivel</th><th style="width:30%">Señales exigidas</th><th>Interpretación</th><th style="width:14%">Score base</th></tr></thead>
+<tbody>
+<tr><td><strong>1</strong></td><td>Autorización + monto exacto</td><td>Coincidencia plena. Evidencia unívoca: no hay autorizaciones duplicadas (§0.5).</td><td>100</td></tr>
+<tr><td><strong>2</strong></td><td>Autorización + monto con tolerancia</td><td>Misma transacción con diferencia menor: propina, vuelto o redondeo.</td><td>92</td></tr>
+<tr><td><strong>3</strong></td><td>Monto exacto + medio + hora dentro de ventana</td><td>Caso normal cuando la autorización no fue registrada en el POS.</td><td>85</td></tr>
+<tr><td><strong>4</strong></td><td>Monto exacto + hora dentro de ventana, medio distinto</td><td>Muy probablemente la misma transacción con el medio mal declarado. Propone reclasificación.</td><td>70</td></tr>
+<tr><td><strong>5</strong></td><td>Monto con tolerancia + hora dentro de ventana</td><td>Candidato razonable; requiere confirmación humana.</td><td>55</td></tr>
+<tr><td><strong>6</strong></td><td>Agrupación: varios pagos ↔ un movimiento, o viceversa</td><td>Comanda dividida en varias transacciones, o varias comandas cobradas juntas.</td><td>40</td></tr>
+</tbody>
+</table>
+<h4>Parámetros configurables</h4>
+<table class="table">
+<thead><tr><th style="width:34%">Parámetro</th><th style="width:20%">Valor propuesto</th><th>Razón</th></tr></thead>
+<tbody>
+<tr><td>Tolerancia de monto</td><td>$0 exacto / hasta $50 con tolerancia</td><td>El día medido no tiene propinas ni vueltos; la tolerancia cubre redondeo, no diferencias de fondo.</td></tr>
+<tr><td>Ventana temporal</td><td>±10 minutos</td><td>Solo 18 de 295 movimientos comparten monto en esa ventana: es discriminante y a la vez tolera desfase de reloj.</td></tr>
+<tr><td>Score mínimo automático</td><td>85</td><td>Niveles 1 a 3 se aceptan solos; del 4 al 6 siempre pasan por decisión humana.</td></tr>
+<tr><td>Desfase de reloj POS↔terminal</td><td>Estimado por día</td><td>Se calcula del conjunto de coincidencias de nivel 1 y 2, y se aplica al resto (§13).</td></tr>
+</tbody>
+</table>
+<p>Ningún nivel emparejamiento automático por encima del nivel 3. Esa frontera es la que hace que el sistema sea auditable: todo lo que cambió un medio de pago o cruzó una tolerancia tiene un nombre y un motivo detrás.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 10</div>
+<h2>Matching global</h2>
+<p class="lede">Emparejar fila por fila, tomando el primer candidato que calza, produce resultados distintos según el orden de lectura y deja huérfanos evitables. Con 33 % de montos repetidos, ese método falla de forma sistemática.</p>
+<h4>Cómo funciona</h4>
+<ul>
+<li>Dentro de cada nivel, el motor construye <strong>todos los candidatos posibles</strong> entre pagos y movimientos libres, cada uno con su score.</li>
+<li>Resuelve el conjunto buscando la <strong>asignación de score total máximo</strong> en la que cada pago y cada movimiento se usan una sola vez.</li>
+<li>Un pago sin candidato o cuyo candidato fue asignado a otro con mejor evidencia queda libre y pasa al nivel siguiente.</li>
+<li>Lo que sobra al final del nivel 6 se convierte en excepción.</li>
+</ul>
+<div class="note">
+<p><strong>Propiedad exigida:</strong> el resultado no depende del orden de las filas en el archivo. Reordenar el Excel debe producir exactamente la misma conciliación. Este es un criterio de aceptación verificable (§23).</p>
+</div>
+<h4>Reglas de desempate</h4>
+<table class="table">
+<thead><tr><th style="width:8%">Orden</th><th>Criterio</th></tr></thead>
+<tbody>
+<tr><td>1.º</td><td>Score más alto.</td></tr>
+<tr><td>2.º</td><td>Menor diferencia de monto.</td></tr>
+<tr><td>3.º</td><td>Menor diferencia de hora corregida por desfase.</td></tr>
+<tr><td>4.º</td><td>Coincidencia de terminal con la caja de la comanda, si el mapa terminal↔caja está definido.</td></tr>
+<tr><td>5.º</td><td>Si persiste el empate, <strong>ninguno se asigna</strong>: ambos van a excepción de ambigüedad con los dos candidatos a la vista.</td></tr>
+</tbody>
+</table>
+<p>El quinto criterio es intencional. Ante un empate real, adivinar es peor que preguntar: el sistema prefiere una excepción de treinta segundos a una asignación silenciosa que nadie revisará.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 11</div>
+<h2>Autorización incorrecta o ausente</h2>
+<p class="lede">La autorización es la mejor señal disponible y a la vez la menos confiable en su captura. El diseño la aprovecha cuando existe y no depende de ella cuando no.</p>
+<table class="table">
+<thead><tr><th style="width:26%">Situación</th><th>Tratamiento</th><th style="width:20%">Resultado</th></tr></thead>
+<tbody>
+<tr><td><strong>Ausente en el POS</strong></td><td>Se salta a nivel 3: monto + medio + hora.</td><td>Conciliación normal, sin excepción.</td></tr>
+<tr><td><strong>Presente y coincidente</strong></td><td>Nivel 1 o 2.</td><td>Score máximo.</td></tr>
+<tr><td><strong>Presente y no coincidente</strong></td><td>La autorización <strong>no descarta</strong> el par. Se intenta nivel 3 y superiores; si concilia, se marca «autorización discrepante».</td><td>Conciliado con aviso de calidad.</td></tr>
+<tr><td><strong>Alfanumérica en el proveedor</strong><br><span style="color:var(--color-neutral-600)">9 casos medidos</span></td><td>Se compara normalizando: solo dígitos, sin ceros a la izquierda. Si el POS solo admite numérico, nunca coincidirá: se resuelve por nivel 3.</td><td>Conciliado; se cuenta como limitación del POS.</td></tr>
+<tr><td><strong>Duplicada en el POS</strong></td><td>Se sospecha copia manual entre comandas. Se anula como señal para ese día y se genera aviso de calidad.</td><td>Excepción de calidad, no de monto.</td></tr>
+</tbody>
+</table>
+<div class="note">
+<p><strong>Regla dura.</strong> Una autorización que no coincide nunca es motivo suficiente para declarar una diferencia de caja. Solo el monto y la existencia del movimiento lo son. La autorización sirve para confirmar, no para acusar.</p>
+</div>
+<p>Todas las autorizaciones discrepantes o ausentes se acumulan en el informe de calidad POS por caja y cajero (M10). Es información de gestión, no de arqueo.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 12</div>
+<h2>Montos repetidos</h2>
+<p class="lede">El caso que más ambigüedad produce es también el más frecuente en una sala de ventas: dos clientes pagan lo mismo en pocos minutos. La medición acota el problema a un 6 % de los movimientos, y el diseño lo trata explícitamente.</p>
+<h4>Estrategia en cascada</h4>
+<table class="table">
+<thead><tr><th style="width:8%">Paso</th><th>Discriminante</th><th style="width:28%">Efecto medido</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Autorización, si existe en ambos lados.</td><td>Resuelve unívocamente: sin duplicados en el proveedor.</td></tr>
+<tr><td>2</td><td>Ventana temporal de ±10 minutos.</td><td>Deja solo 18 de 295 casos ambiguos.</td></tr>
+<tr><td>3</td><td>Ventana estrecha de ±3 minutos.</td><td>Reduce a 9 casos.</td></tr>
+<tr><td>4</td><td>Terminal ↔ caja, cuando el mapa esté definido.</td><td>Separa cobros simultáneos en cajas distintas.</td></tr>
+<tr><td>5</td><td>Tarjeta y tipo de crédito o débito.</td><td>Separa dos montos iguales con medios distintos.</td></tr>
+<tr><td>6</td><td>Excepción de ambigüedad con los candidatos a la vista.</td><td>El operador elige; queda registrado.</td></tr>
+</tbody>
+</table>
+<div class="note">
+<p><strong>Caso indiferente.</strong> Cuando dos pagos y dos movimientos son idénticos en monto, medio y hora, cualquier asignación da el mismo resultado contable. El sistema los empareja en bloque, lo marca «equivalencia indiferente» y no molesta al operador: el total cuadra y la identidad individual no cambia ninguna cifra.</p>
+</div>
+<p>Distinguir la ambigüedad que importa de la que no es lo que hace que la bandeja de excepciones sea corta. Si cada monto repetido generara una pregunta, el operador dejaría de leerlas.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 13</div>
+<h2>Diferencia de hora</h2>
+<p class="lede">El reloj del POS y el del terminal no están sincronizados, y el desfase cambia con el tiempo. Una ventana fija aplicada a horas crudas produce falsos negativos crecientes.</p>
+<h4>Corrección por desfase estimado</h4>
+<ul>
+<li>Con las coincidencias de nivel 1 y 2 — las que la autorización certifica sin discusión — el motor calcula la <strong>diferencia mediana</strong> de hora del día.</li>
+<li>Ese desfase se aplica a todas las horas del proveedor antes de evaluar la ventana en los niveles 3 y siguientes.</li>
+<li>Si el desfase estimado supera un umbral (propuesto: 5 minutos), se muestra como aviso en el resumen del día: hay un reloj mal puesto que conviene corregir en el equipo.</li>
+<li>Si no hay coincidencias de nivel 1 o 2 suficientes para estimarlo, se usa desfase cero y se amplía la ventana.</li>
+</ul>
+<h4>Ventanas</h4>
+<table class="table">
+<thead><tr><th style="width:30%">Uso</th><th style="width:20%">Ventana</th><th>Comentario</th></tr></thead>
+<tbody>
+<tr><td>Coincidencia normal</td><td>±10 min</td><td>Discriminante según la medición del día real.</td></tr>
+<tr><td>Desempate de montos repetidos</td><td>±3 min</td><td>Reduce la ambigüedad de 18 a 9 casos.</td></tr>
+<tr><td>Búsqueda asistida manual</td><td>±60 min</td><td>Solo al vincular a mano, para no ocultar el candidato correcto al operador.</td></tr>
+<tr><td>Cruce de medianoche</td><td>Día operativo, no calendario</td><td>Una comanda abierta antes de medianoche pertenece al día en que se abrió (§28‑D4).</td></tr>
+</tbody>
+</table>
+<p>La hora nunca es señal única. Un par que solo coincide en hora, sin monto, no es candidato en ningún nivel.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 14</div>
+<h2>Score de confianza</h2>
+<p class="lede">Cada coincidencia lleva un número que resume su evidencia. Sirve para ordenar la revisión, para decidir qué se acepta solo y para medir la calidad del día.</p>
+<table class="table">
+<thead><tr><th style="width:34%">Señal</th><th style="width:16%">Aporte</th><th>Nota</th></tr></thead>
+<tbody>
+<tr><td>Autorización coincidente</td><td>+40</td><td>Evidencia unívoca.</td></tr>
+<tr><td>Monto exacto</td><td>+30</td><td>Base de todo emparejamiento.</td></tr>
+<tr><td>Monto dentro de tolerancia</td><td>+18</td><td>Diferencia explicable.</td></tr>
+<tr><td>Medio coincidente</td><td>+15</td><td>Débito con débito, crédito con crédito.</td></tr>
+<tr><td>Hora dentro de ±3 min corregidos</td><td>+15</td><td></td></tr>
+<tr><td>Hora dentro de ±10 min corregidos</td><td>+8</td><td></td></tr>
+<tr><td>Terminal consistente con la caja</td><td>+10</td><td>Solo si el mapa está definido.</td></tr>
+<tr><td>Candidato único en su nivel</td><td>+5</td><td>Ausencia de competencia.</td></tr>
+<tr><td>Existe otro candidato con score similar</td><td>−15</td><td>Penalización por ambigüedad.</td></tr>
+<tr><td>Medio contradictorio</td><td>−10</td><td>Propone reclasificación.</td></tr>
+<tr><td>Emparejamiento agrupado</td><td>−10</td><td>Varios a uno.</td></tr>
+</tbody>
+</table>
+<h4>Bandas de decisión</h4>
+<div class="grid3" style="margin-top:var(--space-2)">
+<div class="box"><div class="k">90–100</div><div style="font-size:12.5px;margin-top:4px">Automático, sin revisión. Se muestra solo en el total.</div></div>
+<div class="box"><div class="k">85–89</div><div style="font-size:12.5px;margin-top:4px">Automático con marca informativa. Revisión opcional.</div></div>
+<div class="box" style="border-color:var(--color-accent-2)"><div class="k" style="color:var(--color-accent-2)">Menos de 85</div><div style="font-size:12.5px;margin-top:4px">Excepción obligatoria. Decisión humana con motivo.</div></div>
+</div>
+<p style="margin-top:var(--space-4)">El score promedio del día y el porcentaje conciliado automáticamente son los dos indicadores de salud del proceso. Si caen, algo cambió en el registro del POS o en el formato del proveedor, y conviene mirarlo antes de que el arqueo se vuelva manual otra vez.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 15</div>
+<h2>Excepciones</h2>
+<p class="lede">La bandeja de excepciones es el corazón de la interacción diaria. Se ordena por monto en juego, no por orden de aparición, y cada caso llega con una decisión propuesta.</p>
+<table class="table">
+<thead><tr><th style="width:26%">Tipo</th><th>Qué significa</th><th style="width:26%">Decisión propuesta</th></tr></thead>
+<tbody>
+<tr><td><strong>Pago sin movimiento</strong></td><td>El POS declara tarjeta y el proveedor no tiene el cobro.</td><td>Verificar cobro; posible venta no cobrada o medio mal declarado.</td></tr>
+<tr><td><strong>Movimiento sin pago</strong></td><td>El proveedor cobró y el POS no lo registra.</td><td>Buscar comanda no cerrada; posible venta sin registrar.</td></tr>
+<tr><td><strong>Diferencia de monto</strong></td><td>Par identificado con montos distintos.</td><td>Aceptar con motivo si la diferencia es explicable; investigar si no.</td></tr>
+<tr><td><strong>Medio contradictorio</strong></td><td>Monto y hora calzan, el medio no.</td><td>Reclasificar al medio del proveedor, con confirmación.</td></tr>
+<tr><td><strong>Ambigüedad</strong></td><td>Dos o más candidatos con evidencia equivalente y efecto distinto.</td><td>Elegir entre los candidatos mostrados.</td></tr>
+<tr><td><strong>Agrupación</strong></td><td>Varios pagos contra un movimiento o al revés.</td><td>Confirmar el grupo propuesto.</td></tr>
+<tr><td><strong>Anulación descalzada</strong></td><td>Anulación en el proveedor sin contraparte en el POS.</td><td>Verificar el ciclo de la anulación.</td></tr>
+<tr><td><strong>Calidad de registro</strong></td><td>Autorización ausente o discrepante, comanda sin cierre, turno no informado.</td><td>No afecta el cuadre; se informa a M10.</td></tr>
+</tbody>
+</table>
+<h4>Reglas de resolución</h4>
+<ul>
+<li>Toda resolución exige <strong>motivo</strong> desde una lista cerrada, más comentario libre opcional.</li>
+<li>Ninguna resolución modifica el dato original: se registra como <strong>ajuste con trazabilidad</strong> sobre el dato normalizado.</li>
+<li>La <strong>reclasificación de medio de pago es siempre manual</strong>. El motor propone; nunca cambia un medio por su cuenta.</li>
+<li>Una excepción resuelta puede reabrirse mientras el día no esté aprobado; la reapertura queda en bitácora.</li>
+<li>Las excepciones de calidad no bloquean la aprobación; todas las demás sí.</li>
+</ul>
+</div>
+
+<div class="sec">
+<div class="k">Sección 16</div>
+<h2>Arqueo de efectivo</h2>
+<p class="lede">El efectivo es el único medio sin contraparte electrónica: no hay archivo que lo confirme. Por eso se controla por diferencia entre lo que la venta implica y lo que físicamente hay.</p>
+<h4>Cálculo</h4>
+<table class="table">
+<thead><tr><th style="width:34%">Concepto</th><th>Definición</th></tr></thead>
+<tbody>
+<tr><td><strong>Efectivo teórico</strong></td><td>Suma de pagos declarados en efectivo, deduplicados por N_INTERNO, excluyendo comandas anuladas.</td></tr>
+<tr><td><strong>Ajustes de conciliación</strong></td><td>Reclasificaciones aprobadas que entran o salen de efectivo (§15).</td></tr>
+<tr><td><strong>Efectivo esperado</strong></td><td>Teórico ± ajustes.</td></tr>
+<tr><td><strong>Movimientos de caja</strong></td><td>Fondo inicial, vueltos entregados, gastos menores autorizados, retiros parciales.</td></tr>
+<tr><td><strong>Efectivo contado</strong></td><td>Conteo físico al cierre, por caja y por denominación si se opta por detalle.</td></tr>
+<tr><td><strong>Diferencia de caja</strong></td><td>Contado − esperado − fondo. Positiva = sobrante; negativa = faltante.</td></tr>
+<tr><td><strong>Depósito</strong></td><td>Monto y comprobante depositados en banco.</td></tr>
+<tr><td><strong>Diferencia de depósito</strong></td><td>Depositado − contado − fondo retenido.</td></tr>
+</tbody>
+</table>
+<h4>Reglas de control</h4>
+<ul>
+<li>El arqueo se registra <strong>por caja</strong> y se consolida al día. Una diferencia de $0 al total que esconde +$8.000 y −$8.000 en dos cajas no es un día cuadrado.</li>
+<li><strong>Umbral de tolerancia</strong> por caja y por día: dentro del umbral se cierra con nota; fuera del umbral requiere autorización del aprobador con justificación obligatoria (§28‑D3).</li>
+<li>El depósito puede registrarse después del cierre operativo, pero el día no se marca completo hasta que existe. Un día sin depósito registrado aparece en la lista de pendientes.</li>
+<li>El conteo por denominación es opcional y configurable; cuando se activa, el sistema valida que la suma de denominaciones iguale el contado.</li>
+</ul>
+<div class="note">
+<p><strong>Lo que el sistema no puede hacer.</strong> Ninguna regla automática distingue un faltante de efectivo de un error de digitación del cajero. El sistema aporta la cifra exacta, el desglose por caja y el historial por cajero; la calificación del hecho es una decisión de la Gerencia, y por eso la autorización de diferencias es siempre humana y siempre justificada.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="k">Sección 17</div>
+<h2>Dashboard del día</h2>
+<p class="lede">Una sola pantalla debe responder, en cinco segundos: ¿cuadró el día, cuánto falta por resolver y puedo aprobarlo?</p>
+<h4>Bloque 1 · Estado y semáforo</h4>
+<ul>
+<li>Fecha, estado del día, quién operó, quién aprobó.</li>
+<li>Semáforo único: verde si no hay excepciones bloqueantes y la diferencia de caja está dentro del umbral; ámbar si hay excepciones abiertas; rojo si hay diferencia fuera de umbral.</li>
+</ul>
+<h4>Bloque 2 · Cuadre por medio de pago</h4>
+<p>Una fila por medio con cuatro columnas: declarado en POS, registrado en el proveedor, conciliado, diferencia. El efectivo muestra teórico, contado y diferencia en lugar de proveedor.</p>
+<h4>Bloque 3 · Calidad de la conciliación</h4>
+<ul>
+<li>Porcentaje conciliado automáticamente y score promedio.</li>
+<li>Excepciones abiertas por tipo, con monto en juego.</li>
+<li>Desfase de reloj estimado del día.</li>
+</ul>
+<h4>Bloque 4 · Cajas</h4>
+<p>Venta, efectivo teórico, contado y diferencia por caja y turno, con el detalle de cajeros involucrados.</p>
+<h4>Bloque 5 · Acciones</h4>
+<p>Reconciliar, ir a excepciones, registrar arqueo, aprobar, exportar. Cada acción se habilita solo si el estado y el rol lo permiten; deshabilitada, muestra por qué.</p>
+<div class="note">
+<p>Lo que el dashboard <strong>no</strong> muestra: listados de comandas, líneas de venta ni movimientos individuales. Eso vive en las pantallas de detalle. Un tablero que lo muestra todo no responde nada.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="k">Sección 18</div>
+<h2>Pantallas y wireframes</h2>
+<p class="lede">Cinco pantallas cubren el flujo completo. Los esquemas siguientes definen estructura y jerarquía, no estética final.</p>
+
+<h4>P1 · Carga del día</h4>
+<div class="box" style="padding:0;margin-bottom:var(--space-4)">
+<div class="wf" style="padding:6px 10px;border-bottom:1px solid var(--color-neutral-300);display:flex;justify-content:space-between"><strong>Arqueo diario · 02‑09‑2026</strong><span style="color:var(--color-neutral-600)">Sin cargar</span></div>
+<div style="display:flex;gap:10px;padding:10px">
+<div class="box wf" style="flex:1;border-style:dashed;text-align:center;padding:18px 10px;color:var(--color-neutral-700)">Arrastrar Excel POS<br><span style="font-size:10px">VENTAS POR ARTICULO + VENTA CONSOLIDADA</span></div>
+<div class="box wf" style="flex:1;border-style:dashed;text-align:center;padding:18px 10px;color:var(--color-neutral-700)">Arrastrar cartola proveedor<br><span style="font-size:10px">Transbank · movimientos del día</span></div>
+</div>
+<div class="wf" style="padding:8px 10px;border-top:1px solid var(--color-neutral-300);color:var(--color-neutral-700)">Validaciones: fecha declarada · duplicado de carga · filas no interpretadas · totales de control</div>
+</div>
+
+<h4>P2 · Dashboard del día</h4>
+<div class="box" style="padding:0;margin-bottom:var(--space-4)">
+<div class="wf" style="padding:6px 10px;border-bottom:1px solid var(--color-neutral-300);display:flex;justify-content:space-between"><strong>02‑09‑2026</strong><span style="color:var(--color-accent-2)">Conciliado con excepciones</span></div>
+<div style="display:flex;gap:8px;padding:10px 10px 0">
+<div class="box wf" style="flex:1">Venta total<br><span style="font-size:15px">$—</span></div>
+<div class="box wf" style="flex:1">Conciliado auto<br><span style="font-size:15px">—%</span></div>
+<div class="box wf" style="flex:1">Excepciones<br><span style="font-size:15px">—</span></div>
+<div class="box wf" style="flex:1">Dif. de caja<br><span style="font-size:15px">$—</span></div>
+</div>
+<div style="display:flex;gap:8px;padding:8px 10px 10px">
+<div class="box wf" style="flex:3;min-height:70px">Cuadre por medio de pago<br><span style="color:var(--color-neutral-600)">POS · proveedor · conciliado · diferencia</span></div>
+<div class="box wf" style="flex:2;min-height:70px">Cajas y turnos<br><span style="color:var(--color-neutral-600)">venta · efectivo · diferencia</span></div>
+</div>
+<div class="wf" style="padding:8px 10px;border-top:1px solid var(--color-neutral-300);display:flex;gap:8px;color:var(--color-neutral-700)"><span>Reconciliar</span><span>·</span><span>Excepciones</span><span>·</span><span>Arqueo</span><span>·</span><span>Aprobar</span><span>·</span><span>Exportar</span></div>
+</div>
+
+<h4>P3 · Bandeja de excepciones</h4>
+<div class="box" style="padding:0;margin-bottom:var(--space-4)">
+<div class="wf" style="padding:6px 10px;border-bottom:1px solid var(--color-neutral-300)">Filtros: tipo · severidad · caja · monto mínimo · <strong>orden por monto en juego</strong></div>
+<div style="display:flex;min-height:120px">
+<div class="wf" style="flex:2;padding:10px;border-right:1px solid var(--color-neutral-300);color:var(--color-neutral-700)">Lista de excepciones<br><br>· Pago sin movimiento · $—<br>· Medio contradictorio · $—<br>· Ambigüedad · $—<br>· Diferencia de monto · $—</div>
+<div class="wf" style="flex:3;padding:10px">Panel de evidencia del caso seleccionado<br><br><span style="color:var(--color-neutral-700)">Lado POS: comanda, caja, cajero, hora, medio, monto, autorización<br>Lado proveedor: candidatos con score, terminal, tarjeta, hora corregida<br>Decisión propuesta + motivo obligatorio</span><br><br><span style="color:var(--color-accent-2)">Aceptar · Rechazar · Vincular manualmente</span></div>
+</div>
+</div>
+
+<h4>P4 · Arqueo de efectivo</h4>
+<div class="box" style="padding:0;margin-bottom:var(--space-4)">
+<div class="wf" style="padding:10px;display:flex;gap:8px">
+<div class="box" style="flex:1">Efectivo teórico<br><span style="color:var(--color-neutral-600)">calculado, no editable</span></div>
+<div class="box" style="flex:1">Ajustes aprobados<br><span style="color:var(--color-neutral-600)">desde conciliación</span></div>
+<div class="box" style="flex:1">Esperado<br><span style="color:var(--color-neutral-600)">teórico ± ajustes</span></div>
+</div>
+<div class="wf" style="padding:0 10px 10px;display:flex;gap:8px">
+<div class="box" style="flex:1">Contado por caja<br><span style="color:var(--color-neutral-600)">entrada del operador · denominaciones opcionales</span></div>
+<div class="box" style="flex:1">Fondo y movimientos<br><span style="color:var(--color-neutral-600)">inicial, gastos, retiros</span></div>
+<div class="box" style="flex:1;border-color:var(--color-accent-2)">Diferencia<br><span style="color:var(--color-neutral-600)">con umbral y autorización</span></div>
+</div>
+<div class="wf" style="padding:8px 10px;border-top:1px solid var(--color-neutral-300);color:var(--color-neutral-700)">Depósito: monto · comprobante · fecha · diferencia de depósito</div>
+</div>
+
+<h4>P5 · Cierre y exportación</h4>
+<div class="box" style="padding:0">
+<div class="wf" style="padding:10px;color:var(--color-neutral-700)">Lista de verificación previa al cierre:<br>· cero excepciones bloqueantes · arqueo registrado en todas las cajas · diferencias autorizadas · aprobador distinto del operador</div>
+<div class="wf" style="padding:8px 10px;border-top:1px solid var(--color-neutral-300);display:flex;justify-content:space-between"><span>Aprobar y cerrar</span><span style="color:var(--color-neutral-600)">Generar archivo Odoo · versión, usuario, acuse</span></div>
+</div>
+<p style="margin-top:var(--space-4)">Un principio de interacción atraviesa las cinco pantallas: <strong>una acción bloqueada siempre explica su condición</strong>. El operador nunca queda frente a un botón gris sin saber qué le falta.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 19</div>
+<h2>Histórico e indicadores</h2>
+<h4>Consulta de días</h4>
+<ul>
+<li>Calendario con el estado y el semáforo de cada día; los días sin cargar o sin depósito quedan visibles como pendientes.</li>
+<li>Apertura de cualquier día en modo lectura, con su conciliación, sus excepciones y sus decisiones tal como quedaron.</li>
+<li>Búsqueda transversal por comanda, comprobante, autorización o monto.</li>
+</ul>
+<h4>Indicadores mensuales</h4>
+<table class="table">
+<thead><tr><th style="width:38%">Indicador</th><th>Para qué</th></tr></thead>
+<tbody>
+<tr><td>% conciliado automáticamente</td><td>Salud del proceso; debe subir con el tiempo.</td></tr>
+<tr><td>Score promedio del día</td><td>Detecta degradación del registro POS antes de que aparezcan diferencias.</td></tr>
+<tr><td>Excepciones por tipo y por caja</td><td>Dirige la capacitación al problema real.</td></tr>
+<tr><td>Diferencia de caja acumulada y por cajero</td><td>Control patrimonial y de desempeño.</td></tr>
+<tr><td>Días cerrados sin diferencia / con diferencia autorizada</td><td>Indicador de control interno reportable al Directorio.</td></tr>
+<tr><td>Tiempo desde cierre operativo hasta aprobación</td><td>Mide si el proceso se está atrasando.</td></tr>
+<tr><td>Ventas sin autorización registrada</td><td>Calidad de captura en el POS.</td></tr>
+</tbody>
+</table>
+<p>Estos indicadores son la base del reporte de control interno del proceso de caja: hoy no existe una cifra objetiva de cuánto se descuadra la Sala de Ventas ni de dónde viene.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 20</div>
+<h2>Auditoría y trazabilidad</h2>
+<h4>Qué se registra</h4>
+<ul>
+<li>Carga y recarga de archivos, con huella del archivo y usuario.</li>
+<li>Cada ejecución del motor: parámetros usados, versión de reglas, resultados.</li>
+<li>Cada resolución de excepción: decisión, motivo, comentario, usuario, hora.</li>
+<li>Cada reclasificación de medio de pago, con valor anterior y posterior.</li>
+<li>Registro y modificación del arqueo y del depósito.</li>
+<li>Aprobación, cierre, reapertura con motivo, y cada exportación con su versión.</li>
+</ul>
+<h4>Principios</h4>
+<table class="table">
+<thead><tr><th style="width:32%">Principio</th><th>Implicancia</th></tr></thead>
+<tbody>
+<tr><td><strong>Inmutabilidad del original</strong></td><td>El archivo cargado se conserva íntegro y descargable. Ninguna corrección lo altera.</td></tr>
+<tr><td><strong>Ajuste, no sobrescritura</strong></td><td>Toda corrección es un registro nuevo con referencia al dato corregido.</td></tr>
+<tr><td><strong>Bitácora no editable</strong></td><td>Nadie, en ningún rol, puede modificar o borrar eventos de auditoría.</td></tr>
+<tr><td><strong>Reproducibilidad</strong></td><td>Con el archivo original, la versión de reglas y los parámetros, cualquier conciliación puede reproducirse y comparar.</td></tr>
+<tr><td><strong>Exportabilidad</strong></td><td>La bitácora de un día se exporta como anexo del arqueo para auditoría externa.</td></tr>
+</tbody>
+</table>
+<p>La versión de reglas se guarda con cada ejecución precisamente porque los parámetros de tolerancia y ventana van a cambiar. Un día conciliado hace seis meses debe poder explicarse con las reglas de entonces, no con las de hoy.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 21</div>
+<h2>Exportación a Odoo</h2>
+<p class="lede">El destino es el formato de la hoja <em>Captura Odoo1</em>, que ya está en uso. El sistema no inventa un formato nuevo: reproduce el existente sin trabajo manual.</p>
+<h4>Correspondencia de campos</h4>
+<table class="table">
+<thead><tr><th style="width:38%">Campo Odoo</th><th>Origen</th></tr></thead>
+<tbody>
+<tr><td>Cliente</td><td>Cliente genérico de sala, o el registrado si existe (§28‑D5).</td></tr>
+<tr><td>Fecha orden / Vencimiento</td><td>Fecha del día operativo.</td></tr>
+<tr><td>Es venta externa</td><td>Constante según configuración.</td></tr>
+<tr><td>Tipo de pago externo</td><td>Medio conciliado y aprobado, no el declarado si hubo reclasificación.</td></tr>
+<tr><td>ID de pago externo</td><td>N_INTERNO.</td></tr>
+<tr><td>Tipo de documento externo</td><td>Tipo de documento del POS: boleta, factura, nota.</td></tr>
+<tr><td>Número de documento externo</td><td>Últimos 7 dígitos del NRO. COMPROBANTE.</td></tr>
+<tr><td>Producto, cantidad, precio</td><td>Líneas de venta normalizadas.</td></tr>
+</tbody>
+</table>
+<h4>Reglas</h4>
+<ul>
+<li>Solo se exportan días en estado <strong>Aprobado</strong> o <strong>Cerrado</strong>.</li>
+<li>Cada exportación es una <strong>versión numerada</strong>, con usuario, fecha y archivo conservado. Reabrir un día invalida la versión anterior y obliga a regenerar.</li>
+<li>Antes de generar, se valida que cada venta exportada tenga medio aprobado, documento y líneas cuadradas contra su total.</li>
+<li>El resultado de la importación en Odoo se registra como <strong>acuse</strong>: importado, importado con observaciones o rechazado, con el detalle recibido.</li>
+<li>Las comandas anuladas no se exportan; quedan en un anexo del día para respaldo.</li>
+</ul>
+<div class="note">
+<p>El acuse cierra el ciclo. Sin él, el sistema entrega un archivo y pierde de vista si la contabilidad efectivamente lo recibió — que es justamente el punto donde hoy se pierden los días.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="k">Sección 22</div>
+<h2>Extensión a Mercado Pago</h2>
+<p class="lede">Mercado Pago no está en la Fase 1, pero la arquitectura se diseña para que incorporarlo sea escribir un importador, no rediseñar el motor.</p>
+<h4>Qué debe cumplir un proveedor nuevo</h4>
+<table class="table">
+<thead><tr><th style="width:36%">Requisito del contrato</th><th>Comentario</th></tr></thead>
+<tbody>
+<tr><td>Fecha y hora del movimiento</td><td>Obligatorio: alimenta la ventana temporal.</td></tr>
+<tr><td>Monto de venta, separado de propina, vuelto y comisión</td><td>Obligatorio: el cotejo es contra el monto de venta.</td></tr>
+<tr><td>Medio e instrumento</td><td>Se normaliza al vocabulario propio; los medios que el POS no distingue se mapean explícitamente.</td></tr>
+<tr><td>Identificador de operación</td><td>Cumple el papel de la autorización en los niveles 1 y 2.</td></tr>
+<tr><td>Punto de venta o terminal</td><td>Opcional; si existe, participa en el desempate.</td></tr>
+<tr><td>Estado y fecha de liquidación</td><td>Se guarda; no concilia contra el POS.</td></tr>
+</tbody>
+</table>
+<h4>Diferencias previsibles a resolver al incorporarlo</h4>
+<ul>
+<li><strong>Comisión descontada en origen:</strong> el monto liquidado difiere del monto de venta por diseño. Conciliar por monto liquidado produciría diferencias en todas las filas.</li>
+<li><strong>Medios que el POS no distingue:</strong> QR, billetera y cuenta pueden llegar al POS como un único «otros medios», lo que exige un mapa de medio explícito por proveedor.</li>
+<li><strong>Liquidación diferida y parcial:</strong> refuerza la decisión de no conciliar contra el abono en la Fase 1.</li>
+</ul>
+<p>Mientras el motor no contenga una sola regla que mencione a Transbank por nombre, esta extensión es de bajo riesgo. Ese es el criterio de diseño que la sección 3 protege.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 23</div>
+<h2>Criterios de aceptación</h2>
+<p class="lede">Cada criterio es verificable con los archivos del 02‑09‑2026 ya analizados. No se aceptan criterios que no puedan comprobarse contra un día real.</p>
+<table class="table">
+<thead><tr><th style="width:8%">N°</th><th>Criterio</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>La venta total del día deduplicada por N_INTERNO es <strong>$5.274.235</strong> en <strong>336 comandas</strong> — efectivo $501.461, débito $3.770.006, crédito $1.002.768, transferencias $0 — y no la suma de las 686 líneas de artículo.</td></tr>
+<tr><td>2</td><td>El total de movimientos del proveedor importados es 295 y el monto de venta cotejable es $4.968.393; la brecha contra las tarjetas declaradas en el POS ($4.772.774) es de <strong>$195.619</strong> y debe quedar íntegramente explicada en excepciones.</td></tr>
+<tr><td>3</td><td>Reordenar las filas de cualquiera de los archivos de entrada produce exactamente la misma conciliación.</td></tr>
+<tr><td>4</td><td>Ningún emparejamiento automático ocurre con score inferior a 85.</td></tr>
+<tr><td>5</td><td>Ninguna reclasificación de medio de pago se aplica sin decisión humana registrada.</td></tr>
+<tr><td>6</td><td>Los 9 movimientos con autorización alfanumérica se concilian o quedan en excepción, pero nunca se descartan.</td></tr>
+<tr><td>7</td><td>Los casos de monto repetido dentro de ±3 minutos aparecen como excepción de ambigüedad con todos sus candidatos, salvo equivalencia indiferente.</td></tr>
+<tr><td>8</td><td>La conciliación usa fecha de movimiento; ningún resultado cambia al variar el estado o la fecha de abono.</td></tr>
+<tr><td>9</td><td>Un día con al menos una excepción bloqueante abierta no puede aprobarse ni exportarse.</td></tr>
+<tr><td>10</td><td>Un día no puede ser aprobado por el mismo usuario que lo operó, salvo excepción registrada explícitamente.</td></tr>
+<tr><td>11</td><td>Una diferencia de caja fuera de umbral no puede cerrarse sin autorización con justificación.</td></tr>
+<tr><td>12</td><td>El archivo original cargado es descargable íntegro en cualquier momento posterior.</td></tr>
+<tr><td>13</td><td>Toda acción de resolución, aprobación, cierre y exportación aparece en la bitácora con usuario, hora y valores anterior y posterior.</td></tr>
+<tr><td>14</td><td>Reabrir un día invalida su exportación previa y exige una versión nueva.</td></tr>
+<tr><td>15</td><td>El archivo exportado se importa en Odoo sin edición manual y su acuse queda registrado.</td></tr>
+<tr><td>16</td><td>El motor no contiene ninguna regla que mencione un proveedor específico.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="sec">
+<div class="k">Sección 24</div>
+<h2>Casos de prueba</h2>
+<table class="table">
+<thead><tr><th style="width:8%">N°</th><th style="width:34%">Caso</th><th>Resultado esperado</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Comanda con 12 líneas y un solo medio de pago.</td><td>Un pago declarado, no doce. Venta contada una vez.</td></tr>
+<tr><td>2</td><td>Comanda pagada mitad efectivo, mitad débito.</td><td>Dos pagos declarados; el débito concilia y el efectivo va al arqueo.</td></tr>
+<tr><td>3</td><td>Autorización presente y coincidente.</td><td>Nivel 1, score 100, sin excepción.</td></tr>
+<tr><td>4</td><td>Autorización ausente en el POS.</td><td>Nivel 3 por monto, medio y hora. Sin excepción de monto; aviso de calidad.</td></tr>
+<tr><td>5</td><td>Autorización alfanumérica en el proveedor.</td><td>Concilia por nivel 3; se cuenta como limitación del POS.</td></tr>
+<tr><td>6</td><td>Dos ventas de $12.900 a las 14:02 y 14:05, ambas débito, cajas distintas.</td><td>Desempate por terminal si el mapa existe; si no, excepción de ambigüedad con ambos candidatos.</td></tr>
+<tr><td>7</td><td>Dos pagos y dos movimientos idénticos en monto, medio y minuto.</td><td>Emparejamiento en bloque marcado «equivalencia indiferente». Sin excepción.</td></tr>
+<tr><td>8</td><td>POS declara débito; el proveedor registra crédito, mismo monto y hora.</td><td>Nivel 4. Propone reclasificación; requiere confirmación humana.</td></tr>
+<tr><td>9</td><td>Reloj del terminal adelantado 7 minutos.</td><td>Desfase estimado desde niveles 1–2 y aplicado; se concilia y se muestra aviso de reloj.</td></tr>
+<tr><td>10</td><td>Movimiento del proveedor sin comanda en el POS.</td><td>Excepción «movimiento sin pago» con el monto en juego destacado.</td></tr>
+<tr><td>11</td><td>Comanda con tarjeta declarada sin movimiento en el proveedor.</td><td>Excepción «pago sin movimiento».</td></tr>
+<tr><td>12</td><td>Anulación en el proveedor sin contraparte en el POS.</td><td>Excepción de anulación descalzada; no se elimina el movimiento.</td></tr>
+<tr><td>13</td><td>Movimiento con propina.</td><td>Concilia por monto de venta; la propina se informa aparte y no genera diferencia.</td></tr>
+<tr><td>14</td><td>Un movimiento del proveedor que cubre dos comandas.</td><td>Nivel 6, agrupación propuesta, confirmación humana.</td></tr>
+<tr><td>15</td><td>Recarga del mismo archivo POS.</td><td>Se detecta duplicado; el operador elige reemplazar o cancelar; ambas quedan en bitácora.</td></tr>
+<tr><td>16</td><td>Archivo de otra fecha.</td><td>Rechazo con mensaje explícito; no se importa nada.</td></tr>
+<tr><td>17</td><td>Efectivo contado $5.000 bajo el esperado, umbral $2.000.</td><td>Rojo; no se cierra sin autorización justificada del aprobador.</td></tr>
+<tr><td>18</td><td>Caja 1 con +$8.000 y caja 3 con −$8.000.</td><td>El total muestra $0 pero cada caja muestra su diferencia; el día no aparece como cuadrado.</td></tr>
+<tr><td>19</td><td>Operador intenta aprobar.</td><td>Acción bloqueada con la razón visible: falta rol de aprobador.</td></tr>
+<tr><td>20</td><td>Reapertura de un día ya exportado.</td><td>Exportación previa invalidada; se exige nueva versión al reaprobar.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="sec">
+<div class="k">Sección 25</div>
+<h2>Riesgos</h2>
+<table class="table">
+<thead><tr><th style="width:28%">Riesgo</th><th style="width:12%">Impacto</th><th>Mitigación en el diseño</th></tr></thead>
+<tbody>
+<tr><td>Cambia el formato de exportación del POS</td><td>Alto</td><td>Importador aislado, con validación de estructura y aviso claro antes de procesar.</td></tr>
+<tr><td>Calidad del registro POS no mejora</td><td>Alto</td><td>M10 mide por caja y cajero; el arqueo sigue funcionando por nivel 3 sin autorizaciones.</td></tr>
+<tr><td>Terminal A2380302 no corresponde a la sala</td><td>Medio</td><td>Decisión D2 previa al desarrollo; el mapa terminal↔caja es configurable, no fijo.</td></tr>
+<tr><td>Contradicción entre las dos hojas POS</td><td>Medio</td><td>Jerarquía de fuentes explícita: VENTAS POR ARTICULO manda; la contradicción se registra.</td></tr>
+<tr><td>Umbral de diferencia mal calibrado</td><td>Medio</td><td>Parámetro configurable; los primeros meses se revisa contra el histórico real.</td></tr>
+<tr><td>El operador acepta excepciones sin leerlas</td><td>Medio</td><td>Motivo obligatorio desde lista cerrada, orden por monto e indicador de aceptaciones sin comentario.</td></tr>
+<tr><td>Días sin cargar acumulados</td><td>Medio</td><td>Calendario con pendientes visibles y alerta de días sin depósito.</td></tr>
+<tr><td>Dependencia de una sola persona</td><td>Alto</td><td>Roles separados, proceso documentado y trazabilidad completa: el día se explica sin su autor.</td></tr>
+<tr><td>Crecimiento del volumen de líneas</td><td>Bajo</td><td>El modelo trabaja sobre comandas, no sobre líneas, para todo el cuadre.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="sec">
+<div class="k">Sección 26</div>
+<h2>Supuestos</h2>
+<ul>
+<li>El POS exporta diariamente en el mismo formato analizado, con las tres hojas relevantes.</li>
+<li>La cartola del proveedor se descarga por día y contiene los movimientos completos de ese día.</li>
+<li>N_INTERNO es único dentro del día y estable entre las dos hojas del POS.</li>
+<li>Los últimos 7 dígitos del comprobante son el número de documento válido para Odoo.</li>
+<li>El efectivo se cuenta y deposita por día; el fondo de caja es conocido y estable.</li>
+<li>Existe al menos una persona con rol de aprobador distinta del operador.</li>
+<li>La sala opera un único turno continuo con varias cajas simultáneas.</li>
+<li>Las anulaciones se registran tanto en el POS como en el proveedor.</li>
+<li>La importación a Odoo se ejecuta manualmente por una persona autorizada.</li>
+</ul>
+<p>Cada supuesto que se revele falso cambia una regla concreta del diseño, no el diseño completo. Se listan aquí para que puedan refutarse antes de programar.</p>
+</div>
+
+<div class="sec">
+<div class="k">Sección 27</div>
+<h2>Controles obligatorios</h2>
+<table class="table">
+<thead><tr><th style="width:8%">N°</th><th>Control</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td>Segregación de funciones: quien opera no aprueba.</td></tr>
+<tr><td>C2</td><td>Motivo obligatorio en toda resolución de excepción y en toda autorización de diferencia.</td></tr>
+<tr><td>C3</td><td>Reclasificación de medio de pago exclusivamente manual y trazada.</td></tr>
+<tr><td>C4</td><td>Prohibición de cerrar con excepciones bloqueantes abiertas.</td></tr>
+<tr><td>C5</td><td>Umbral de diferencia de caja por caja y por día, con autorización sobre el umbral.</td></tr>
+<tr><td>C6</td><td>Conservación íntegra e inmutable de los archivos originales.</td></tr>
+<tr><td>C7</td><td>Bitácora de auditoría no editable por ningún rol.</td></tr>
+<tr><td>C8</td><td>Versionado de exportaciones e invalidación al reabrir.</td></tr>
+<tr><td>C9</td><td>Registro del acuse de importación en Odoo.</td></tr>
+<tr><td>C10</td><td>Control de días pendientes de carga, de arqueo y de depósito.</td></tr>
+<tr><td>C11</td><td>Registro de la versión de reglas y parámetros en cada conciliación.</td></tr>
+<tr><td>C12</td><td>Informe mensual de calidad de registro POS por caja y cajero.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="sec">
+<div class="k">Sección 28</div>
+<h2>Decisiones funcionales pendientes</h2>
+<p class="lede">Nada de esto puede deducirse de los archivos ni del contexto disponible. Cada punto debe resolverse antes de escribir código, porque cambia el comportamiento del sistema.</p>
+<table class="table">
+<thead><tr><th style="width:8%">Id</th><th style="width:34%">Decisión</th><th>Por qué importa</th></tr></thead>
+<tbody>
+<tr><td><strong>D1</strong></td><td>¿Se mantiene VENTA CONSOLIDADA como fuente de autorización y cupón, pese a contradecir montos, medios y cajas?</td><td>Si no es confiable en ningún campo, los niveles 1 y 2 quedan sin insumo y todo se concilia por nivel 3.</td></tr>
+<tr><td><strong>D2</strong></td><td>¿A qué caja corresponde cada terminal, y qué es A2380302?</td><td>Habilita el desempate por caja en montos repetidos y el arqueo por caja del lado electrónico.</td></tr>
+<tr><td><strong>D3</strong></td><td>Umbral de diferencia de caja: monto fijo, porcentaje de la venta, o ambos; y quién autoriza sobre el umbral.</td><td>Define cuándo un día se cierra solo y cuándo escala.</td></tr>
+<tr><td><strong>D4</strong></td><td>Definición del día operativo: ¿corte a medianoche o al cierre de la sala?</td><td>Determina a qué día pertenece una comanda abierta antes de medianoche.</td></tr>
+<tr><td><strong>D5</strong></td><td>Cliente a usar en la exportación a Odoo para venta de sala sin identificación.</td><td>Sin esto el archivo no importa.</td></tr>
+<tr><td><strong>D6</strong></td><td>Uso de la hoja Tabla Descuentos: ¿es referencia vigente o residuo del trabajo manual?</td><td>Define si el descuento se valida contra tabla o se toma tal como viene del POS.</td></tr>
+<tr><td><strong>D7</strong></td><td>Tratamiento de las transferencias declaradas en el POS: ¿se cotejan contra cartola bancaria en alguna fase?</td><td>Hoy quedan sin contraparte, igual que el efectivo, pero sin arqueo físico que las respalde.</td></tr>
+<tr><td><strong>D8</strong></td><td>¿Se exige conteo por denominación o basta el total contado por caja?</td><td>Afecta el tiempo de operación diaria y la calidad del control.</td></tr>
+<tr><td><strong>D9</strong></td><td>Lista cerrada de motivos de resolución de excepciones y de autorización de diferencias.</td><td>Es lo que hace que el histórico sea analizable en lugar de texto libre.</td></tr>
+<tr><td><strong>D10</strong></td><td>¿Quiénes son los aprobadores designados y qué ocurre en su ausencia?</td><td>Sin respuesta, el proceso se detiene o el control se rompe en vacaciones.</td></tr>
+<tr><td><strong>D11</strong></td><td>Plazo máximo entre cierre operativo y aprobación.</td><td>Define la alerta de días atrasados.</td></tr>
+<tr><td><strong>D12</strong></td><td>¿Entra Mercado Pago en la Fase 2, y con qué reporte disponible?</td><td>Condiciona el contrato del importador y el mapa de medios.</td></tr>
+</tbody>
+</table>
+<div class="note" style="margin-top:var(--space-6)">
+<p><strong>Siguiente paso propuesto.</strong> Resolver D1 a D5 en una sesión de trabajo — son las cinco que bloquean el diseño detallado — y dejar D6 a D12 para la etapa de configuración. Con esas cinco respuestas, este documento pasa de diseño funcional a especificación construible.</p>
+</div>
+</div>
+
+<!--END-->
+</doc-page>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&family=Caladea:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+:root{
+--hu-red:#ED0035; --hu-maroon:#8C0026; --hu-ink:#222222; --hu-body:#3A3A3A;
+--hu-gray:#6B6B6B; --hu-pink:#F2DCDB; --hu-pink-2:#FDEAEE; --hu-line:#E4B5BF;
+--hu-card:#FAFAFA; --hu-card-line:#E8E8E8; --hu-label:#F4F4F4; --hu-white:#FFFFFF;
+--hu-ok:#1B7A4B; --hu-warn:#B26B00;
+--hu-serif:Caladea,Cambria,Georgia,serif;
+--hu-sans:Carlito,Calibri,"Segoe UI",sans-serif;
+}
+body{margin:0;background:#EDEDED;font-family:var(--hu-sans);color:var(--hu-body)}
+a{color:var(--hu-red);text-decoration:none}
+a:hover{color:var(--hu-maroon);text-decoration:underline}
+.kick{font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--hu-red)}
+h1,h2,h3,h4{font-family:var(--hu-serif);color:var(--hu-maroon);margin:0}
+.badge{display:inline-block;background:var(--hu-white);border:1px solid var(--hu-card-line);font-size:11px;font-weight:700;letter-spacing:1px;padding:3px 8px;color:var(--hu-gray)}
+.card{background:var(--hu-card);border:1px solid var(--hu-card-line)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:var(--hu-red);color:#fff;text-align:left;font-weight:700;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;padding:8px 10px;border:1px solid var(--hu-line)}
+.tbl td{padding:8px 10px;border:1px solid var(--hu-line);background:#fff}
+.tbl tr:nth-child(even) td{background:#FCFAFA}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--hu-sans);font-size:14px;font-weight:700;padding:10px 18px;border:1px solid var(--hu-red);background:var(--hu-red);color:#fff;cursor:pointer}
+.btn:hover{background:var(--hu-maroon);border-color:var(--hu-maroon)}
+.btn-2{background:#fff;color:var(--hu-red)}
+.btn-2:hover{background:var(--hu-pink-2);color:var(--hu-maroon)}
+.btn-off{background:#F2F2F2;border-color:var(--hu-card-line);color:#A8A8A8;cursor:not-allowed}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.4px;padding:3px 9px;border-radius:999px}
+.p-red{background:var(--hu-pink-2);color:var(--hu-maroon);border:1px solid var(--hu-line)}
+.p-ok{background:#E9F5EE;color:var(--hu-ok);border:1px solid #BFE0CC}
+.p-warn{background:#FDF3E3;color:var(--hu-warn);border:1px solid #EAD6AE}
+.p-grey{background:var(--hu-label);color:var(--hu-gray);border:1px solid var(--hu-card-line)}
+.nav-i{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;color:#E8C9CF;border-left:3px solid transparent;cursor:pointer}
+.nav-i:hover{background:#7A0021;color:#fff}
+.nav-on{background:#7A0021;color:#fff;border-left-color:var(--hu-red);font-weight:700}
+.frame{box-sizing:border-box;width:1440px;background:#fff;box-shadow:0 2px 18px rgba(0,0,0,.13)}
+.sec{margin:0 0 90px}
+.dot{width:9px;height:9px;border-radius:999px;display:inline-block}
+</style>
+</helmet>
+
+<section style="padding:56px 60px 0">
+<div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px">
+<span id="1a" class="badge" style="color:var(--hu-red);border-color:var(--hu-line)">1a</span>
+<h1 style="font-size:38px">Identidad de pantalla · Arqueo Diario</h1>
+</div>
+<p style="max-width:760px;font-size:15px;line-height:1.62;margin:0 0 40px">La identidad de Huentelauquén está definida para Word e impresión (Calibri, rojo <strong>#ED0035</strong>) y para proyección (Cambria sobre maroon <strong>#8C0026</strong>). Una aplicación necesita un tercer tratamiento, hermano de los dos: el <em>tratamiento de pantalla</em>. Toma el maroon como color de estructura, el rojo como único color de acción, y el rosado como el color del dato que necesita atención. Lo que sigue lo define y lo aplica a las ocho pantallas de la aplicación: el tablero de ventas mensual y anual primero, y las siete del menú operativo a continuación, en el orden en que se navegan.</p>
+
+<div class="sec" style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:1320px">
+<div class="card" style="padding:0;overflow:hidden">
+<div style="height:74px;background:var(--hu-maroon)"></div>
+<div style="padding:12px 14px"><div style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">Maroon · #8C0026</div><div style="font-size:12.5px;line-height:1.5;color:var(--hu-gray);margin-top:4px">Estructura: barra lateral, encabezados de pantalla, títulos. Nunca para botones.</div></div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<div style="height:74px;background:var(--hu-red)"></div>
+<div style="padding:12px 14px"><div style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">Rojo · #ED0035</div><div style="font-size:12.5px;line-height:1.5;color:var(--hu-gray);margin-top:4px">Acción y foco: botón primario, kickers, encabezado de tabla, indicador activo. Uno por zona.</div></div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<div style="height:74px;background:var(--hu-pink);position:relative"><div style="position:absolute;left:0;bottom:0;width:50%;height:100%;background:var(--hu-pink-2)"></div></div>
+<div style="padding:12px 14px"><div style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">Rosados · #F2DCDB / #FDEAEE</div><div style="font-size:12.5px;line-height:1.5;color:var(--hu-gray);margin-top:4px">Dato que pide atención: cifra clave, fila en excepción, recuadro «Importante».</div></div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<div style="height:74px;background:var(--hu-card);border-bottom:1px solid var(--hu-card-line);position:relative"><div style="position:absolute;right:0;top:0;width:40%;height:100%;background:var(--hu-label)"></div></div>
+<div style="padding:12px 14px"><div style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">Neutros · #FAFAFA / #F4F4F4</div><div style="font-size:12.5px;line-height:1.5;color:var(--hu-gray);margin-top:4px">Tarjetas, celdas de etiqueta y fondos de lista. El dato conciliado es neutro, no verde.</div></div>
+</div>
+</div>
+
+<div class="sec" style="display:grid;grid-template-columns:1.15fr 1fr;gap:44px;max-width:1320px">
+<div>
+<div class="kick" style="margin-bottom:10px">Tipografía de pantalla</div>
+<h3 style="font-size:44px;line-height:1.1;margin-bottom:6px">Caladea 700</h3>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-bottom:22px">Títulos de pantalla y cifras de cabecera. Métricamente igual a Cambria, así que un pantallazo pegado en un Word o un PPT calza sin recomponer.</div>
+<div style="font-family:var(--hu-sans);font-size:22px;color:var(--hu-body);margin-bottom:4px">Carlito 400 y 700</div>
+<div style="font-size:12.5px;color:var(--hu-gray)">Todo lo demás: tablas, formularios, etiquetas, botones. Métricamente igual a Calibri.</div>
+<div style="margin-top:26px;border-left:3px solid var(--hu-red);background:var(--hu-pink-2);padding:12px 16px;font-size:13.5px;line-height:1.6">Cambria y Calibri no existen como fuentes web. <strong>Caladea</strong> y <strong>Carlito</strong> son sus equivalentes métricos exactos y libres: en pantalla se ven como la marca y al exportar a Office el reemplazo es 1:1.</div>
+</div>
+<div>
+<div class="kick" style="margin-bottom:14px">Componentes y estados</div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px">
+<span class="btn">Conciliar el día</span>
+<span class="btn btn-2">Ver excepciones</span>
+<span class="btn btn-off">Aprobar</span>
+</div>
+<div style="font-size:12px;color:var(--hu-gray);margin-bottom:24px">Un botón deshabilitado siempre explica su condición al pasar el cursor: «faltan 7 excepciones por resolver».</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+<span class="pill p-ok">Conciliado</span>
+<span class="pill p-warn">Por revisar</span>
+<span class="pill p-red">Excepción</span>
+<span class="pill p-grey">Sin cargar</span>
+</div>
+<div style="font-size:12px;color:var(--hu-gray)">El verde y el ámbar son funcionales — semáforo de estado únicamente — y no entran en gráficos, títulos ni superficies. La marca sigue siendo rojo, maroon y rosado.</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 1</div>
+<h2 style="font-size:26px;margin-bottom:6px">Dashboard de ventas · mensual y anual</h2>
+<p style="max-width:820px;font-size:14.5px;line-height:1.6;margin:0 0 18px;color:var(--hu-body)">Todo el tablero cuelga de un único selector <strong>desde–hasta</strong>. Los atajos de período no son filtros aparte: cargan un rango en las mismas dos fechas, así que cualquier vista mensual, trimestral o anual es el mismo tablero con otro rango — y siempre se compara contra el mismo rango del año anterior.</p>
+<div class="frame">
+<div style="padding:20px 32px;background:var(--hu-maroon)">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+<div>
+<div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Ventas · Sala de Ventas</div>
+<div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:#fff;margin-top:2px">1 al 31 de agosto de 2026</div>
+<div style="font-size:12.5px;color:#E8C9CF;margin-top:3px">31 días operados · datos de días cerrados y aprobados</div>
+</div>
+<div>
+<div style="display:flex;gap:8px;align-items:flex-end">
+<div>
+<div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:5px">Desde</div>
+<div style="background:#fff;border:1px solid var(--hu-line);padding:9px 14px;font-size:14px;font-weight:700;color:var(--hu-maroon)">01‑08‑2026</div>
+</div>
+<div>
+<div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:5px">Hasta</div>
+<div style="background:#fff;border:1px solid var(--hu-line);padding:9px 14px;font-size:14px;font-weight:700;color:var(--hu-maroon)">31‑08‑2026</div>
+</div>
+<span class="btn" style="padding:10px 16px">Aplicar</span>
+</div>
+<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end">
+<span style="font-size:11.5px;padding:4px 10px;background:var(--hu-red);color:#fff;font-weight:700">Mes</span>
+<span style="font-size:11.5px;padding:4px 10px;background:#7A0021;color:#E8C9CF">Trimestre</span>
+<span style="font-size:11.5px;padding:4px 10px;background:#7A0021;color:#E8C9CF">Año en curso</span>
+<span style="font-size:11.5px;padding:4px 10px;background:#7A0021;color:#E8C9CF">12 meses</span>
+<span style="font-size:11.5px;padding:4px 10px;background:#7A0021;color:#E8C9CF">Personalizado</span>
+</div>
+</div>
+</div>
+</div>
+
+<div style="padding:24px 32px 0;display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+<div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Venta neta del período</div>
+<div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">$172.418.640</div>
+<div style="font-size:12px;color:var(--hu-maroon);margin-top:2px">+13,5 % vs ago‑2025</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Comandas</div>
+<div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">10.966</div>
+<div style="font-size:12px;color:var(--hu-ok);margin-top:2px">+6,8 % vs ago‑2025</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Ticket promedio</div>
+<div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">$15.723</div>
+<div style="font-size:12px;color:var(--hu-ok);margin-top:2px">+6,3 % vs ago‑2025</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Venta diaria promedio</div>
+<div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">$5.561.892</div>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:2px">máx. 30‑08 · $7.913.420</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Unidades vendidas</div>
+<div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">48.115</div>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:2px">2,04 líneas por comanda</div>
+</div>
+</div>
+
+<div style="padding:26px 32px 0">
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+<div class="kick">Venta por mes · 2026 contra 2025</div>
+<div style="display:flex;gap:16px;font-size:12px;color:var(--hu-gray)">
+<span style="display:flex;gap:6px;align-items:center"><span style="width:11px;height:11px;background:var(--hu-red);display:inline-block"></span>2026</span>
+<span style="display:flex;gap:6px;align-items:center"><span style="width:11px;height:11px;background:var(--hu-pink);border:1px solid var(--hu-line);display:inline-block"></span>2025</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:10px;align-items:end;height:210px;border-bottom:1px solid var(--hu-line);padding-bottom:0">
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:98%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:88%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:100%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:91%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:72%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:66%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:63%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:58%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:58%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:54%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:55%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:50%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%"><span style="flex:1;background:var(--hu-red);height:60%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:55%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%;position:relative"><span style="flex:1;background:var(--hu-red);height:78%;outline:2px solid var(--hu-maroon);outline-offset:1px"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:69%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%;opacity:.35"><span style="flex:1;background:var(--hu-label);height:0%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:63%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%;opacity:.35"><span style="flex:1;background:var(--hu-label);height:0%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:66%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%;opacity:.35"><span style="flex:1;background:var(--hu-label);height:0%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:72%"></span></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:100%;opacity:.35"><span style="flex:1;background:var(--hu-label);height:0%"></span><span style="flex:1;background:var(--hu-pink);border:1px solid var(--hu-line);border-bottom:0;height:84%"></span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:10px;margin-top:7px;font-size:11.5px;color:var(--hu-gray);text-align:center">
+<span>Ene</span><span>Feb</span><span>Mar</span><span>Abr</span><span>May</span><span>Jun</span><span>Jul</span><span style="color:var(--hu-maroon);font-weight:700">Ago</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dic</span>
+</div>
+<div style="display:flex;gap:26px;margin-top:16px;padding:14px 18px;background:var(--hu-pink-2);border:1px solid var(--hu-line);font-size:13.5px;align-items:center">
+<div><span style="color:var(--hu-gray);font-size:12px;text-transform:uppercase;letter-spacing:1px">Acumulado 2026 · ene‑ago</span><br><strong style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-maroon)">$1.284.960.000</strong></div>
+<div><span style="color:var(--hu-gray);font-size:12px;text-transform:uppercase;letter-spacing:1px">Mismo período 2025</span><br><strong style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-maroon)">$1.170.180.000</strong></div>
+<div><span style="color:var(--hu-gray);font-size:12px;text-transform:uppercase;letter-spacing:1px">Variación</span><br><strong style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-ok)">+9,8 %</strong></div>
+<div style="margin-left:auto;max-width:330px;font-size:12.5px;line-height:1.55;color:var(--hu-body)">La temporada estival concentra un tercio del año: enero y febrero valen tanto como abril a julio juntos.</div>
+</div>
+</div>
+
+<div style="padding:28px 32px 0;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:26px">
+<div>
+<div class="kick" style="margin-bottom:12px">Venta por día del período</div>
+<div style="display:flex;gap:2px;align-items:flex-end;height:120px;border-bottom:1px solid var(--hu-line)">
+<span style="flex:1;background:var(--hu-red);height:71%"></span><span style="flex:1;background:var(--hu-red);height:66%"></span><span style="flex:1;background:var(--hu-pink);height:48%"></span><span style="flex:1;background:var(--hu-red);height:59%"></span><span style="flex:1;background:var(--hu-red);height:63%"></span><span style="flex:1;background:var(--hu-red);height:88%"></span><span style="flex:1;background:var(--hu-red);height:94%"></span>
+<span style="flex:1;background:var(--hu-red);height:68%"></span><span style="flex:1;background:var(--hu-red);height:61%"></span><span style="flex:1;background:var(--hu-pink);height:44%"></span><span style="flex:1;background:var(--hu-red);height:57%"></span><span style="flex:1;background:var(--hu-red);height:64%"></span><span style="flex:1;background:var(--hu-red);height:91%"></span><span style="flex:1;background:var(--hu-red);height:97%"></span>
+<span style="flex:1;background:var(--hu-red);height:70%"></span><span style="flex:1;background:var(--hu-red);height:58%"></span><span style="flex:1;background:var(--hu-pink);height:46%"></span><span style="flex:1;background:var(--hu-red);height:60%"></span><span style="flex:1;background:var(--hu-red);height:66%"></span><span style="flex:1;background:var(--hu-red);height:86%"></span><span style="flex:1;background:var(--hu-red);height:92%"></span>
+<span style="flex:1;background:var(--hu-red);height:67%"></span><span style="flex:1;background:var(--hu-red);height:62%"></span><span style="flex:1;background:var(--hu-pink);height:43%"></span><span style="flex:1;background:var(--hu-red);height:55%"></span><span style="flex:1;background:var(--hu-red);height:69%"></span><span style="flex:1;background:var(--hu-red);height:89%"></span><span style="flex:1;background:var(--hu-red);height:100%"></span>
+<span style="flex:1;background:var(--hu-red);height:72%"></span><span style="flex:1;background:var(--hu-red);height:64%"></span><span style="flex:1;background:var(--hu-pink);height:47%"></span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--hu-gray);margin-top:6px"><span>1 ago</span><span>15 ago</span><span>31 ago</span></div>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-top:8px;line-height:1.55">El patrón semanal es estable: sábado y domingo valen entre 1,4 y 1,6 veces un día de semana, y el lunes es el día bajo (en rosado).</div>
+<div class="kick" style="margin:24px 0 10px">Concentración horaria</div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:80px;border-bottom:1px solid var(--hu-line)">
+<span style="flex:1;background:var(--hu-pink);height:14%"></span><span style="flex:1;background:var(--hu-pink);height:26%"></span><span style="flex:1;background:var(--hu-red);height:48%"></span><span style="flex:1;background:var(--hu-red);height:72%"></span><span style="flex:1;background:var(--hu-red);height:100%"></span><span style="flex:1;background:var(--hu-red);height:83%"></span><span style="flex:1;background:var(--hu-red);height:57%"></span><span style="flex:1;background:var(--hu-red);height:44%"></span><span style="flex:1;background:var(--hu-pink);height:38%"></span><span style="flex:1;background:var(--hu-pink);height:22%"></span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--hu-gray);margin-top:6px"><span>10 h</span><span>14 h · peak</span><span>19 h</span></div>
+</div>
+<div>
+<div class="kick" style="margin-bottom:12px">Mix de medios de pago</div>
+<div style="display:flex;height:26px;margin-bottom:14px;border:1px solid var(--hu-line)">
+<span style="width:71.5%;background:var(--hu-red)"></span>
+<span style="width:19.0%;background:var(--hu-maroon)"></span>
+<span style="width:9.5%;background:var(--hu-pink)"></span>
+</div>
+<table class="tbl">
+<thead><tr><th>Medio</th><th class="n">Monto</th><th class="n">%</th><th class="n">Δ año</th></tr></thead>
+<tbody>
+<tr><td>Débito</td><td class="n">123.279.330</td><td class="n">71,5</td><td class="n" style="color:var(--hu-ok)">+3,1</td></tr>
+<tr><td>Crédito</td><td class="n">32.759.540</td><td class="n">19,0</td><td class="n" style="color:var(--hu-ok)">+1,3</td></tr>
+<tr><td>Efectivo</td><td class="n">16.379.770</td><td class="n">9,5</td><td class="n" style="color:var(--hu-red)">−4,4</td></tr>
+<tr><td style="color:var(--hu-gray)">Transferencias</td><td class="n" style="color:var(--hu-gray)">0</td><td class="n" style="color:var(--hu-gray)">0,0</td><td class="n" style="color:var(--hu-gray)">—</td></tr>
+</tbody>
+</table>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-top:8px;line-height:1.55">La sala es casi enteramente electrónica: el efectivo pesa 9,5 % y cae 4,4 puntos en doce meses. TRANSFERENCIAS existe como columna en el POS pero no se usa — si eso cambia, la fila se activa sola.</div>
+<div class="kick" style="margin:24px 0 10px">Venta por caja</div>
+<table class="tbl">
+<thead><tr><th>Caja</th><th class="n">Venta</th><th class="n">%</th><th class="n">Ticket</th></tr></thead>
+<tbody>
+<tr><td>Caja 4</td><td class="n">66.036.340</td><td class="n">38,3</td><td class="n">18.222</td></tr>
+<tr><td>Caja 3</td><td class="n">47.759.960</td><td class="n">27,7</td><td class="n">14.311</td></tr>
+<tr><td>Caja 1</td><td class="n">33.794.050</td><td class="n">19,6</td><td class="n">16.965</td></tr>
+<tr><td>Caja 2</td><td class="n">24.828.290</td><td class="n">14,4</td><td class="n">12.210</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<div class="kick" style="margin-bottom:12px">Top 8 productos del período</div>
+<table class="tbl">
+<thead><tr><th>Producto</th><th class="n">Unid.</th><th class="n">Venta</th><th class="n">% acum.</th></tr></thead>
+<tbody>
+<tr><td>Empanada queso frita</td><td class="n">21.297</td><td class="n">53.242.500</td><td class="n">30,9</td></tr>
+<tr><td>Queso pieza</td><td class="n">4.049</td><td class="n">48.182.767</td><td class="n">58,8</td></tr>
+<tr><td>Empanada queso cruda</td><td class="n">7.161</td><td class="n">17.902.500</td><td class="n">69,2</td></tr>
+<tr><td>Néctar papaya 1000 cc</td><td class="n">2.387</td><td class="n">10.741.500</td><td class="n">75,4</td></tr>
+<tr><td>Papaya cubitos al jugo 460 g</td><td class="n">1.240</td><td class="n">4.960.000</td><td class="n">78,3</td></tr>
+<tr><td>Néctar papaya 300 cc</td><td class="n">2.604</td><td class="n">4.426.800</td><td class="n">80,9</td></tr>
+<tr><td>Papaya confitada band. 280 g</td><td class="n">589</td><td class="n">4.181.900</td><td class="n">83,3</td></tr>
+<tr><td>Queso trozado vacío 500 g</td><td class="n">279</td><td class="n">3.459.600</td><td class="n">85,3</td></tr>
+</tbody>
+</table>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-top:8px;line-height:1.55">Ocho de los <strong>31 artículos</strong> del catálogo explican el 85 % de la venta, y solo dos —empanada de queso frita y queso pieza— el 59 %. Nombres y proporciones vienen del POS real.</div>
+<div class="kick" style="margin:24px 0 10px">Control del período</div>
+<div class="card" style="padding:14px 16px;font-size:13px">
+<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Días cerrados sin diferencia</span><strong>23 de 31</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Con diferencia autorizada</span><strong>8</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Diferencia de caja acumulada</span><strong style="color:var(--hu-red)">−$68.200</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Sobre venta del período</span><strong>0,040 %</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--hu-gray)">Días de cierre a aprobación</span><strong>1,4 promedio</strong></div>
+</div>
+</div>
+</div>
+
+<div style="margin:28px 32px 32px;padding:16px 20px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);font-size:13.5px;line-height:1.6">
+<strong style="color:var(--hu-maroon)">Regla de la fuente única.</strong> El tablero solo suma días en estado <em>Cerrado</em> o <em>Exportado</em>. Un día con excepciones abiertas no entra en la venta del período: aparece como día excluido con su monto provisorio a la vista, para que nadie explique una caída de venta que en realidad es un arqueo pendiente. Aquí se excluyen 2 días por $10,9 M.
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 2</div>
+<h2 style="font-size:26px;margin-bottom:18px">Dashboard del día</h2>
+<div class="frame">
+<div style="display:flex;min-height:920px">
+<div style="width:244px;background:var(--hu-maroon);flex-shrink:0;padding:24px 0">
+<div style="padding:0 20px 26px">
+<div style="font-family:var(--hu-serif);font-size:17px;color:#fff;font-weight:700;line-height:1.25">Hacienda<br>Huentelauquén</div>
+<div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#D9A3AD;margin-top:6px">Arqueo diario</div>
+</div>
+<div class="nav-i">Ventas · mensual y anual</div>
+<div class="nav-i nav-on">Dashboard del día</div>
+<div class="nav-i">Carga de archivos</div>
+<div class="nav-i" style="justify-content:space-between">Excepciones <span style="background:var(--hu-red);color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px">11</span></div>
+<div class="nav-i">Arqueo de efectivo</div>
+<div class="nav-i">Cierre y exportación</div>
+<div class="nav-i">Histórico</div>
+<div class="nav-i">Calidad de registro</div>
+<div style="margin-top:32px;padding:16px 20px 0;border-top:1px solid #7A0021">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:6px">Sesión</div>
+<div style="font-size:13px;color:#fff">Karla Rojas</div>
+<div style="font-size:12px;color:#D9A3AD">Aprobador · Adm. y Finanzas</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--hu-card-line)">
+<div>
+<div class="kick">Sala de Ventas · día operativo</div>
+<h2 style="font-size:29px;margin-top:2px">Miércoles 2 de septiembre de 2026</h2>
+</div>
+<div style="display:flex;align-items:center;gap:12px">
+<span class="pill p-warn" style="font-size:12px;padding:6px 12px">Conciliado con excepciones</span>
+<span class="btn btn-2">Reconciliar</span>
+</div>
+</div>
+
+<div style="display:flex;align-items:flex-start;gap:14px;margin:24px 32px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:14px 18px">
+<div style="font-size:13.5px;line-height:1.6"><strong style="color:var(--hu-maroon)">El día no puede aprobarse todavía.</strong> Transbank registra $195.619 más de lo que el POS declara en tarjetas, repartido en 11 excepciones. La diferencia de efectivo de $3.800 está dentro del umbral pero requiere nota, y el arqueo de la Caja 4 aún no se registra.</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 32px">
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Venta del día</div>
+<div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">$5.274.235</div>
+<div style="font-size:12px;color:var(--hu-gray)">336 comandas · 686 líneas · 31 artículos</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Conciliado automático</div>
+<div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">96,1 %</div>
+<div style="font-size:12px;color:var(--hu-gray)">284 de 295 movimientos · score 91</div>
+</div>
+<div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Excepciones abiertas</div>
+<div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">11</div>
+<div style="font-size:12px;color:var(--hu-maroon)">$195.619 en juego</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Diferencia de caja</div>
+<div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">−$3.800</div>
+<div style="font-size:12px;color:var(--hu-gray)">umbral $5.000 · 3 de 4 cajas contadas</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.55fr 1fr;gap:24px;padding:28px 32px">
+<div>
+<div class="kick" style="margin-bottom:10px">Cuadre por medio de pago</div>
+<table class="tbl">
+<thead><tr><th>Medio</th><th class="n">Declarado POS</th><th class="n">Proveedor</th><th class="n">Conciliado</th><th class="n">Diferencia</th><th>Estado</th></tr></thead>
+<tbody>
+<tr><td>Débito</td><td class="n">3.770.006</td><td class="n">3.913.677</td><td class="n">3.770.006</td><td class="n" style="color:var(--hu-red);font-weight:700">−143.671</td><td><span class="pill p-red">Excepción</span></td></tr>
+<tr><td>Crédito</td><td class="n">1.002.768</td><td class="n">1.054.716</td><td class="n">1.002.768</td><td class="n" style="color:var(--hu-red);font-weight:700">−51.948</td><td><span class="pill p-red">Excepción</span></td></tr>
+<tr><td>Efectivo</td><td class="n">501.461</td><td class="n" style="color:var(--hu-gray)">sin contraparte</td><td class="n">501.461</td><td class="n" style="color:var(--hu-warn);font-weight:700">−3.800</td><td><span class="pill p-warn">Arqueo físico</span></td></tr>
+<tr><td style="color:var(--hu-gray)">Transferencias</td><td class="n" style="color:var(--hu-gray)">0</td><td class="n" style="color:var(--hu-gray)">—</td><td class="n" style="color:var(--hu-gray)">0</td><td class="n" style="color:var(--hu-gray)">0</td><td><span class="pill p-grey">Sin uso el 02‑09</span></td></tr>
+</tbody>
+</table>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.55">Las dos diferencias van en el <strong>mismo sentido</strong>: Transbank cobró $195.619 más que lo declarado en el POS. No es medio mal declarado — es venta cobrada que el POS no registró, y por eso el día abre con excepciones de «movimiento sin pago». La columna TRANSFERENCIAS existe en el POS pero llega en $0 este día.</div>
+
+<div class="kick" style="margin:26px 0 10px">Cajas y turnos</div>
+<table class="tbl">
+<thead><tr><th>Caja</th><th class="n">Comandas</th><th class="n">Venta</th><th class="n">Efectivo teórico</th><th class="n">Contado</th><th class="n">Diferencia</th></tr></thead>
+<tbody>
+<tr><td>Caja 4</td><td class="n">111</td><td class="n">2.022.579</td><td class="n">305.261</td><td class="n" style="color:var(--hu-gray)">pendiente</td><td class="n" style="color:var(--hu-gray)">—</td></tr>
+<tr><td>Caja 3</td><td class="n">102</td><td class="n">1.459.759</td><td class="n">108.025</td><td class="n">108.025</td><td class="n">$0</td></tr>
+<tr><td>Caja 1</td><td class="n">61</td><td class="n">1.034.864</td><td class="n">50.142</td><td class="n">58.142</td><td class="n" style="color:var(--hu-warn);font-weight:700">+8.000</td></tr>
+<tr><td>Caja 2</td><td class="n">62</td><td class="n">757.033</td><td class="n">38.033</td><td class="n">26.233</td><td class="n" style="color:var(--hu-red);font-weight:700">−11.800</td></tr>
+</tbody>
+</table>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.55">El total da −$3.800, pero Caja 1 sobra $8.000 y Caja 2 falta $11.800: por eso el arqueo se controla por caja y no por día. Hay <strong>4 cajas y 4 terminales</strong>, pero el POS no declara qué terminal pertenece a qué caja — es la decisión D2, y sin ella el desempate por caja no funciona.</div>
+</div>
+
+<div>
+<div class="kick" style="margin-bottom:10px">Calidad de la conciliación</div>
+<div class="card" style="padding:16px 18px;margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span>Nivel 1 · autorización + monto</span><strong>198</strong></div>
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span>Nivel 2 · autorización + tolerancia</span><strong>14</strong></div>
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span>Nivel 3 · monto + medio + hora</span><strong>72</strong></div>
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;color:var(--hu-maroon)"><span>Niveles 4 a 6 · requieren decisión</span><strong>11</strong></div>
+</div>
+<div class="card" style="padding:16px 18px;margin-bottom:14px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Avisos del día</div>
+<div style="font-size:13px;line-height:1.55;display:flex;gap:9px;margin-bottom:8px"><span class="dot" style="background:var(--hu-warn);margin-top:5px"></span><span>Desfase de reloj estimado: <strong>+3 min</strong> en el terminal A2885576.</span></div>
+<div style="font-size:13px;line-height:1.55;display:flex;gap:9px;margin-bottom:8px"><span class="dot" style="background:var(--hu-red);margin-top:5px"></span><span>Terminal <strong>A2380302</strong> sin caja asignada — 56 movimientos por $1.100.622.</span></div>
+<div style="font-size:13px;line-height:1.55;display:flex;gap:9px"><span class="dot" style="background:var(--hu-gray);margin-top:5px"></span><span><strong>9 autorizaciones</strong> alfanuméricas en el proveedor: no comparables con el POS.</span></div>
+</div>
+<div style="background:var(--hu-pink-2);border:1px solid var(--hu-line);padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:10px">Para cerrar el día</div>
+<div style="font-size:13px;line-height:1.9">
+<div>✗ &nbsp;Resolver 11 excepciones bloqueantes</div>
+<div>✗ &nbsp;Registrar arqueo de Caja 4</div>
+<div>✓ &nbsp;Aprobador distinto del operador</div>
+<div>✗ &nbsp;Registrar depósito bancario</div>
+</div>
+<div style="display:flex;gap:10px;margin-top:16px">
+<span class="btn" style="flex:1;justify-content:center">Ir a excepciones</span>
+<span class="btn btn-off" style="flex:1;justify-content:center">Aprobar</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 3</div>
+<h2 style="font-size:26px;margin-bottom:18px">Carga de archivos del día</h2>
+<div class="frame" style="padding:30px 34px 34px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+<div>
+<div class="kick">Nuevo día de arqueo</div>
+<h2 style="font-size:27px;margin-top:2px">Miércoles 2 de septiembre de 2026</h2>
+<div style="font-size:13px;color:var(--hu-gray);margin-top:4px">Día operativo · Sala de Ventas · corte al cierre de sala</div>
+</div>
+<span class="pill p-grey" style="font-size:12px;padding:6px 12px">Sin cargar</span>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px">
+<div style="border:1px solid var(--hu-line);background:var(--hu-pink-2);padding:20px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);font-weight:700">Fuente 1 · Punto de venta</div>
+<span class="pill p-ok">Cargado</span>
+</div>
+<div style="font-family:var(--hu-serif);font-size:16px;color:var(--hu-maroon);font-weight:700;line-height:1.35">Captura_Ventas_Sala_de_Ventas_02.09.26.xlsx</div>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-top:4px;margin-bottom:14px">11,7 MB · huella 8f3c…a91d · cargado 03‑09 09:14 por K. Rojas</div>
+<div style="background:#fff;border:1px solid var(--hu-line);font-size:13px">
+<div style="display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--hu-line)"><span style="color:var(--hu-gray)">VENTAS POR ARTICULO</span><strong>686 líneas · 336 comandas</strong></div>
+<div style="display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--hu-line)"><span style="color:var(--hu-gray)">VENTA CONSOLIDADA</span><strong>341 filas · usada solo para enriquecer</strong></div>
+<div style="display:flex;justify-content:space-between;padding:7px 12px"><span style="color:var(--hu-gray)">Hojas ignoradas</span><strong>8 ocultas + 3 dinámicas</strong></div>
+</div>
+</div>
+<div style="border:1px solid var(--hu-line);background:var(--hu-pink-2);padding:20px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);font-weight:700">Fuente 2 · Adquirente</div>
+<span class="pill p-ok">Cargado</span>
+</div>
+<div style="font-family:var(--hu-serif);font-size:16px;color:var(--hu-maroon);font-weight:700;line-height:1.35">Cartola_Movimientos_02‑sep‑2026.xlsx</div>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-top:4px;margin-bottom:14px">55 KB · huella 2d70…4c08 · cargado 03‑09 09:15 por K. Rojas</div>
+<div style="background:#fff;border:1px solid var(--hu-line);font-size:13px">
+<div style="display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--hu-line)"><span style="color:var(--hu-gray)">Movimientos</span><strong>295 ventas · 0 anulaciones</strong></div>
+<div style="display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--hu-line)"><span style="color:var(--hu-gray)">Monto de venta cotejable</span><strong>$4.968.393</strong></div>
+<div style="display:flex;justify-content:space-between;padding:7px 12px"><span style="color:var(--hu-gray)">Terminales detectados</span><strong>4 · sin mapa a caja</strong></div>
+</div>
+</div>
+</div>
+
+<div style="border:1px dashed var(--hu-line);background:#FEFCFC;padding:26px;text-align:center;margin-bottom:24px">
+<div style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon);font-weight:700">Arrastrar aquí una fuente adicional</div>
+<div style="font-size:13px;color:var(--hu-gray);margin-top:5px">Mercado Pago u otro adquirente · Fase 2. El día se puede conciliar sin ella.</div>
+</div>
+
+<div class="kick" style="margin-bottom:10px">Validaciones de carga</div>
+<table class="tbl" style="margin-bottom:20px">
+<thead><tr><th>Validación</th><th>Resultado</th><th>Detalle</th></tr></thead>
+<tbody>
+<tr><td>Fecha declarada coincide con el día</td><td><span class="pill p-ok">Correcto</span></td><td>Serial 46267 = 02/09/2026 en ambas fuentes</td></tr>
+<tr><td>Carga duplicada</td><td><span class="pill p-ok">Sin duplicados</span></td><td>Ninguna huella coincide con una carga previa</td></tr>
+<tr><td>Filas no interpretadas</td><td><span class="pill p-ok">0</span></td><td>Ninguna fila descartada; el conteo cuadra con el archivo</td></tr>
+<tr><td>Total de comanda = suma de líneas</td><td><span class="pill p-warn">3 desviaciones</span></td><td>Aviso de calidad, no bloqueante — se revisa en la conciliación</td></tr>
+<tr><td>Total = suma de medios declarados</td><td><span class="pill p-ok">336 de 336</span></td><td>Cuadra exacto: $5.274.235 = efectivo + débito + crédito</td></tr>
+<tr><td>Contradicción entre hojas POS</td><td><span class="pill p-red">1 caso</span></td><td>Comanda 654747: medio, monto y caja discrepan — prevalece VENTAS POR ARTICULO</td></tr>
+</tbody>
+</table>
+<div style="display:flex;gap:12px;align-items:center">
+<span class="btn">Normalizar y conciliar</span>
+<span class="btn btn-2">Descargar archivos originales</span>
+<span style="font-size:12.5px;color:var(--hu-gray)">Los originales se conservan íntegros e inmutables; ninguna corrección posterior los altera.</span>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 4</div>
+<h2 style="font-size:26px;margin-bottom:18px">Bandeja de excepciones</h2>
+<div class="frame">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 30px;background:var(--hu-maroon)">
+<div>
+<div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Arqueo 02‑09‑2026 · excepciones</div>
+<div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">11 abiertas · $195.619 en juego</div>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<span style="font-size:12.5px;color:#E8C9CF">Orden: monto en juego</span>
+<span class="btn btn-2">Exportar detalle</span>
+</div>
+</div>
+<div style="display:flex;gap:10px;padding:14px 30px;border-bottom:1px solid var(--hu-card-line);font-size:13px;align-items:center">
+<span style="color:var(--hu-gray)">Filtrar:</span>
+<span class="pill p-red">Todos · 11</span>
+<span class="pill p-grey">Movimiento sin pago · 5</span>
+<span class="pill p-grey">Medio contradictorio · 3</span>
+<span class="pill p-grey">Pago sin movimiento · 2</span>
+<span class="pill p-grey">Ambigüedad · 1</span>
+<span style="margin-left:auto;color:var(--hu-gray)">Calidad de registro · 12 avisos no bloqueantes</span>
+</div>
+<div style="display:flex;min-height:700px">
+<div style="width:410px;border-right:1px solid var(--hu-card-line);flex-shrink:0">
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-red">Movimiento sin pago · grupo</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$134.415</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">4 movimientos Transbank · 11:36 a 19:12<br><span style="color:var(--hu-gray)">Cobros sin comanda cerrada en el POS</span></div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line);background:var(--hu-pink-2);border-left:3px solid var(--hu-red)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-red">Medio contradictorio</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$15.200</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Comanda <strong>654747</strong> · Caja 4 · 14:02<br><span style="color:var(--hu-gray)">POS declara débito; proveedor registra crédito Mastercard</span></div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-grey">Pago sin movimiento</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$14.212</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Comanda <strong>654902</strong> · Caja 2 · 15:48<br><span style="color:var(--hu-gray)">Débito declarado sin cobro en el proveedor</span></div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-grey">Medio contradictorio</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$12.900</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Comanda <strong>654815</strong> · Caja 1 · 13:11<br><span style="color:var(--hu-gray)">POS declara crédito; proveedor registra prepago</span></div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-grey">Ambigüedad</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$8.400</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Comandas <strong>654771 / 654773</strong> · 14:05<br><span style="color:var(--hu-gray)">Dos candidatos con score 84 y 84</span></div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-grey">Movimiento sin pago</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$5.290</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Movimiento <strong>A2380302 · 11:36</strong><br><span style="color:var(--hu-gray)">Cobro sin comanda cerrada en el POS</span></div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid var(--hu-card-line);opacity:.6">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-grey">Medio contradictorio</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$3.200</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Comanda <strong>654688</strong> · Caja 1 · 11:02</div>
+</div>
+<div style="padding:14px 20px;opacity:.6">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill p-grey">Pago sin movimiento</span><strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">$2.002</strong></div>
+<div style="font-size:13.5px;margin-top:7px;line-height:1.5">Comanda <strong>654940</strong> · Caja 3 · 18:22</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;padding:24px 30px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+<div>
+<div class="kick">Excepción 2 de 11 · medio contradictorio</div>
+<h3 style="font-size:24px;margin-top:3px">Comanda 654747 · $17.600</h3>
+<div style="font-size:13px;color:var(--hu-gray);margin-top:4px">Comprobante B0390301666467 · Caja 4 · cajero M. Araya · turno continuo</div>
+</div>
+<div style="text-align:right">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Score</div>
+<div style="font-family:var(--hu-serif);font-size:32px;font-weight:700;color:var(--hu-maroon);line-height:1.1">70</div>
+<div style="font-size:12px;color:var(--hu-gray)">nivel 4</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px">
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:10px">Lado POS · VENTAS POR ARTICULO</div>
+<div style="font-size:13.5px;line-height:2">
+<div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Monto declarado</span><strong>$17.600</strong></div>
+<div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Medio declarado</span><strong style="color:var(--hu-red)">Tarjeta de débito</strong></div>
+<div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Hora de cierre</span><strong>14:02</strong></div>
+<div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Autorización</span><strong style="color:var(--hu-gray)">no registrada</strong></div>
+<div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Líneas</span><strong>7 · suma $17.600 ✓</strong></div>
+</div>
+</div>
+<div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:10px">Candidato del proveedor · score 70</div>
+<div style="font-size:13.5px;line-height:2;color:var(--hu-maroon)">
+<div style="display:flex;justify-content:space-between"><span>Monto</span><strong>$17.600 · exacto</strong></div>
+<div style="display:flex;justify-content:space-between"><span>Medio</span><strong>Crédito Mastercard</strong></div>
+<div style="display:flex;justify-content:space-between"><span>Hora corregida</span><strong>14:03 · +1 min</strong></div>
+<div style="display:flex;justify-content:space-between"><span>Autorización</span><strong>B93179</strong></div>
+<div style="display:flex;justify-content:space-between"><span>Terminal</span><strong>A2885576</strong></div>
+</div>
+</div>
+</div>
+
+<div style="background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:14px 18px;margin-bottom:20px;font-size:13.5px;line-height:1.6">
+<strong style="color:var(--hu-maroon)">Decisión propuesta: reclasificar a crédito Mastercard.</strong> Monto exacto y 1 minuto de diferencia sobre un desfase de reloj ya estimado; la autorización del proveedor es alfanumérica, así que el POS no pudo capturarla. VENTA CONSOLIDADA también indica crédito para esta comanda. Nada de esto se aplica solo: la reclasificación de medio es siempre manual.
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+<div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Motivo · obligatorio</div>
+<div style="border:1px solid var(--hu-card-line);background:#fff;font-size:13.5px">
+<div style="padding:9px 12px;border-bottom:1px solid var(--hu-card-line);background:var(--hu-pink-2);color:var(--hu-maroon);font-weight:700">● &nbsp;Medio mal declarado por el cajero</div>
+<div style="padding:9px 12px;border-bottom:1px solid var(--hu-card-line);color:var(--hu-gray)">○ &nbsp;Cobro reintentado en otro medio</div>
+<div style="padding:9px 12px;border-bottom:1px solid var(--hu-card-line);color:var(--hu-gray)">○ &nbsp;Error de configuración del terminal</div>
+<div style="padding:9px 12px;color:var(--hu-gray)">○ &nbsp;Otro — requiere comentario</div>
+</div>
+<div style="border:1px solid var(--hu-card-line);background:#fff;padding:10px 12px;margin-top:10px;font-size:13px;color:#B8B8B8">Comentario opcional para la bitácora…</div>
+</div>
+<div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Resolución</div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<span class="btn" style="justify-content:center">Aceptar y reclasificar a crédito</span>
+<span class="btn btn-2" style="justify-content:center">Rechazar el candidato</span>
+<span class="btn btn-2" style="justify-content:center">Vincular otro movimiento…</span>
+</div>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:12px;line-height:1.55">Queda en bitácora: usuario, hora, valor anterior (débito) y posterior (crédito). El dato original del POS no se modifica.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 5</div>
+<h2 style="font-size:26px;margin-bottom:18px">Arqueo de efectivo y depósito</h2>
+<div class="frame" style="padding:30px 34px 36px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px">
+<div>
+<div class="kick">Arqueo 02‑09‑2026</div>
+<h2 style="font-size:27px;margin-top:2px">Efectivo por caja</h2>
+</div>
+<span class="pill p-warn" style="font-size:12px;padding:6px 12px">Caja 4 pendiente de conteo</span>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Efectivo teórico</div>
+<div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">$501.461</div>
+<div style="font-size:12px;color:var(--hu-gray)">47 de 336 comandas · calculado del POS</div>
+</div>
+<div class="card" style="padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Ajustes aprobados</div>
+<div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">$0</div>
+<div style="font-size:12px;color:var(--hu-gray)">ninguna reclasificación afecta efectivo</div>
+</div>
+<div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Efectivo esperado</div>
+<div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">$501.461</div>
+<div style="font-size:12px;color:var(--hu-maroon)">teórico ± ajustes</div>
+</div>
+</div>
+
+<table class="tbl" style="margin-bottom:10px">
+<thead><tr><th>Caja</th><th class="n">Esperado</th><th class="n">Fondo inicial</th><th class="n">Gastos autorizados</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Estado</th></tr></thead>
+<tbody>
+<tr><td>Caja 1</td><td class="n">50.142</td><td class="n">50.000</td><td class="n">0</td><td class="n">108.142</td><td class="n" style="color:var(--hu-warn);font-weight:700">+8.000</td><td><span class="pill p-warn">Dentro de umbral</span></td></tr>
+<tr><td>Caja 2</td><td class="n">38.033</td><td class="n">50.000</td><td class="n">0</td><td class="n">76.233</td><td class="n" style="color:var(--hu-red);font-weight:700">−11.800</td><td><span class="pill p-red">Requiere autorización</span></td></tr>
+<tr><td>Caja 3</td><td class="n">108.025</td><td class="n">50.000</td><td class="n">0</td><td class="n">158.025</td><td class="n">$0</td><td><span class="pill p-ok">Cuadrada</span></td></tr>
+<tr><td>Caja 4</td><td class="n">305.261</td><td class="n">50.000</td><td class="n">12.400</td><td class="n" style="color:var(--hu-gray)">por registrar</td><td class="n" style="color:var(--hu-gray)">—</td><td><span class="pill p-grey">Pendiente</span></td></tr>
+<tr style="background:var(--hu-pink-2)"><td style="font-weight:700;background:var(--hu-pink-2)">Consolidado del día</td><td class="n" style="font-weight:700;background:var(--hu-pink-2)">501.461</td><td class="n" style="font-weight:700;background:var(--hu-pink-2)">200.000</td><td class="n" style="font-weight:700;background:var(--hu-pink-2)">12.400</td><td class="n" style="font-weight:700;background:var(--hu-pink-2)">342.400</td><td class="n" style="font-weight:700;color:var(--hu-red);background:var(--hu-pink-2)">−3.800</td><td style="background:var(--hu-pink-2)"><span class="pill p-red">Incompleto</span></td></tr>
+</tbody>
+</table>
+<div style="font-size:12px;color:var(--hu-gray);margin-bottom:28px">El umbral por caja es $5.000 y el consolidado del día $8.000. Caja 2 excede el umbral individual, así que el día no puede cerrarse sin autorización justificada del aprobador — aunque el total se vea pequeño.</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div>
+<div class="kick" style="margin-bottom:10px">Depósito bancario</div>
+<div class="card" style="padding:18px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+<div><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Monto depositado</div><div style="border:1px solid var(--hu-card-line);background:#fff;padding:9px 12px;font-size:14px;color:#B8B8B8">$ —</div></div>
+<div><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">N° de comprobante</div><div style="border:1px solid var(--hu-card-line);background:#fff;padding:9px 12px;font-size:14px;color:#B8B8B8">—</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<div><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fecha de depósito</div><div style="border:1px solid var(--hu-card-line);background:#fff;padding:9px 12px;font-size:14px;color:#B8B8B8">dd‑mm‑aaaa</div></div>
+<div><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fondo retenido</div><div style="border:1px solid var(--hu-card-line);background:#fff;padding:9px 12px;font-size:14px">$200.000</div></div>
+</div>
+<div style="font-size:12.5px;color:var(--hu-gray);margin-top:14px;line-height:1.55">El depósito puede registrarse después del cierre operativo, pero el día no se marca completo hasta que exista. Mientras falte, aparece en la lista de pendientes del histórico.</div>
+</div>
+</div>
+<div>
+<div class="kick" style="margin-bottom:10px">Autorización de la diferencia</div>
+<div style="background:var(--hu-pink-2);border:1px solid var(--hu-line);padding:18px">
+<div style="font-size:13.5px;line-height:1.6;margin-bottom:14px"><strong style="color:var(--hu-maroon)">Caja 2 · −$11.800 excede el umbral de $5.000.</strong> Solo el aprobador puede autorizar el cierre, con motivo desde lista cerrada y justificación escrita. La decisión queda en la bitácora y en el indicador mensual de diferencias por cajero.</div>
+<div style="background:#fff;border:1px solid var(--hu-line);font-size:13.5px;margin-bottom:12px">
+<div style="padding:9px 12px;border-bottom:1px solid var(--hu-line);color:var(--hu-gray)">○ &nbsp;Error de vuelto identificado</div>
+<div style="padding:9px 12px;border-bottom:1px solid var(--hu-line);color:var(--hu-gray)">○ &nbsp;Gasto sin respaldo formal</div>
+<div style="padding:9px 12px;border-bottom:1px solid var(--hu-line);color:var(--hu-gray)">○ &nbsp;Faltante en investigación</div>
+<div style="padding:9px 12px;color:var(--hu-gray)">○ &nbsp;Otro — requiere justificación</div>
+</div>
+<div style="display:flex;gap:10px">
+<span class="btn" style="flex:1;justify-content:center">Autorizar y continuar</span>
+<span class="btn btn-2" style="flex:1;justify-content:center">Devolver al operador</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 6</div>
+<h2 style="font-size:26px;margin-bottom:18px">Cierre y exportación a Odoo</h2>
+<div class="frame">
+<div style="padding:20px 32px;background:var(--hu-maroon);display:flex;justify-content:space-between;align-items:center">
+<div>
+<div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Cierre del día · 02‑09‑2026</div>
+<div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">Listo para aprobar</div>
+</div>
+<div style="text-align:right;font-size:12.5px;color:#E8C9CF;line-height:1.5">Operó: P. Muñoz<br>Aprueba: K. Rojas</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1.25fr;gap:0">
+<div style="padding:26px 30px;border-right:1px solid var(--hu-card-line)">
+<div class="kick" style="margin-bottom:12px">Verificación previa</div>
+<div style="font-size:13.5px;line-height:1.55">
+<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-ok);font-weight:700">✓</span><span>Cero excepciones bloqueantes abiertas<br><span style="color:var(--hu-gray);font-size:12.5px">7 resueltas · 12 avisos de calidad no bloquean</span></span></div>
+<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-ok);font-weight:700">✓</span><span>Arqueo registrado en las 3 cajas</span></div>
+<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-ok);font-weight:700">✓</span><span>Diferencia de Caja 2 autorizada<br><span style="color:var(--hu-gray);font-size:12.5px">−$11.800 · «faltante en investigación» · K. Rojas</span></span></div>
+<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-ok);font-weight:700">✓</span><span>Aprobador distinto del operador</span></div>
+<div style="display:flex;gap:10px;padding:10px 0"><span style="color:var(--hu-warn);font-weight:700">!</span><span>Depósito bancario sin registrar<br><span style="color:var(--hu-gray);font-size:12.5px">No bloquea el cierre; el día queda como pendiente de depósito</span></span></div>
+</div>
+<div style="background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:13px 16px;margin-top:18px;font-size:13px;line-height:1.6">Al aprobar, el día queda bloqueado. Reabrirlo exige motivo, queda en bitácora e <strong>invalida la exportación</strong>: habrá que generar una versión nueva.</div>
+<div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+<span class="btn" style="justify-content:center">Aprobar y cerrar el día</span>
+<span class="btn btn-2" style="justify-content:center">Devolver al operador</span>
+</div>
+</div>
+<div style="padding:26px 30px">
+<div class="kick" style="margin-bottom:12px">Archivo para Odoo</div>
+<table class="tbl" style="margin-bottom:14px">
+<thead><tr><th>Campo Odoo</th><th>Origen</th><th>Ejemplo</th></tr></thead>
+<tbody>
+<tr><td>ID de pago externo</td><td>N_INTERNO</td><td>654747</td></tr>
+<tr><td>N° de documento externo</td><td>7 últimos del comprobante</td><td>1666467</td></tr>
+<tr><td>Tipo de documento externo</td><td>Tipo POS · TIPO_DOC</td><td>FAC · factura</td></tr>
+<tr><td>Tipo de pago externo</td><td>Medio <strong>aprobado</strong></td><td>Crédito · reclasificado</td></tr>
+<tr><td>Fecha orden / vencimiento</td><td>Día operativo</td><td>02‑09‑2026</td></tr>
+<tr><td>Cliente</td><td>Genérico de sala</td><td style="color:var(--hu-red)">por definir · D5</td></tr>
+</tbody>
+</table>
+<div class="card" style="padding:16px 18px;margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Comandas a exportar</span><strong>338</strong></div>
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Líneas de detalle</span><strong>10.804</strong></div>
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Anuladas · a anexo, no se exportan</span><strong>3</strong></div>
+<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0"><span style="color:var(--hu-gray)">Medios reclasificados</span><strong style="color:var(--hu-maroon)">3 · $31.300</strong></div>
+</div>
+<div style="display:flex;gap:10px;margin-bottom:20px">
+<span class="btn btn-off" style="flex:1;justify-content:center">Generar versión 1</span>
+<span class="btn btn-2" style="flex:1;justify-content:center">Previsualizar</span>
+</div>
+<div style="font-size:12px;color:var(--hu-gray);margin-bottom:20px">Habilitado una vez aprobado el día. Solo días aprobados o cerrados pueden exportarse.</div>
+<div class="kick" style="margin-bottom:10px">Historial y acuse</div>
+<table class="tbl">
+<thead><tr><th>Versión</th><th>Generada</th><th>Por</th><th>Acuse en Odoo</th></tr></thead>
+<tbody>
+<tr><td colspan="4" style="color:var(--hu-gray);text-align:center;padding:14px">Sin exportaciones. El acuse cierra el ciclo: sin él, no hay constancia de que la contabilidad recibió el día.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 7</div>
+<h2 style="font-size:26px;margin-bottom:18px">Histórico de días</h2>
+<div class="frame" style="padding:30px 34px 34px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px">
+<div>
+<div class="kick">Estado del proceso</div>
+<h2 style="font-size:27px;margin-top:2px">Septiembre 2026</h2>
+</div>
+<div style="display:flex;gap:8px;align-items:center;font-size:13px">
+<span class="pill p-red">3 pendientes de depósito</span>
+<span class="pill p-warn">1 sin cargar</span>
+<span class="btn btn-2">Exportar histórico</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:12px">
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Lun</div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Mar</div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Mié</div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Jue</div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Vie</div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Sáb</div>
+<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);text-align:center">Dom</div>
+<div class="card" style="padding:10px;min-height:78px;opacity:.4"><div style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-gray)">31 ago</div><div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">Cerrado</div></div>
+<div class="card" style="padding:10px;min-height:78px"><div style="display:flex;justify-content:space-between"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">1</span><span class="dot" style="background:var(--hu-ok)"></span></div><div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">$5.106.880<br>Exportado</div></div>
+<div style="border:2px solid var(--hu-red);background:var(--hu-pink-2);padding:9px;min-height:78px"><div style="display:flex;justify-content:space-between"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">2</span><span class="dot" style="background:var(--hu-warn)"></span></div><div style="font-size:11.5px;color:var(--hu-maroon);margin-top:4px">$5.274.235<br><strong>11 excepciones</strong></div></div>
+<div class="card" style="padding:10px;min-height:78px"><div style="display:flex;justify-content:space-between"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">3</span><span class="dot" style="background:var(--hu-warn)"></span></div><div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">$4.918.640<br>Sin depósito</div></div>
+<div class="card" style="padding:10px;min-height:78px"><div style="display:flex;justify-content:space-between"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">4</span><span class="dot" style="background:var(--hu-gray)"></span></div><div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">—<br><strong style="color:var(--hu-red)">Sin cargar</strong></div></div>
+<div class="card" style="padding:10px;min-height:78px"><div style="display:flex;justify-content:space-between"><span style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-maroon);font-weight:700">5</span><span class="dot" style="background:var(--hu-gray)"></span></div><div style="font-size:11.5px;color:var(--hu-gray);margin-top:4px">En curso</div></div>
+<div class="card" style="padding:10px;min-height:78px;opacity:.4"><div style="font-family:var(--hu-serif);font-size:15px;color:var(--hu-gray)">6</div></div>
+</div>
+<div style="display:flex;gap:20px;font-size:12px;color:var(--hu-gray);margin-bottom:24px">
+<span style="display:flex;gap:7px;align-items:center"><span class="dot" style="background:var(--hu-ok)"></span>Cerrado y exportado</span>
+<span style="display:flex;gap:7px;align-items:center"><span class="dot" style="background:var(--hu-warn)"></span>Pendiente de acción</span>
+<span style="display:flex;gap:7px;align-items:center"><span class="dot" style="background:var(--hu-gray)"></span>Sin cargar o en curso</span>
+</div>
+<div class="kick" style="margin-bottom:10px">Últimos días · buscar por comanda, comprobante, autorización o monto</div>
+<table class="tbl">
+<thead>
+<tr>
+<th rowspan="2" style="vertical-align:bottom">Día</th>
+<th rowspan="2" class="n" style="vertical-align:bottom">Venta</th>
+<th colspan="3" style="text-align:center;background:var(--hu-maroon)">Desglose por forma de pago</th>
+<th rowspan="2" class="n" style="vertical-align:bottom">Conciliado auto</th>
+<th rowspan="2" class="n" style="vertical-align:bottom">Excep.</th>
+<th rowspan="2" class="n" style="vertical-align:bottom">Dif. de caja</th>
+<th rowspan="2" style="vertical-align:bottom">Estado</th>
+<th rowspan="2" style="vertical-align:bottom">Aprobó</th>
+<th rowspan="2" style="vertical-align:bottom">Exportación</th>
+</tr>
+<tr><th class="n">Transbank</th><th class="n">Efectivo</th><th class="n">Mercado Pago</th></tr>
+</thead>
+<tbody>
+<tr><td>03‑09‑2026</td><td class="n">4.918.640</td><td class="n">4.402.180</td><td class="n">448.960</td><td class="n">67.500</td><td class="n">96,4 %</td><td class="n">0</td><td class="n">+$1.200</td><td><span class="pill p-warn">Sin depósito</span></td><td>K. Rojas</td><td>v1 · acuse OK</td></tr>
+<tr><td><strong>02‑09‑2026</strong></td><td class="n"><strong>5.274.235</strong></td><td class="n">4.772.774</td><td class="n">501.461</td><td class="n" style="color:var(--hu-gray)">0</td><td class="n">96,1 %</td><td class="n" style="color:var(--hu-red);font-weight:700">11</td><td class="n" style="color:var(--hu-red);font-weight:700">−$3.800</td><td><span class="pill p-red">Excepciones</span></td><td style="color:var(--hu-gray)">—</td><td style="color:var(--hu-gray)">—</td></tr>
+<tr><td>01‑09‑2026</td><td class="n">5.106.880</td><td class="n">4.552.300</td><td class="n">486.180</td><td class="n">68.400</td><td class="n">95,4 %</td><td class="n">0</td><td class="n">$0</td><td><span class="pill p-ok">Exportado</span></td><td>K. Rojas</td><td>v1 · acuse OK</td></tr>
+<tr><td>31‑08‑2026</td><td class="n">6.842.510</td><td class="n">6.096.310</td><td class="n">664.700</td><td class="n">81.500</td><td class="n">92,8 %</td><td class="n">0</td><td class="n">−$2.400</td><td><span class="pill p-ok">Exportado</span></td><td>K. Rojas</td><td>v2 · reabierto 01‑09</td></tr>
+<tr><td>30‑08‑2026</td><td class="n">7.913.420</td><td class="n">7.058.220</td><td class="n">762.700</td><td class="n">92.500</td><td class="n">91,2 %</td><td class="n">0</td><td class="n">+$5.900</td><td><span class="pill p-ok">Exportado</span></td><td>K. Rojas</td><td>v1 · acuse con obs.</td></tr>
+<tr style="background:var(--hu-pink-2)">
+<td style="font-weight:700;background:var(--hu-pink-2)">Total 5 días</td>
+<td class="n" style="font-weight:700;background:var(--hu-pink-2)">30.055.685</td>
+<td class="n" style="font-weight:700;background:var(--hu-pink-2)">26.881.784</td>
+<td class="n" style="font-weight:700;background:var(--hu-pink-2)">2.864.001</td>
+<td class="n" style="font-weight:700;background:var(--hu-pink-2)">309.900</td>
+<td class="n" style="background:var(--hu-pink-2)">94,3 %</td>
+<td class="n" style="font-weight:700;background:var(--hu-pink-2)">11</td>
+<td class="n" style="font-weight:700;background:var(--hu-pink-2)">+$900</td>
+<td style="background:var(--hu-pink-2)" colspan="3"></td>
+</tr>
+</tbody>
+</table>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.55">Las tres columnas de forma de pago siempre suman la venta del día: son el desglose, no un dato paralelo. Si una no cuadra, el día no puede quedar cerrado. La columna <strong>Transbank</strong> es el monto declarado en el POS como débito + crédito, no lo que cobró el adquirente: la diferencia entre ambos es justamente lo que el motor concilia. <strong>Mercado Pago</strong> es Fase 2 y el 02‑09 llega en cero, igual que TRANSFERENCIAS.</div>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:8px">Cualquier día se abre en modo lectura con su conciliación, sus excepciones y sus decisiones tal como quedaron, más la bitácora completa como anexo descargable.</div>
+</div>
+</div>
+
+<div class="sec">
+<div class="kick" style="margin-bottom:8px">Pantalla 8</div>
+<h2 style="font-size:26px;margin-bottom:18px">Calidad de registro en el POS</h2>
+<div class="frame" style="padding:30px 34px 34px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+<div>
+<div class="kick">Módulo M10 · gestión, no arqueo</div>
+<h2 style="font-size:27px;margin-top:2px">Agosto 2026 · Sala de Ventas</h2>
+<div style="font-size:13px;color:var(--hu-gray);margin-top:4px;max-width:640px">Nada de esta pantalla bloquea un cierre. Existe porque si el POS se registra bien, el volumen de excepciones cae y el arqueo pasa de una hora a diez minutos.</div>
+</div>
+<div style="display:flex;gap:8px;align-items:center;font-size:13px">
+<span style="color:var(--hu-gray)">Período</span>
+<div style="border:1px solid var(--hu-card-line);background:#fff;padding:8px 12px">01‑08‑2026</div>
+<span style="color:var(--hu-gray)">→</span>
+<div style="border:1px solid var(--hu-card-line);background:#fff;padding:8px 12px">31‑08‑2026</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px">
+<div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Conciliado automático</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">93,1 %</div><div style="font-size:12px;color:var(--hu-ok)">+2,4 pts vs julio</div></div>
+<div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Score promedio</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">89</div><div style="font-size:12px;color:var(--hu-gray)">meta interna: 92</div></div>
+<div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Ventas sin autorización</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">24,8 %</div><div style="font-size:12px;color:var(--hu-maroon)">principal causa de excepciones</div></div>
+<div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Medios mal declarados</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">61</div><div style="font-size:12px;color:var(--hu-gray)">$684.900 reclasificados</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.3fr 1fr;gap:24px">
+<div>
+<div class="kick" style="margin-bottom:10px">Por caja</div>
+<table class="tbl">
+<thead><tr><th>Caja</th><th>Turno</th><th class="n">Comandas</th><th class="n">Sin autorización</th><th class="n">Medio mal declarado</th><th class="n">Dif. de caja acum.</th></tr></thead>
+<tbody>
+<tr><td>Caja 4</td><td>TURNO CAJA 4</td><td class="n">3.622</td><td class="n" style="color:var(--hu-red);font-weight:700">41,2 %</td><td class="n" style="color:var(--hu-red);font-weight:700">34</td><td class="n" style="color:var(--hu-red);font-weight:700">−$52.400</td></tr>
+<tr><td>Caja 3</td><td>TURNO CAJA 3</td><td class="n">3.328</td><td class="n">18,4 %</td><td class="n">15</td><td class="n">−$12.100</td></tr>
+<tr><td>Caja 1</td><td>TURNO CAJA 1</td><td class="n">1.991</td><td class="n">14,9 %</td><td class="n">9</td><td class="n" style="color:var(--hu-ok)">+$4.800</td></tr>
+<tr><td>Caja 2</td><td>TURNO CAJA 2</td><td class="n">2.025</td><td class="n">21,0 %</td><td class="n">3</td><td class="n">−$8.500</td></tr>
+</tbody>
+</table>
+<div style="font-size:12px;color:var(--hu-gray);margin-top:8px">La tabla llega hasta la caja y no más allá: el POS entrega TURNO y GARZON/REPARTIDOR, pero el 02‑09 las 336 comandas vienen como «MOSTRADOR», sin identidad de cajero. <strong>Atribuir por persona exige una decisión nueva</strong> — que el POS registre al cajero, o que se cargue la planilla de turnos.</div>
+
+<div class="kick" style="margin:26px 0 10px">Excepciones del mes por tipo</div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">Medio contradictorio</span><span style="flex:1;height:16px;background:var(--hu-label)"><span style="display:block;width:61%;height:16px;background:var(--hu-red)"></span></span><strong style="width:44px;text-align:right;font-size:13px">61</strong></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">Pago sin movimiento</span><span style="flex:1;height:16px;background:var(--hu-label)"><span style="display:block;width:29%;height:16px;background:var(--hu-red)"></span></span><strong style="width:44px;text-align:right;font-size:13px">29</strong></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">Ambigüedad</span><span style="flex:1;height:16px;background:var(--hu-label)"><span style="display:block;width:22%;height:16px;background:var(--hu-red)"></span></span><strong style="width:44px;text-align:right;font-size:13px">22</strong></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">Movimiento sin pago</span><span style="flex:1;height:16px;background:var(--hu-label)"><span style="display:block;width:14%;height:16px;background:var(--hu-red)"></span></span><strong style="width:44px;text-align:right;font-size:13px">14</strong></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">Diferencia de monto</span><span style="flex:1;height:16px;background:var(--hu-label)"><span style="display:block;width:8%;height:16px;background:var(--hu-red)"></span></span><strong style="width:44px;text-align:right;font-size:13px">8</strong></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:190px;font-size:13px">Anulación descalzada</span><span style="flex:1;height:16px;background:var(--hu-label)"><span style="display:block;width:3%;height:16px;background:var(--hu-red)"></span></span><strong style="width:44px;text-align:right;font-size:13px">3</strong></div>
+</div>
+</div>
+<div>
+<div class="kick" style="margin-bottom:10px">Acciones sugeridas</div>
+<div style="background:var(--hu-pink-2);border:1px solid var(--hu-line);padding:18px;margin-bottom:16px">
+<div style="font-size:13.5px;line-height:1.65">
+<div style="padding-bottom:11px;border-bottom:1px solid var(--hu-line);margin-bottom:11px"><strong style="color:var(--hu-maroon)">Caja 4 · captura de autorización.</strong> Es la caja de mayor venta (38 %) y la de peor captura: 41 % de sus comandas sin autorización concentra la mitad de las excepciones del mes.</div>
+<div style="padding-bottom:11px;border-bottom:1px solid var(--hu-line);margin-bottom:11px"><strong style="color:var(--hu-maroon)">Mapa terminal ↔ caja.</strong> Hay 4 terminales y 4 cajas, pero ningún archivo los relaciona. Sin ese mapa el desempate por caja no opera en ninguna excepción del mes.</div>
+<div><strong style="color:var(--hu-maroon)">Reloj del terminal A2885576.</strong> Desfase de +3 a +6 min en 19 de 22 días. Corregir en equipo.</div>
+</div>
+</div>
+<div class="kick" style="margin-bottom:10px">Días con observaciones</div>
+<table class="tbl">
+<thead><tr><th>Día</th><th class="n">Score</th><th>Observación</th></tr></thead>
+<tbody>
+<tr><td>14‑08</td><td class="n" style="color:var(--hu-red);font-weight:700">71</td><td>Carga tardía y 19 excepciones</td></tr>
+<tr><td>21‑08</td><td class="n" style="color:var(--hu-red);font-weight:700">76</td><td>Cartola incompleta del adquirente</td></tr>
+<tr><td>29‑08</td><td class="n" style="color:var(--hu-warn);font-weight:700">83</td><td>Diferencia de caja sobre umbral</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+
+<div class="sec" style="max-width:900px;padding-bottom:60px">
+<div style="border-left:3px solid var(--hu-red);background:var(--hu-pink-2);padding:16px 20px;font-size:13.5px;line-height:1.65">
+<strong style="color:var(--hu-maroon)">Sobre las cifras.</strong> Los movimientos del proveedor, los terminales, las autorizaciones alfanuméricas, la comanda 654747 y su contradicción de medio son reales, tomados de los archivos del 02‑09‑2026. Todo el día 02‑09‑2026 está con cifras <strong>reales</strong>: venta $5.274.235 en 336 comandas y 686 líneas, efectivo declarado $501.461, tarjetas $4.772.774 contra $4.968.393 cobrados por Transbank, las cuatro cajas con su venta y su efectivo, los 31 artículos del catálogo y los cuatro terminales. Lo ilustrativo es solo el <strong>conteo físico de efectivo, el fondo de caja y el depósito</strong> —ningún archivo los contiene— y las series mensuales y anuales, que se proyectaron desde este día porque se entregó uno solo. Con tres o cuatro meses de archivos el tablero se llena con cifras verdaderas sin cambiar una línea de diseño.
+</div>
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1560}}"></script>
+</body>
+</html>
