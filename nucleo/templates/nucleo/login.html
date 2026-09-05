@@ -1,0 +1,33 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block contenido_publico %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center">
+  <div class="card" style="width:360px;padding:32px">
+    <div class="kick" style="margin-bottom:8px">Hacienda Huentelauquén</div>
+    <h2 style="font-size:24px;margin-bottom:22px">Arqueo Diario de Caja</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Usuario</label>
+        {{ form.username }}
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Contraseña</label>
+        {{ form.password }}
+      </div>
+      {% if form.errors %}
+        <div class="mensaje error" style="margin-bottom:14px">Usuario o contraseña incorrectos.</div>
+      {% endif %}
+      <button type="submit" class="btn" style="width:100%;justify-content:center">Entrar</button>
+    </form>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:18px;line-height:1.5">
+      Cuenta de prueba mientras se conecta el inicio de sesión con Google Workspace (Etapa 0, pendiente de configurar).
+    </div>
+  </div>
+</div>
+<style>
+input[type="text"], input[type="password"] {
+  width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:14px;font-family:var(--hu-sans);
+}
+</style>
+{% endblock %}

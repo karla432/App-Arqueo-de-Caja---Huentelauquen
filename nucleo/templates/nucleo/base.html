@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Arqueo Diario{% endblock %} · Hacienda Huentelauquén</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&family=Caladea:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+:root{
+  --hu-red:#ED0035; --hu-maroon:#8C0026; --hu-ink:#222222; --hu-body:#3A3A3A;
+  --hu-gray:#6B6B6B; --hu-pink:#F2DCDB; --hu-pink-2:#FDEAEE; --hu-line:#E4B5BF;
+  --hu-card:#FAFAFA; --hu-card-line:#E8E8E8; --hu-label:#F4F4F4; --hu-white:#FFFFFF;
+  --hu-ok:#1B7A4B; --hu-warn:#B26B00;
+  --hu-serif:Caladea,Cambria,Georgia,serif;
+  --hu-sans:Carlito,Calibri,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#EDEDED;font-family:var(--hu-sans);color:var(--hu-body);font-size:13.5px}
+a{color:var(--hu-red);text-decoration:none}
+a:hover{color:var(--hu-maroon);text-decoration:underline}
+h1,h2,h3,h4{font-family:var(--hu-serif);color:var(--hu-maroon);margin:0}
+.kick{font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--hu-red)}
+.badge{display:inline-block;background:var(--hu-white);border:1px solid var(--hu-card-line);font-size:11px;font-weight:700;letter-spacing:1px;padding:3px 8px;color:var(--hu-gray)}
+.card{background:var(--hu-card);border:1px solid var(--hu-card-line)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:var(--hu-red);color:#fff;text-align:left;font-weight:700;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;padding:8px 10px;border:1px solid var(--hu-line)}
+.tbl td{padding:8px 10px;border:1px solid var(--hu-line);background:#fff}
+.tbl tr:nth-child(even) td{background:#FCFAFA}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--hu-sans);font-size:14px;font-weight:700;padding:10px 18px;border:1px solid var(--hu-red);background:var(--hu-red);color:#fff;cursor:pointer;border-radius:0}
+.btn:hover{background:var(--hu-maroon);border-color:var(--hu-maroon);color:#fff;text-decoration:none}
+.btn-2{background:#fff;color:var(--hu-red)}
+.btn-2:hover{background:var(--hu-pink-2);color:var(--hu-maroon)}
+.btn-off{background:#F2F2F2;border-color:var(--hu-card-line);color:#A8A8A8;cursor:not-allowed}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.4px;padding:3px 9px;border-radius:999px}
+.p-red{background:var(--hu-pink-2);color:var(--hu-maroon);border:1px solid var(--hu-line)}
+.p-ok{background:#E9F5EE;color:var(--hu-ok);border:1px solid #BFE0CC}
+.p-warn{background:#FDF3E3;color:var(--hu-warn);border:1px solid #EAD6AE}
+.p-grey{background:var(--hu-label);color:var(--hu-gray);border:1px solid var(--hu-card-line)}
+.nav-i{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;color:#E8C9CF;text-decoration:none}
+.nav-i:hover{background:#7A0021;color:#fff;text-decoration:none}
+.nav-on{background:#7A0021;color:#fff;border-left:3px solid var(--hu-red);font-weight:700}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:244px;background:var(--hu-maroon);flex-shrink:0;padding:24px 0}
+.contenido{flex:1;min-width:0}
+.mensajes{padding:0 32px}
+.mensaje{padding:10px 14px;margin:10px 0;border-left:3px solid var(--hu-ok);background:#E9F5EE;font-size:13px}
+.mensaje.error{border-color:var(--hu-red);background:var(--hu-pink-2)}
+form.inline{display:inline}
+</style>
+{% block estilos_extra %}{% endblock %}
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="layout">
+  <div class="sidebar">
+    <div style="padding:0 20px 26px">
+      <div style="font-family:var(--hu-serif);font-size:17px;color:#fff;font-weight:700;line-height:1.25">Hacienda<br>Huentelauquén</div>
+      <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#D9A3AD;margin-top:6px">Arqueo diario</div>
+    </div>
+    <a class="nav-i" href="#">Ventas · mensual y anual</a>
+    <a class="nav-i" href="#">Dashboard del día</a>
+    <a class="nav-i" href="#">Carga de archivos</a>
+    <a class="nav-i nav-on" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>
+    <a class="nav-i" href="#">Arqueo de efectivo</a>
+    <a class="nav-i" href="#">Cierre y exportación</a>
+    <a class="nav-i" href="#">Histórico</a>
+    <a class="nav-i" href="#">Calidad de registro</a>
+    <div style="margin-top:32px;padding:16px 20px 0;border-top:1px solid #7A0021">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:6px">Sesión</div>
+      <div style="font-size:13px;color:#fff">{{ user.get_full_name|default:user.username }}</div>
+      <form method="post" action="{% url 'logout' %}" style="margin-top:8px">
+        {% csrf_token %}
+        <button type="submit" style="background:none;border:none;color:#E8C9CF;font-size:12px;cursor:pointer;padding:0;text-decoration:underline">Cerrar sesión</button>
+      </form>
+    </div>
+  </div>
+  <div class="contenido">
+    {% if messages %}
+    <div class="mensajes">
+      {% for m in messages %}<div class="mensaje {{ m.tags }}">{{ m }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+  </div>
+</div>
+{% else %}
+  {% if messages %}
+  <div class="mensajes" style="padding:20px">
+    {% for m in messages %}<div class="mensaje {{ m.tags }}">{{ m }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  {% block contenido_publico %}{% endblock %}
+{% endif %}
+</body>
+</html>

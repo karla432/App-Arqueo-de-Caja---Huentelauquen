@@ -108,6 +108,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = '/excepciones/2026-09-02/'
+
 LANGUAGE_CODE = 'es-cl'
 
 TIME_ZONE = 'America/Santiago'

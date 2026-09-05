@@ -1,0 +1,125 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Excepciones · {{ dia.fecha }}{% endblock %}
+{% block contenido %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 30px;background:var(--hu-maroon)">
+  <div>
+    <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Arqueo {{ dia.fecha }} · excepciones</div>
+    <div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">{{ excepciones.count }} abiertas · ${{ monto_total_en_juego|floatformat:0 }} en juego</div>
+  </div>
+  <form method="post" action="{% url 'reconciliar_dia' fecha=dia.fecha|date:'Y-m-d' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-2">Reconciliar</button>
+  </form>
+</div>
+
+<div style="display:flex;gap:10px;padding:14px 30px;border-bottom:1px solid var(--hu-card-line);font-size:13px;align-items:center;background:#fff">
+  <span style="color:var(--hu-gray)">Filtrar:</span>
+  <a class="pill {% if not tipo_filtro %}p-red{% else %}p-grey{% endif %}" href="?">Todos · {{ total_abiertas }}</a>
+  {% for valor, etiqueta, conteo in tipos_con_conteo %}
+    <a class="pill {% if tipo_filtro == valor %}p-red{% else %}p-grey{% endif %}" href="?tipo={{ valor }}">{{ etiqueta }} · {{ conteo }}</a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;min-height:600px;background:#fff">
+  <div style="width:410px;border-right:1px solid var(--hu-card-line);flex-shrink:0;overflow-y:auto">
+    {% for e in excepciones %}
+    <a href="?{% if tipo_filtro %}tipo={{ tipo_filtro }}&{% endif %}ver={{ e.pk }}"
+       style="display:block;padding:14px 20px;border-bottom:1px solid var(--hu-card-line);color:inherit;text-decoration:none;{% if excepcion_actual.pk == e.pk %}background:var(--hu-pink-2);border-left:3px solid var(--hu-red);{% endif %}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span class="pill p-red">{{ e.get_tipo_display }}</span>
+        <strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">${{ e.monto_en_juego|floatformat:0 }}</strong>
+      </div>
+      <div style="font-size:13px;margin-top:7px;line-height:1.5">
+        {% if e.pago %}Comanda <strong>{{ e.pago.venta.n_interno }}</strong> · {{ e.pago.venta.caja }}{% endif %}
+        {% if e.movimiento %}{% if e.pago %} ↔ {% endif %}Movimiento {{ e.movimiento.fecha_hora|date:"H:i" }}{% endif %}
+      </div>
+    </a>
+    {% empty %}
+    <div style="padding:30px;color:var(--hu-gray);text-align:center">Sin excepciones abiertas para este filtro.</div>
+    {% endfor %}
+  </div>
+
+  <div style="flex:1;min-width:0;padding:24px 30px">
+    {% if excepcion_actual %}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+      <div>
+        <div class="kick">{{ excepcion_actual.get_tipo_display }}</div>
+        <h3 style="font-size:24px;margin-top:3px">${{ excepcion_actual.monto_en_juego|floatformat:0 }}</h3>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px">
+      <div class="card" style="padding:16px 18px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:10px">Lado POS</div>
+        {% if excepcion_actual.pago %}
+        <div style="font-size:13.5px;line-height:2">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Comanda</span><strong>{{ excepcion_actual.pago.venta.n_interno }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Caja</span><strong>{{ excepcion_actual.pago.venta.caja }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Hora de cierre</span><strong>{{ excepcion_actual.pago.venta.hora_cierre|default:excepcion_actual.pago.venta.hora_apertura }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Medio declarado</span><strong>{{ excepcion_actual.pago.get_medio_display }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Monto</span><strong>${{ excepcion_actual.pago.monto|floatformat:0 }}</strong></div>
+        </div>
+        {% else %}
+        <div style="color:var(--hu-gray);font-size:13px">Sin comanda del POS que respalde este movimiento.</div>
+        {% endif %}
+      </div>
+      <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:10px">Lado proveedor</div>
+        {% if excepcion_actual.movimiento %}
+        <div style="font-size:13.5px;line-height:2;color:var(--hu-maroon)">
+          <div style="display:flex;justify-content:space-between"><span>Hora</span><strong>{{ excepcion_actual.movimiento.fecha_hora|date:"H:i" }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Medio</span><strong>{{ excepcion_actual.movimiento.medio }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Monto</span><strong>${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Terminal</span><strong>{{ excepcion_actual.movimiento.terminal }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Autorización</span><strong>{{ excepcion_actual.movimiento.autorizacion|default:"—" }}</strong></div>
+        </div>
+        {% else %}
+        <div style="color:var(--hu-maroon);font-size:13px">Sin cobro del proveedor para esta comanda.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if excepcion_actual.decision_propuesta %}
+    <div style="background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:14px 18px;margin-bottom:20px;font-size:13.5px;line-height:1.6">
+      <strong style="color:var(--hu-maroon)">Decisión propuesta:</strong> {{ excepcion_actual.decision_propuesta }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'resolver_excepcion' excepcion_id=excepcion_actual.pk %}">
+      {% csrf_token %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+        <div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Motivo · obligatorio</div>
+          <select name="motivo_id" required style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans)">
+            <option value="">Selecciona un motivo…</option>
+            {% for m in motivos %}<option value="{{ m.pk }}">{{ m.texto }}</option>{% endfor %}
+          </select>
+          <textarea name="comentario" placeholder="Comentario opcional para la bitácora…" style="width:100%;margin-top:10px;padding:10px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans);min-height:70px"></textarea>
+          {% if excepcion_actual.tipo == "pago_sin_movimiento" and movimientos_libres %}
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin:14px 0 8px">Vincular con otro movimiento</div>
+          <select name="movimiento_alternativo" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans)">
+            <option value="">— ninguno —</option>
+            {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
+          </select>
+          {% endif %}
+        </div>
+        <div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Resolución</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            {% if excepcion_actual.pago and excepcion_actual.movimiento %}
+            <button type="submit" name="resolucion" value="aceptar" class="btn" style="justify-content:center">Aceptar</button>
+            <button type="submit" name="resolucion" value="rechazar" class="btn btn-2" style="justify-content:center">Rechazar</button>
+            {% endif %}
+            <button type="submit" name="resolucion" value="vincular_otro" class="btn btn-2" style="justify-content:center">Vincular otro movimiento…</button>
+          </div>
+          <div style="font-size:12px;color:var(--hu-gray);margin-top:12px;line-height:1.55">Queda en bitácora: usuario, hora y motivo. El dato original no se modifica.</div>
+        </div>
+      </div>
+    </form>
+    {% else %}
+    <div style="color:var(--hu-gray);text-align:center;padding:60px 0">Selecciona una excepción de la lista, o no queda ninguna abierta con este filtro.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
