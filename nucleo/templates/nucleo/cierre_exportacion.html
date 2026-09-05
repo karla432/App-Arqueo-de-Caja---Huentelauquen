@@ -1,0 +1,103 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Cierre y exportación · {{ dia.fecha }}{% endblock %}
+{% block contenido %}
+
+<div style="padding:20px 32px;background:var(--hu-maroon);display:flex;justify-content:space-between;align-items:center">
+  <div>
+    <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Cierre del día · {{ dia.fecha }}</div>
+    <div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">
+      {% if dia.estado == "exportado" %}Exportado
+      {% elif dia.estado == "cerrado" %}Cerrado, listo para exportar
+      {% elif puede_aprobar %}Listo para aprobar
+      {% else %}Pendiente{% endif %}
+    </div>
+  </div>
+  <div style="text-align:right;font-size:12.5px;color:#E8C9CF;line-height:1.5">
+    {% if dia.operado_por %}Operó: {{ dia.operado_por.get_full_name|default:dia.operado_por.username }}<br>{% endif %}
+    {% if dia.aprobado_por %}Aprueba: {{ dia.aprobado_por.get_full_name|default:dia.aprobado_por.username }}{% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1.25fr;gap:0">
+  <div style="padding:26px 30px;border-right:1px solid var(--hu-card-line)">
+    <div class="kick" style="margin-bottom:12px">Verificación previa</div>
+    <div style="font-size:13.5px;line-height:1.55">
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
+        <span style="color:{% if checklist.sin_excepciones_bloqueantes.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.sin_excepciones_bloqueantes.ok %}✓{% else %}✗{% endif %}</span>
+        <span>Cero excepciones bloqueantes abiertas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.sin_excepciones_bloqueantes.detalle }}</span></span>
+      </div>
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
+        <span style="color:{% if checklist.arqueo_completo.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.arqueo_completo.ok %}✓{% else %}✗{% endif %}</span>
+        <span>Arqueo registrado en todas las cajas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.arqueo_completo.detalle }}</span></span>
+      </div>
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
+        <span style="color:{% if checklist.diferencias_autorizadas.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.diferencias_autorizadas.ok %}✓{% else %}✗{% endif %}</span>
+        <span>Diferencias de caja autorizadas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.diferencias_autorizadas.detalle }}</span></span>
+      </div>
+      <div style="display:flex;gap:10px;padding:10px 0">
+        <span style="color:var(--hu-warn);font-weight:700">{% if checklist.deposito_registrado.ok %}✓{% else %}!{% endif %}</span>
+        <span>Depósito bancario<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.deposito_registrado.detalle }}</span></span>
+      </div>
+    </div>
+
+    <div style="background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:13px 16px;margin-top:18px;font-size:13px;line-height:1.6">Al aprobar, el día queda bloqueado. Reabrirlo exige motivo, queda en bitácora e <strong>invalida la exportación</strong>: habrá que generar una versión nueva.</div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+      {% if dia.estado == "aprobado" or dia.estado == "cerrado" or dia.estado == "exportado" %}
+      <form method="post" action="{% url 'reabrir_dia' fecha=dia.fecha|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <input type="text" name="motivo" placeholder="Motivo de la reapertura…" required style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);margin-bottom:8px">
+        <button type="submit" class="btn btn-2" style="width:100%;justify-content:center">Reabrir día</button>
+      </form>
+      {% else %}
+        {% if not puede_aprobar_rol %}
+        <div style="font-size:12.5px;color:var(--hu-maroon)">Tu usuario no tiene rol de aprobador.</div>
+        {% endif %}
+        <form method="post" action="{% url 'aprobar_dia' fecha=dia.fecha|date:'Y-m-d' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="width:100%;justify-content:center" {% if not puede_aprobar or not puede_aprobar_rol %}disabled title="Resuelve la lista de verificación primero"{% endif %}>Aprobar y cerrar el día</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="padding:26px 30px">
+    <div class="kick" style="margin-bottom:12px">Archivo para Odoo</div>
+    <table class="tbl" style="margin-bottom:14px">
+      <thead><tr><th>Campo Odoo</th><th>Origen</th><th>Ejemplo</th></tr></thead>
+      <tbody>
+        <tr><td>ID de pago externo</td><td>N_INTERNO</td><td>654747</td></tr>
+        <tr><td>N° de documento externo</td><td>7 últimos del comprobante</td><td>1666467</td></tr>
+        <tr><td>Tipo de documento externo</td><td>Tipo POS · TIPO_DOC</td><td>Boleta Electrónica</td></tr>
+        <tr><td>Tipo de pago externo</td><td>Medio aprobado</td><td>Tarjeta Transbank</td></tr>
+        <tr><td>Cliente</td><td>Genérico de sala (D5)</td><td>CLIENTE OCASIONAL</td></tr>
+      </tbody>
+    </table>
+
+    <form method="post" action="{% url 'generar_exportacion' fecha=dia.fecha|date:'Y-m-d' %}" style="margin-bottom:20px">
+      {% csrf_token %}
+      <button type="submit" class="btn" style="width:100%;justify-content:center" {% if not puede_exportar or not puede_aprobar_rol %}disabled title="El día debe estar aprobado o cerrado"{% endif %}>
+        Generar versión {{ exportaciones.count|add:1 }}
+      </button>
+    </form>
+    <div style="font-size:12px;color:var(--hu-gray);margin-bottom:20px">Habilitado una vez aprobado el día. Solo días aprobados o cerrados pueden exportarse.</div>
+
+    <div class="kick" style="margin-bottom:10px">Historial y acuse</div>
+    <table class="tbl">
+      <thead><tr><th>Versión</th><th>Generada</th><th>Por</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for e in exportaciones %}
+        <tr{% if e.invalidada %} style="opacity:.55"{% endif %}>
+          <td>v{{ e.version }}{% if e.invalidada %} · invalidada{% endif %}</td>
+          <td>{{ e.generado_en|date:"d-m-Y H:i" }}</td>
+          <td>{{ e.generado_por.get_full_name|default:e.generado_por.username }}</td>
+          <td>{{ e.get_acuse_estado_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="color:var(--hu-gray);text-align:center;padding:14px">Sin exportaciones. El acuse cierra el ciclo: sin él, no hay constancia de que la contabilidad recibió el día.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

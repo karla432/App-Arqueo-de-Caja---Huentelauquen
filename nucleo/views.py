@@ -10,7 +10,9 @@ from nucleo.arqueo_servicio import (
     DENOMINACIONES_CLP, AutorizacionInvalida, ConteoInvalido, autorizar_diferencia,
     preparar_arqueos_del_dia, registrar_conteo,
 )
+from nucleo.cierre_servicio import CierreInvalido, aprobar_y_cerrar_dia, estado_checklist, puede_aprobar, reabrir_dia
 from nucleo.conciliacion_servicio import ejecutar_conciliacion
+from nucleo.exportacion_servicio import ExportacionInvalida, generar_exportacion
 from nucleo.models import ArqueoEfectivo, DiaArqueo, Excepcion, MotivoResolucion, MovimientoProveedor
 from nucleo.resolucion_servicio import ResolucionInvalida, resolver_excepcion
 
@@ -220,3 +222,58 @@ def registrar_deposito_view(request, fecha):
     except (InvalidOperation, ValueError) as exc:
         messages.error(request, f"No se pudo registrar el depósito: {exc}")
     return redirect(f"/arqueo/{fecha}/")
+
+
+@login_required
+def cierre_y_exportacion(request, fecha):
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    contexto = {
+        "dia": dia,
+        "checklist": estado_checklist(dia),
+        "puede_aprobar": puede_aprobar(dia) and dia.estado not in (
+            DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO,
+        ),
+        "puede_exportar": dia.estado in (DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO),
+        "puede_aprobar_rol": request.user.is_superuser,
+        "exportaciones": dia.exportaciones.order_by("-version"),
+    }
+    return render(request, "nucleo/cierre_exportacion.html", contexto)
+
+
+@login_required
+@es_aprobador
+@require_POST
+def aprobar_dia_view(request, fecha):
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    try:
+        aprobar_y_cerrar_dia(dia, request.user)
+        messages.success(request, "Día aprobado y cerrado.")
+    except CierreInvalido as exc:
+        messages.error(request, str(exc))
+    return redirect("cierre_y_exportacion", fecha=fecha)
+
+
+@login_required
+@es_aprobador
+@require_POST
+def reabrir_dia_view(request, fecha):
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    try:
+        reabrir_dia(dia, request.user, request.POST.get("motivo", ""))
+        messages.success(request, "Día reabierto. La exportación previa quedó invalidada.")
+    except CierreInvalido as exc:
+        messages.error(request, str(exc))
+    return redirect("cierre_y_exportacion", fecha=fecha)
+
+
+@login_required
+@es_aprobador
+@require_POST
+def generar_exportacion_view(request, fecha):
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    try:
+        exportacion = generar_exportacion(dia, request.user)
+        messages.success(request, f"Exportación v{exportacion.version} generada.")
+    except ExportacionInvalida as exc:
+        messages.error(request, str(exc))
+    return redirect("cierre_y_exportacion", fecha=fecha)

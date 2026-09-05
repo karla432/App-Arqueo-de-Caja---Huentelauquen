@@ -10,4 +10,8 @@ urlpatterns = [
     path("arqueo/conteo/<int:arqueo_id>/", views.registrar_conteo_view, name="registrar_conteo"),
     path("arqueo/autorizar/<int:arqueo_id>/", views.autorizar_diferencia_view, name="autorizar_diferencia"),
     path("arqueo/<str:fecha>/deposito/", views.registrar_deposito_view, name="registrar_deposito"),
+    path("cierre/<str:fecha>/", views.cierre_y_exportacion, name="cierre_y_exportacion"),
+    path("cierre/<str:fecha>/aprobar/", views.aprobar_dia_view, name="aprobar_dia"),
+    path("cierre/<str:fecha>/reabrir/", views.reabrir_dia_view, name="reabrir_dia"),
+    path("cierre/<str:fecha>/exportar/", views.generar_exportacion_view, name="generar_exportacion"),
 ]
