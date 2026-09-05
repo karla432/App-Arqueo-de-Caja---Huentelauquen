@@ -59,7 +59,7 @@ form.inline{display:inline}
       <div style="font-family:var(--hu-serif);font-size:17px;color:#fff;font-weight:700;line-height:1.25">Hacienda<br>Huentelauquén</div>
       <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#D9A3AD;margin-top:6px">Arqueo diario</div>
     </div>
-    <a class="nav-i" href="#">Ventas · mensual y anual</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'ventas_dashboard' %} nav-on{% endif %}" href="{% url 'ventas_dashboard' %}">Ventas · mensual y anual</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'dashboard_dia' %} nav-on{% endif %}" href="{% url 'dashboard_dia' fecha='2026-09-02' %}">Dashboard del día</a>
     <a class="nav-i" href="#">Carga de archivos</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>

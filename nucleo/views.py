@@ -18,6 +18,7 @@ from nucleo.historico_servicio import buscar_transversal, calendario_mes, resume
 from nucleo.calidad_servicio import resumen_calidad
 from nucleo.models import ArqueoEfectivo, DiaArqueo, Excepcion, MotivoResolucion, MovimientoProveedor
 from nucleo.resolucion_servicio import ResolucionInvalida, resolver_excepcion
+from nucleo.ventas_dashboard_servicio import rango_del_atajo, resumen_periodo
 
 # Mientras no exista el Mantenedor de usuarios y roles (D10 solo define
 # QUIÉNES son Karla, el Jefe de Contabilidad y el Sub Gerente — no CÓMO
@@ -323,3 +324,25 @@ def calidad_registro(request):
     contexto["fecha_desde"] = fecha_desde
     contexto["fecha_hasta"] = fecha_hasta
     return render(request, "nucleo/calidad_registro.html", contexto)
+
+
+@login_required
+def ventas_dashboard(request):
+    atajo = request.GET.get("atajo", "mes")
+    if atajo == "personalizado" and request.GET.get("desde") and request.GET.get("hasta"):
+        desde = date.fromisoformat(request.GET["desde"])
+        hasta = date.fromisoformat(request.GET["hasta"])
+    else:
+        desde, hasta = rango_del_atajo(atajo)
+
+    contexto = resumen_periodo(desde, hasta)
+    contexto["atajo"] = atajo
+    contexto["atajos"] = [
+        ("mes", "Mes"), ("trimestre", "Trimestre"), ("anio_en_curso", "Año en curso"),
+        ("12_meses", "12 meses"), ("personalizado", "Personalizado"),
+    ]
+    contexto["max_mes"] = max([m for _, m in contexto["por_mes"]], default=0) or 1
+    contexto["max_dia"] = max([m for _, m in contexto["por_dia"]], default=0) or 1
+    contexto["max_hora"] = max([m for _, m in contexto["por_hora"]], default=0) or 1
+    contexto["total_excluido"] = sum(de["monto_provisorio"] for de in contexto["dias_excluidos"])
+    return render(request, "nucleo/ventas_dashboard.html", contexto)

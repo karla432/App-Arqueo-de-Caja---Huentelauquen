@@ -1,0 +1,157 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Ventas · mensual y anual{% endblock %}
+{% block contenido %}
+
+<div style="padding:20px 32px;background:var(--hu-maroon)">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Ventas · Sala de Ventas</div>
+      <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:#fff;margin-top:2px">{{ desde|date:"d-m-Y" }} al {{ hasta|date:"d-m-Y" }}</div>
+      <div style="font-size:12.5px;color:#E8C9CF;margin-top:3px">{{ control.dias_operados }} días operados · datos de días cerrados y aprobados</div>
+    </div>
+    <form method="get" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:5px">Desde</div>
+        <input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}" style="padding:9px 14px;border:1px solid var(--hu-line);font-size:13px">
+      </div>
+      <div>
+        <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:5px">Hasta</div>
+        <input type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}" style="padding:9px 14px;border:1px solid var(--hu-line);font-size:13px">
+      </div>
+      <input type="hidden" name="atajo" value="personalizado">
+      <button type="submit" class="btn" style="padding:10px 16px">Aplicar</button>
+    </form>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
+    {% for valor, etiqueta in atajos %}
+    <a href="?atajo={{ valor }}" style="font-size:11.5px;padding:4px 10px;text-decoration:none;background:{% if atajo == valor %}var(--hu-red){% else %}#7A0021{% endif %};color:{% if atajo == valor %}#fff{% else %}#E8C9CF{% endif %};font-weight:700">{{ etiqueta }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div style="padding:24px 32px 0;display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+  <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Venta neta del período</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.venta_neta.valor|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-maroon);margin-top:2px">{% if kpis.venta_neta.variacion_pct is not None %}{{ kpis.venta_neta.variacion_pct|floatformat:1 }}% vs año anterior{% else %}sin datos del año anterior{% endif %}</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Comandas</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ kpis.comandas.valor }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.comandas.variacion_pct is not None %}{{ kpis.comandas.variacion_pct|floatformat:1 }}% vs año anterior{% else %}sin datos del año anterior{% endif %}</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Ticket promedio</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.ticket_promedio.valor|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.ticket_promedio.variacion_pct is not None %}{{ kpis.ticket_promedio.variacion_pct|floatformat:1 }}% vs año anterior{% else %}sin datos del año anterior{% endif %}</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Venta diaria promedio</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.venta_diaria_promedio.valor|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">sobre días cerrados</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Unidades vendidas</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ kpis.unidades.valor|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.comandas.valor %}{{ kpis.unidades.valor|floatformat:2 }} / comanda{% endif %}</div>
+  </div>
+</div>
+
+<div style="padding:26px 32px 0">
+  <div class="kick" style="margin-bottom:14px">Venta por mes en el período</div>
+  {% if por_mes %}
+  <div style="display:flex;gap:10px;align-items:flex-end;height:160px;border-bottom:1px solid var(--hu-line)">
+    {% for mes, monto in por_mes %}
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+      <div style="width:100%;background:var(--hu-red);height:{% widthratio monto max_mes 100 %}%"></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div style="display:flex;gap:10px;margin-top:6px;font-size:11.5px;color:var(--hu-gray);text-align:center">
+    {% for mes, monto in por_mes %}<span style="flex:1">{{ mes }}</span>{% endfor %}
+  </div>
+  {% else %}
+  <div style="color:var(--hu-gray);font-size:13px;padding:20px 0">Sin días cerrados en el período — nada que graficar todavía.</div>
+  {% endif %}
+</div>
+
+<div style="padding:28px 32px 0;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:26px">
+  <div>
+    <div class="kick" style="margin-bottom:12px">Venta por día del período</div>
+    {% if por_dia %}
+    <div style="display:flex;gap:2px;align-items:flex-end;height:110px;border-bottom:1px solid var(--hu-line)">
+      {% for fecha, monto in por_dia %}<span style="flex:1;background:var(--hu-red);height:{% widthratio monto max_dia 100 %}%" title="{{ fecha }}: ${{ monto|floatformat:0 }}"></span>{% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--hu-gray);font-size:13px">Sin días cerrados todavía.</div>
+    {% endif %}
+
+    <div class="kick" style="margin:24px 0 10px">Concentración horaria</div>
+    {% if por_hora %}
+    <div style="display:flex;gap:3px;align-items:flex-end;height:70px;border-bottom:1px solid var(--hu-line)">
+      {% for hora, monto in por_hora %}<span style="flex:1;background:var(--hu-pink);height:{% widthratio monto max_hora 100 %}%" title="{{ hora }}h"></span>{% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--hu-gray);font-size:13px">Sin datos.</div>
+    {% endif %}
+  </div>
+  <div>
+    <div class="kick" style="margin-bottom:12px">Mix de medios de pago</div>
+    <table class="tbl">
+      <thead><tr><th>Medio</th><th class="n">Monto</th></tr></thead>
+      <tbody>
+        {% for medio, monto in mix_medios.items %}
+        <tr><td style="text-transform:capitalize">{{ medio }}</td><td class="n">{{ monto|floatformat:0 }}</td></tr>
+        {% empty %}
+        <tr><td colspan="2" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="kick" style="margin:24px 0 10px">Venta por caja</div>
+    <table class="tbl">
+      <thead><tr><th>Caja</th><th class="n">Venta</th><th class="n">Comandas</th></tr></thead>
+      <tbody>
+        {% for caja, datos in por_caja %}
+        <tr><td>{{ caja }}</td><td class="n">{{ datos.venta|floatformat:0 }}</td><td class="n">{{ datos.comandas }}</td></tr>
+        {% empty %}
+        <tr><td colspan="3" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <div class="kick" style="margin-bottom:12px">Top 8 productos del período</div>
+    <table class="tbl">
+      <thead><tr><th>Producto</th><th class="n">Unid.</th><th class="n">% acum.</th></tr></thead>
+      <tbody>
+        {% for p in top_productos %}
+        <tr><td>{{ p.nombre }}</td><td class="n">{{ p.unidades|floatformat:0 }}</td><td class="n">{{ p.pct_acumulado|floatformat:1 }}</td></tr>
+        {% empty %}
+        <tr><td colspan="3" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="kick" style="margin:24px 0 10px">Control del período</div>
+    <div class="card" style="padding:14px 16px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Días cerrados sin diferencia</span><strong>{{ control.dias_cerrados_sin_diferencia }} de {{ control.dias_operados }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Con diferencia autorizada</span><strong>{{ control.dias_con_diferencia_autorizada }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Diferencia de caja acumulada</span><strong>{{ control.diferencia_acumulada|floatformat:0 }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--hu-gray)">Días de cierre a aprobación</span><strong>{% if control.dias_cierre_a_aprobacion_promedio %}{{ control.dias_cierre_a_aprobacion_promedio|floatformat:1 }}{% else %}—{% endif %}</strong></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin:28px 32px 32px;padding:16px 20px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);font-size:13.5px;line-height:1.6">
+  <strong style="color:var(--hu-maroon)">Regla de la fuente única.</strong> El tablero solo suma días en estado <em>Cerrado</em> o <em>Exportado</em>. Un día con excepciones abiertas no entra en la venta del período.
+  {% if dias_excluidos %}
+  Se excluyen {{ dias_excluidos|length }} día(s) por un total provisorio de ${{ total_excluido|floatformat:0 }}:
+  <ul style="margin:8px 0 0">
+    {% for de in dias_excluidos %}
+    <li><a href="{% url 'dashboard_dia' fecha=de.dia.fecha|date:'Y-m-d' %}">{{ de.dia.fecha }}</a> — {{ de.dia.get_estado_display }} · ${{ de.monto_provisorio|floatformat:0 }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  No hay días excluidos en este período.
+  {% endif %}
+</div>
+{% endblock %}

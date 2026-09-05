@@ -109,7 +109,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = '/excepciones/2026-09-02/'
+LOGIN_REDIRECT_URL = '/'
 
 LANGUAGE_CODE = 'es-cl'
 
