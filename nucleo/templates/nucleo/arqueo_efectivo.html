@@ -1,0 +1,161 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Arqueo de efectivo · {{ dia.fecha }}{% endblock %}
+{% block contenido %}
+
+<div style="padding:30px 34px 0">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px">
+    <div>
+      <div class="kick">Arqueo {{ dia.fecha }}</div>
+      <h2 style="font-size:27px;margin-top:2px">Efectivo por caja</h2>
+    </div>
+    {% if not consolidado.todas_contadas %}
+    <span class="pill p-warn" style="font-size:12px;padding:6px 12px">Faltan cajas por contar</span>
+    {% else %}
+    <span class="pill p-ok" style="font-size:12px;padding:6px 12px">Todas las cajas contadas</span>
+    {% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
+    <div class="card" style="padding:16px 18px">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Efectivo teórico</div>
+      <div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">${{ consolidado.teorico|floatformat:0 }}</div>
+      <div style="font-size:12px;color:var(--hu-gray)">calculado del POS, no editable</div>
+    </div>
+    <div class="card" style="padding:16px 18px">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Ajustes aprobados</div>
+      <div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">${{ consolidado.ajustes|floatformat:0 }}</div>
+      <div style="font-size:12px;color:var(--hu-gray)">desde reclasificaciones de la conciliación</div>
+    </div>
+    <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Efectivo esperado</div>
+      <div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">${{ consolidado.esperado|floatformat:0 }}</div>
+      <div style="font-size:12px;color:var(--hu-maroon)">teórico ± ajustes</div>
+    </div>
+  </div>
+
+  <table class="tbl" style="margin-bottom:10px">
+    <thead><tr><th>Caja</th><th class="n">Esperado</th><th class="n">Fondo inicial</th><th class="n">Gastos autorizados</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+      {% for a in arqueos %}
+      <tr{% if arqueo_actual.pk == a.pk %} style="outline:2px solid var(--hu-red);outline-offset:-2px"{% endif %}>
+        <td><a href="?caja={{ a.pk }}"><strong>{{ a.caja }}</strong></a></td>
+        <td class="n">{{ a.esperado|floatformat:0 }}</td>
+        <td class="n">{{ a.fondo_inicial|floatformat:0 }}</td>
+        <td class="n">{{ a.gastos_autorizados|floatformat:0 }}</td>
+        <td class="n">{% if a.contado is not None %}{{ a.contado|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">por registrar</span>{% endif %}</td>
+        <td class="n">{% if a.diferencia is not None %}{{ a.diferencia|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
+        <td>
+          {% if a.estado == "pendiente" %}<span class="pill p-grey">Pendiente</span>
+          {% elif a.estado == "cuadrada" %}<span class="pill p-ok">Cuadrada</span>
+          {% elif a.estado == "dentro_de_umbral" %}<span class="pill p-warn">Dentro de umbral</span>
+          {% elif a.estado == "requiere_autorizacion" %}<span class="pill p-red">Requiere autorización</span>
+          {% else %}<span class="pill p-ok">Autorizada</span>{% endif %}
+        </td>
+        <td><a href="?caja={{ a.pk }}">{% if a.contado is None %}Contar{% else %}Editar{% endif %}</a></td>
+      </tr>
+      {% endfor %}
+      <tr style="background:var(--hu-pink-2)">
+        <td style="font-weight:700;background:var(--hu-pink-2)">Consolidado del día</td>
+        <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.esperado|floatformat:0 }}</td>
+        <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.fondo_inicial|floatformat:0 }}</td>
+        <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.gastos_autorizados|floatformat:0 }}</td>
+        <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.contado|floatformat:0 }}</td>
+        <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.diferencia|floatformat:0 }}</td>
+        <td colspan="2" style="background:var(--hu-pink-2)">{% if not consolidado.todas_contadas %}<span class="pill p-red">Incompleto</span>{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="font-size:12px;color:var(--hu-gray);margin-bottom:28px">El umbral es $5.000 por caja. El arqueo se controla por caja, no solo consolidado: un total en cero puede esconder un sobrante y un faltante en cajas distintas.</div>
+
+  {% if arqueo_actual %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:30px">
+    <div>
+      <div class="kick" style="margin-bottom:10px">Registrar conteo · {{ arqueo_actual.caja }}</div>
+      <form method="post" action="{% url 'registrar_conteo' arqueo_id=arqueo_actual.pk %}" class="card" style="padding:18px">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fondo inicial</label>
+            <input type="number" name="fondo_inicial" value="{{ arqueo_actual.fondo_inicial|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Gastos autorizados</label>
+            <input type="number" name="gastos_autorizados" value="{{ arqueo_actual.gastos_autorizados|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+          </div>
+        </div>
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Conteo por denominación</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+          {% for d, cantidad in denominaciones_form %}
+          <div>
+            <label style="display:block;font-size:12px;color:var(--hu-gray);margin-bottom:4px">${{ d }}</label>
+            <input type="number" min="0" name="denom_{{ d }}" value="{{ cantidad }}"
+                   placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn" style="width:100%;justify-content:center">Guardar conteo</button>
+      </form>
+    </div>
+
+    <div>
+      {% if arqueo_actual.diferencia is not None and arqueo_actual.estado == "requiere_autorizacion" %}
+      <div class="kick" style="margin-bottom:10px">Autorización de la diferencia</div>
+      <div style="background:var(--hu-pink-2);border:1px solid var(--hu-line);padding:18px">
+        <div style="font-size:13.5px;line-height:1.6;margin-bottom:14px">
+          <strong style="color:var(--hu-maroon)">{{ arqueo_actual.caja }} · ${{ arqueo_actual.diferencia|floatformat:0 }} excede el umbral de $5.000.</strong>
+          Solo un aprobador puede autorizar el cierre, con motivo desde lista cerrada.
+        </div>
+        {% if puede_autorizar %}
+        <form method="post" action="{% url 'autorizar_diferencia' arqueo_id=arqueo_actual.pk %}">
+          {% csrf_token %}
+          <select name="motivo_id" required style="width:100%;padding:9px 12px;border:1px solid var(--hu-line);margin-bottom:10px">
+            <option value="">Selecciona un motivo…</option>
+            {% for m in motivos_diferencia %}<option value="{{ m.pk }}">{{ m.texto }}</option>{% endfor %}
+          </select>
+          <textarea name="comentario" placeholder="Justificación para la bitácora…" style="width:100%;padding:10px 12px;border:1px solid var(--hu-line);min-height:60px;margin-bottom:12px"></textarea>
+          <button type="submit" class="btn" style="width:100%;justify-content:center">Autorizar y continuar</button>
+        </form>
+        {% else %}
+        <div style="font-size:13px;color:var(--hu-maroon)">Tu usuario no tiene rol de aprobador — pide a Karla, al Jefe de Contabilidad o al Sub Gerente que autoricen esta diferencia.</div>
+        {% endif %}
+      </div>
+      {% elif arqueo_actual.autorizado_por %}
+      <div class="kick" style="margin-bottom:10px">Diferencia autorizada</div>
+      <div class="card" style="padding:18px;font-size:13.5px;line-height:1.7">
+        <div><strong>{{ arqueo_actual.motivo_autorizacion.texto }}</strong></div>
+        <div style="color:var(--hu-gray)">Autorizó: {{ arqueo_actual.autorizado_por.get_full_name|default:arqueo_actual.autorizado_por.username }}</div>
+        {% if arqueo_actual.comentario %}<div style="margin-top:8px">{{ arqueo_actual.comentario }}</div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="kick" style="margin-bottom:10px">Depósito bancario</div>
+  <form method="post" action="{% url 'registrar_deposito' fecha=dia.fecha|date:'Y-m-d' %}" class="card" style="padding:18px;max-width:640px;margin-bottom:40px">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Monto depositado</label>
+        <input type="number" name="monto" value="{{ deposito.monto|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">N° de comprobante</label>
+        <input type="text" name="comprobante" value="{{ deposito.comprobante|default:'' }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fecha de depósito</label>
+        <input type="date" name="fecha" value="{{ deposito.fecha|date:'Y-m-d' }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fondo retenido</label>
+        <input type="number" name="fondo_retenido" value="{{ deposito.fondo_retenido|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-2">Registrar depósito</button>
+    <div style="font-size:12.5px;color:var(--hu-gray);margin-top:14px;line-height:1.55">El depósito puede registrarse después del cierre operativo, pero el día no se marca completo hasta que exista.</div>
+  </form>
+</div>
+{% endblock %}

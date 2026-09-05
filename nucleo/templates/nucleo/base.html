@@ -62,8 +62,8 @@ form.inline{display:inline}
     <a class="nav-i" href="#">Ventas · mensual y anual</a>
     <a class="nav-i" href="#">Dashboard del día</a>
     <a class="nav-i" href="#">Carga de archivos</a>
-    <a class="nav-i nav-on" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>
-    <a class="nav-i" href="#">Arqueo de efectivo</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha='2026-09-02' %}">Arqueo de efectivo</a>
     <a class="nav-i" href="#">Cierre y exportación</a>
     <a class="nav-i" href="#">Histórico</a>
     <a class="nav-i" href="#">Calidad de registro</a>

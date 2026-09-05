@@ -1,13 +1,38 @@
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from nucleo.arqueo_servicio import (
+    DENOMINACIONES_CLP, AutorizacionInvalida, ConteoInvalido, autorizar_diferencia,
+    preparar_arqueos_del_dia, registrar_conteo,
+)
 from nucleo.conciliacion_servicio import ejecutar_conciliacion
-from nucleo.models import DiaArqueo, Excepcion, MotivoResolucion, MovimientoProveedor
+from nucleo.models import ArqueoEfectivo, DiaArqueo, Excepcion, MotivoResolucion, MovimientoProveedor
 from nucleo.resolucion_servicio import ResolucionInvalida, resolver_excepcion
+
+# Mientras no exista el Mantenedor de usuarios y roles (D10 solo define
+# QUIÉNES son Karla, el Jefe de Contabilidad y el Sub Gerente — no CÓMO
+# se marca eso en el sistema), se usa is_superuser como equivalente
+# provisorio del rol Aprobador. Control C1 (segregación de funciones)
+# sigue pendiente de un mantenedor real.
+def es_aprobador(view):
+    """403 explícito para un usuario ya autenticado sin rol de aprobador
+    — no lo devuelve a la pantalla de login, que sería confuso (ya inició
+    sesión; lo que le falta es permiso, no autenticación)."""
+    from functools import wraps
+
+    from django.core.exceptions import PermissionDenied
+
+    @wraps(view)
+    def envoltura(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Solo un aprobador puede autorizar una diferencia sobre el umbral.")
+        return view(request, *args, **kwargs)
+    return envoltura
 
 
 @login_required
@@ -91,3 +116,107 @@ def resolver_excepcion_view(request, excepcion_id):
         messages.error(request, str(exc))
 
     return redirect(f"/excepciones/{fecha}/")
+
+
+@login_required
+def arqueo_efectivo(request, fecha):
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    arqueos = preparar_arqueos_del_dia(dia)
+
+    consolidado = {
+        "teorico": sum(a.teorico for a in arqueos),
+        "ajustes": sum(a.ajustes for a in arqueos),
+        "esperado": sum(a.esperado for a in arqueos),
+        "fondo_inicial": sum(a.fondo_inicial for a in arqueos),
+        "gastos_autorizados": sum(a.gastos_autorizados for a in arqueos),
+        "contado": sum(a.contado for a in arqueos if a.contado is not None),
+        "diferencia": sum(a.diferencia for a in arqueos if a.diferencia is not None),
+        "todas_contadas": all(a.contado is not None for a in arqueos),
+    }
+
+    caja_id_ver = request.GET.get("caja")
+    arqueo_actual = next((a for a in arqueos if str(a.pk) == caja_id_ver), None) or (arqueos[0] if arqueos else None)
+
+    denominaciones_form = []
+    if arqueo_actual:
+        conteo_actual = {
+            int(c.denominacion): c.cantidad for c in arqueo_actual.denominaciones.all()
+        }
+        denominaciones_form = [(d, conteo_actual.get(d, "")) for d in DENOMINACIONES_CLP]
+
+    contexto = {
+        "dia": dia,
+        "arqueos": arqueos,
+        "consolidado": consolidado,
+        "arqueo_actual": arqueo_actual,
+        "denominaciones_form": denominaciones_form,
+        "motivos_diferencia": MotivoResolucion.objects.filter(
+            aplica_a=MotivoResolucion.AplicaA.DIFERENCIA_CAJA, activo=True,
+        ),
+        "deposito": getattr(dia, "deposito", None),
+        "puede_autorizar": request.user.is_superuser,
+    }
+    return render(request, "nucleo/arqueo_efectivo.html", contexto)
+
+
+@login_required
+@require_POST
+def registrar_conteo_view(request, arqueo_id):
+    arqueo = get_object_or_404(ArqueoEfectivo, pk=arqueo_id)
+    fecha = arqueo.dia.fecha.isoformat()
+
+    try:
+        fondo_inicial = Decimal(request.POST.get("fondo_inicial") or "0")
+        gastos_autorizados = Decimal(request.POST.get("gastos_autorizados") or "0")
+        denominaciones = {
+            int(d): int(request.POST.get(f"denom_{d}") or 0) for d in DENOMINACIONES_CLP
+        }
+        registrar_conteo(
+            arqueo, fondo_inicial=fondo_inicial, gastos_autorizados=gastos_autorizados,
+            denominaciones=denominaciones, usuario=request.user,
+        )
+        messages.success(request, f"Conteo de {arqueo.caja} registrado.")
+    except (ConteoInvalido, InvalidOperation, ValueError) as exc:
+        messages.error(request, f"No se pudo registrar el conteo: {exc}")
+
+    return redirect(f"/arqueo/{fecha}/?caja={arqueo_id}")
+
+
+@login_required
+@es_aprobador
+@require_POST
+def autorizar_diferencia_view(request, arqueo_id):
+    arqueo = get_object_or_404(ArqueoEfectivo, pk=arqueo_id)
+    fecha = arqueo.dia.fecha.isoformat()
+
+    try:
+        autorizar_diferencia(
+            arqueo, motivo_id=request.POST.get("motivo_id"),
+            comentario=request.POST.get("comentario", "").strip(), usuario=request.user,
+        )
+        messages.success(request, f"Diferencia de {arqueo.caja} autorizada.")
+    except AutorizacionInvalida as exc:
+        messages.error(request, str(exc))
+
+    return redirect(f"/arqueo/{fecha}/?caja={arqueo_id}")
+
+
+@login_required
+@require_POST
+def registrar_deposito_view(request, fecha):
+    from nucleo.models import Deposito
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    try:
+        Deposito.objects.update_or_create(
+            dia=dia,
+            defaults={
+                "monto": Decimal(request.POST.get("monto") or "0"),
+                "comprobante": request.POST.get("comprobante", "").strip(),
+                "fecha": request.POST.get("fecha") or dia.fecha,
+                "fondo_retenido": Decimal(request.POST.get("fondo_retenido") or "0"),
+            },
+        )
+        messages.success(request, "Depósito registrado.")
+    except (InvalidOperation, ValueError) as exc:
+        messages.error(request, f"No se pudo registrar el depósito: {exc}")
+    return redirect(f"/arqueo/{fecha}/")

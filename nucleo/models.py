@@ -258,6 +258,9 @@ class Excepcion(models.Model):
         ordering = ["-monto_en_juego"]  # bandeja ordenada por monto en juego, no por aparición
 
 
+UMBRAL_DIFERENCIA_CAJA = 5000  # $ — decisión D3, confirmada con Karla 2026-09-05
+
+
 class ArqueoEfectivo(models.Model):
     dia = models.ForeignKey(DiaArqueo, related_name="arqueos_caja", on_delete=models.PROTECT)
     caja = models.CharField(max_length=30)
@@ -278,6 +281,16 @@ class ArqueoEfectivo(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["dia", "caja"], name="un_arqueo_por_caja_y_dia"),
         ]
+
+    @property
+    def estado(self) -> str:
+        """Calculado, no guardado — evita que quede desincronizado del
+        umbral o de una autorización nueva."""
+        if self.contado is None:
+            return "pendiente"
+        if abs(self.diferencia) <= UMBRAL_DIFERENCIA_CAJA:
+            return "cuadrada" if self.diferencia == 0 else "dentro_de_umbral"
+        return "autorizada" if self.autorizado_por_id else "requiere_autorizacion"
 
 
 class ConteoDenominacion(models.Model):
