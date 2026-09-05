@@ -3,3 +3,4 @@ openpyxl
 pytest
 django
 pytest-django
+scipy
