@@ -15,6 +15,7 @@ from arqueo_diario.motor.conciliacion import (
     TOLERANCIA_MONTO, UMBRAL_AUTOMATICO, VENTANA_NORMAL,
     MovimientoParaConciliar, PagoParaConciliar, conciliar,
 )
+from nucleo.anulaciones_servicio import es_venta_anulada, procesar_anulaciones
 from nucleo.models import (
     Coincidencia as CoincidenciaDB, DiaArqueo, EventoAuditoria,
     Excepcion as ExcepcionDB, MovimientoProveedor, PagoDeclarado, VersionMotor,
@@ -25,12 +26,25 @@ VERSION_MOTOR = "1.0.0"
 
 @transaction.atomic
 def ejecutar_conciliacion(dia: DiaArqueo, usuario):
-    pagos_db = list(
-        PagoDeclarado.objects.filter(venta__dia=dia, medio__in=["debito", "credito"])
+    # No se tocan las excepciones ya resueltas por una persona — solo se
+    # limpian las coincidencias automáticas y las excepciones abiertas de
+    # la corrida anterior, antes de escribir las nuevas.
+    CoincidenciaDB.objects.filter(dia=dia).delete()
+    ExcepcionDB.objects.filter(dia=dia, abierta=True).exclude(tipo="anulacion_descalzada").delete()
+
+    # Las anulaciones de Transbank (§8, caso de uso de Karla 2026-09-06)
+    # se resuelven antes de armar la conciliación normal: los pares que
+    # se compensan solos ni siquiera llegan al motor.
+    resultado_anulaciones = procesar_anulaciones(dia)
+
+    pagos_db = [
+        p for p in PagoDeclarado.objects.filter(venta__dia=dia, medio__in=["debito", "credito"])
         .select_related("venta")
-    )
+        if not es_venta_anulada(p.venta)
+    ]
     movimientos_db = list(
         MovimientoProveedor.objects.filter(dia=dia, medio__in=["debito", "credito", "prepago"])
+        .exclude(pk__in=resultado_anulaciones["ids_excluidos"])
     )
 
     pagos = []
@@ -52,12 +66,6 @@ def ejecutar_conciliacion(dia: DiaArqueo, usuario):
     ]
 
     resultado = conciliar(pagos, movimientos)
-
-    # No se tocan las excepciones ya resueltas por una persona — solo se
-    # limpian las coincidencias automáticas y las excepciones abiertas de
-    # la corrida anterior, antes de escribir las nuevas.
-    CoincidenciaDB.objects.filter(dia=dia).delete()
-    ExcepcionDB.objects.filter(dia=dia, abierta=True).delete()
 
     corrida = VersionMotor.objects.create(
         dia=dia, version_motor=VERSION_MOTOR,
@@ -103,6 +111,8 @@ def ejecutar_conciliacion(dia: DiaArqueo, usuario):
         valor_posterior={
             "coincidencias": len(resultado.coincidencias),
             "excepciones": len(resultado.excepciones),
+            "anulaciones_excluidas": len(resultado_anulaciones["ids_excluidos"]),
+            "anulaciones_con_excepcion": resultado_anulaciones["excepciones_creadas"],
             "version_motor": VERSION_MOTOR,
         },
         usuario=usuario,

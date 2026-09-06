@@ -97,6 +97,11 @@ class Venta(models.Model):
     total_comanda = dinero()
     cliente = models.CharField(max_length=120, blank=True)
     sucursal = models.CharField(max_length=120, blank=True)
+    factura_asociada = models.CharField(
+        max_length=50, blank=True,
+        help_text="Para ventas con guía de despacho (comprobante 'GO...'): número de la "
+                   "factura que el Analista de Ingresos emite al cierre, no el día de la guía.",
+    )
 
     class Meta:
         constraints = [
@@ -105,6 +110,12 @@ class Venta(models.Model):
 
     def __str__(self) -> str:
         return f"Comanda {self.n_interno} · {self.dia.fecha}"
+
+    @property
+    def es_guia_de_despacho(self) -> bool:
+        """Confirmado con Karla (2026-09-06): el POS marca estas ventas con
+        el comprobante partiendo en 'GO', no con un TIPO_DOC distinto."""
+        return self.nro_comprobante.upper().startswith("GO")
 
 
 class LineaVenta(models.Model):
@@ -257,6 +268,11 @@ class Excepcion(models.Model):
     )
     resuelta_en = models.DateTimeField(null=True, blank=True)
     creada_en = models.DateTimeField(auto_now_add=True)
+    factura_asociada = models.CharField(
+        max_length=50, blank=True,
+        help_text="Para 'movimiento sin pago' aceptado como otros ingresos: número de la "
+                   "boleta que el Analista de Ingresos emite para poder exportarlo a Odoo.",
+    )
 
     class Meta:
         ordering = ["-monto_en_juego"]  # bandeja ordenada por monto en juego, no por aparición

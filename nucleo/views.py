@@ -11,8 +11,14 @@ from nucleo.arqueo_servicio import (
     preparar_arqueos_del_dia, registrar_conteo,
 )
 from nucleo.carga_servicio import ArchivoInvalido, CargaDuplicada, CargaEnConflicto, procesar_carga, validaciones_de_carga
-from nucleo.cierre_servicio import CierreInvalido, aprobar_y_cerrar_dia, estado_checklist, puede_aprobar, reabrir_dia
+from nucleo.cierre_servicio import (
+    CierreInvalido, aprobar_y_cerrar_dia, estado_checklist, puede_aprobar, puede_aprobar_usuario, reabrir_dia,
+)
 from nucleo.conciliacion_servicio import ejecutar_conciliacion
+from nucleo.documentos_servicio import (
+    AsignacionInvalida, asignar_factura_a_excepcion, asignar_factura_a_venta,
+    guias_pendientes, otros_ingresos_pendientes,
+)
 from nucleo.dashboard_servicio import resumen_dia
 from nucleo.exportacion_servicio import ExportacionInvalida, generar_exportacion
 from nucleo.historico_servicio import buscar_transversal, calendario_mes, resumen_dias
@@ -232,17 +238,49 @@ def registrar_deposito_view(request, fecha):
 @login_required
 def cierre_y_exportacion(request, fecha):
     dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    dia_ya_aprobado = dia.estado in (
+        DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO,
+    )
+    puede_usuario, razon_usuario = puede_aprobar_usuario(dia, request.user)
     contexto = {
         "dia": dia,
         "checklist": estado_checklist(dia),
-        "puede_aprobar": puede_aprobar(dia) and dia.estado not in (
-            DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO,
-        ),
+        "puede_aprobar": puede_usuario and not dia_ya_aprobado,
+        "razon_aprobacion": razon_usuario,
         "puede_exportar": dia.estado in (DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO),
         "puede_aprobar_rol": request.user.is_superuser,
         "exportaciones": dia.exportaciones.order_by("-version"),
+        "guias_pendientes": guias_pendientes(dia),
+        "otros_ingresos_pendientes": otros_ingresos_pendientes(dia),
     }
     return render(request, "nucleo/cierre_exportacion.html", contexto)
+
+
+@login_required
+@require_POST
+def asignar_factura_venta_view(request, venta_id):
+    from nucleo.models import Venta
+    venta = get_object_or_404(Venta, pk=venta_id)
+    fecha = venta.dia.fecha.isoformat()
+    try:
+        asignar_factura_a_venta(venta, request.POST.get("factura", ""), request.user)
+        messages.success(request, f"Factura asignada a la comanda {venta.n_interno}.")
+    except AsignacionInvalida as exc:
+        messages.error(request, str(exc))
+    return redirect("cierre_y_exportacion", fecha=fecha)
+
+
+@login_required
+@require_POST
+def asignar_factura_excepcion_view(request, excepcion_id):
+    excepcion = get_object_or_404(Excepcion, pk=excepcion_id)
+    fecha = excepcion.dia.fecha.isoformat()
+    try:
+        asignar_factura_a_excepcion(excepcion, request.POST.get("factura", ""), request.user)
+        messages.success(request, "Boleta de otros ingresos registrada.")
+    except AsignacionInvalida as exc:
+        messages.error(request, str(exc))
+    return redirect("cierre_y_exportacion", fecha=fecha)
 
 
 @login_required

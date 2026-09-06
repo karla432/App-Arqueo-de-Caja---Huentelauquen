@@ -34,9 +34,13 @@
         <span style="color:{% if checklist.diferencias_autorizadas.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.diferencias_autorizadas.ok %}✓{% else %}✗{% endif %}</span>
         <span>Diferencias de caja autorizadas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.diferencias_autorizadas.detalle }}</span></span>
       </div>
-      <div style="display:flex;gap:10px;padding:10px 0">
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
         <span style="color:var(--hu-warn);font-weight:700">{% if checklist.deposito_registrado.ok %}✓{% else %}!{% endif %}</span>
         <span>Depósito bancario<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.deposito_registrado.detalle }}</span></span>
+      </div>
+      <div style="display:flex;gap:10px;padding:10px 0">
+        <span style="color:{% if checklist.documentos_pendientes.ok %}var(--hu-ok){% else %}var(--hu-warn){% endif %};font-weight:700">{% if checklist.documentos_pendientes.ok %}✓{% else %}!{% endif %}</span>
+        <span>Documentos pendientes de emitir<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.documentos_pendientes.detalle }}</span></span>
       </div>
     </div>
 
@@ -50,15 +54,33 @@
         <button type="submit" class="btn btn-2" style="width:100%;justify-content:center">Reabrir día</button>
       </form>
       {% else %}
-        {% if not puede_aprobar_rol %}
-        <div style="font-size:12.5px;color:var(--hu-maroon)">Tu usuario no tiene rol de aprobador.</div>
-        {% endif %}
+        <div style="font-size:12.5px;color:var(--hu-maroon);margin-bottom:4px">{{ razon_aprobacion }}</div>
         <form method="post" action="{% url 'aprobar_dia' fecha=dia.fecha|date:'Y-m-d' %}">
           {% csrf_token %}
-          <button type="submit" class="btn" style="width:100%;justify-content:center" {% if not puede_aprobar or not puede_aprobar_rol %}disabled title="Resuelve la lista de verificación primero"{% endif %}>Aprobar y cerrar el día</button>
+          <button type="submit" class="btn" style="width:100%;justify-content:center" {% if not puede_aprobar %}disabled title="{{ razon_aprobacion }}"{% endif %}>Aprobar y cerrar el día</button>
         </form>
       {% endif %}
     </div>
+
+    {% if guias_pendientes or otros_ingresos_pendientes %}
+    <div class="kick" style="margin:24px 0 10px">Documentos pendientes de emisión</div>
+    {% for v in guias_pendientes %}
+    <form method="post" action="{% url 'asignar_factura_venta' venta_id=v.pk %}" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      {% csrf_token %}
+      <span style="font-size:12.5px;flex:1">Guía {{ v.nro_comprobante }} · comanda {{ v.n_interno }} · ${{ v.total_comanda|floatformat:0 }}</span>
+      <input type="text" name="factura" placeholder="N° de factura" required style="width:140px;padding:6px 8px;border:1px solid var(--hu-card-line);font-size:12.5px">
+      <button type="submit" class="btn btn-2" style="padding:6px 10px;font-size:12px">Asignar</button>
+    </form>
+    {% endfor %}
+    {% for e in otros_ingresos_pendientes %}
+    <form method="post" action="{% url 'asignar_factura_excepcion' excepcion_id=e.pk %}" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      {% csrf_token %}
+      <span style="font-size:12.5px;flex:1">Otros ingresos · movimiento {{ e.movimiento.fecha_hora|date:"H:i" }} · ${{ e.monto_en_juego|floatformat:0 }}</span>
+      <input type="text" name="factura" placeholder="N° de boleta" required style="width:140px;padding:6px 8px;border:1px solid var(--hu-card-line);font-size:12.5px">
+      <button type="submit" class="btn btn-2" style="padding:6px 10px;font-size:12px">Asignar</button>
+    </form>
+    {% endfor %}
+    {% endif %}
   </div>
 
   <div style="padding:26px 30px">

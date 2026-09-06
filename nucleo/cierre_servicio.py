@@ -8,6 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from nucleo.arqueo_servicio import preparar_arqueos_del_dia
+from nucleo.documentos_servicio import puede_cerrar_con_pendientes, total_documentos_pendientes
 from nucleo.models import DiaArqueo, EventoAuditoria, UMBRAL_DIFERENCIA_CAJA
 
 
@@ -56,6 +57,15 @@ def estado_checklist(dia: DiaArqueo) -> dict:
             "detalle": "Registrado" if hasattr(dia, "deposito") else "No bloquea el cierre; queda pendiente",
             "bloqueante": False,
         },
+        "documentos_pendientes": {
+            "ok": total_documentos_pendientes(dia) == 0,
+            "detalle": (
+                "Sin documentos pendientes de emitir" if total_documentos_pendientes(dia) == 0
+                else f"{total_documentos_pendientes(dia)} guía(s)/otros ingresos sin factura — "
+                     "no bloquea por sí solo, pero exige aprobador del nivel correspondiente"
+            ),
+            "bloqueante": False,  # el bloqueo real depende de QUIÉN aprueba — ver puede_aprobar_usuario
+        },
     }
 
 
@@ -64,12 +74,23 @@ def puede_aprobar(dia: DiaArqueo) -> bool:
     return all(v["ok"] for k, v in checklist.items() if v.get("bloqueante", True))
 
 
+def puede_aprobar_usuario(dia: DiaArqueo, usuario) -> tuple[bool, str]:
+    """Combina la lista de verificación fija con el nivel de aprobación
+    que exigen los documentos pendientes de emitir (guías de despacho,
+    otros ingresos) — este último depende de quién está aprobando, no
+    solo del estado del día."""
+    if not puede_aprobar(dia):
+        return False, "Quedan pendientes bloqueantes en la lista de verificación."
+    return puede_cerrar_con_pendientes(dia, usuario)
+
+
 @transaction.atomic
 def aprobar_y_cerrar_dia(dia: DiaArqueo, usuario) -> DiaArqueo:
     if dia.estado in (DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO):
         raise CierreInvalido("Este día ya fue aprobado.")
-    if not puede_aprobar(dia):
-        raise CierreInvalido("Quedan pendientes bloqueantes en la lista de verificación.")
+    puede, razon = puede_aprobar_usuario(dia, usuario)
+    if not puede:
+        raise CierreInvalido(razon)
 
     valor_anterior = {"estado": dia.estado}
     dia.estado = DiaArqueo.Estado.CERRADO

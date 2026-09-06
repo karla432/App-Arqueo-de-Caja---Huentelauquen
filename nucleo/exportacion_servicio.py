@@ -14,7 +14,7 @@ import openpyxl
 from django.conf import settings
 from django.db import transaction
 
-from nucleo.models import DiaArqueo, EventoAuditoria, Exportacion, PagoDeclarado, Venta
+from nucleo.models import DiaArqueo, EventoAuditoria, Excepcion, Exportacion, PagoDeclarado, Venta
 
 CLIENTE_GENERICO = "CLIENTE OCASIONAL"  # decisión D5, confirmada con Karla — coincide con el histórico real
 IMPUESTO_LINEA = "19% IVA Venta Sala de Venta"  # constante en las 686 líneas del histórico real
@@ -60,7 +60,16 @@ def validar_venta(venta: Venta) -> list[str]:
         )
     if not venta.nro_comprobante or len(venta.nro_comprobante) < 7:
         avisos.append(f"Comanda {venta.n_interno}: número de comprobante inválido para extraer el documento.")
-    if venta.tipo_doc not in TIPO_DOC_ODOO:
+    if venta.es_guia_de_despacho:
+        # Karla, 2026-09-06: la guía no es el documento final — el
+        # Analista de Ingresos emite la Factura al cierre. Sin ese
+        # número, no hay nada válido que exportar a Odoo.
+        if not venta.factura_asociada:
+            avisos.append(
+                f"Comanda {venta.n_interno}: es guía de despacho ({venta.nro_comprobante}) sin factura "
+                "asignada todavía — asígnala en Cierre y exportación antes de generar el archivo."
+            )
+    elif venta.tipo_doc not in TIPO_DOC_ODOO:
         avisos.append(f"Comanda {venta.n_interno}: tipo de documento {venta.tipo_doc!r} sin mapeo a Odoo conocido.")
     suma_lineas = sum(l.total_linea for l in venta.lineas.all())
     if abs(suma_lineas - venta.total_comanda) > 1:
@@ -76,6 +85,13 @@ def _filas_de_venta(venta: Venta) -> list[dict]:
     medio = pago.medio_aprobado or pago.medio
     lineas = list(venta.lineas.all())
 
+    if venta.es_guia_de_despacho:
+        tipo_documento_externo = "Factura Electrónica"
+        numero_documento_externo = venta.factura_asociada
+    else:
+        tipo_documento_externo = TIPO_DOC_ODOO.get(venta.tipo_doc, venta.tipo_doc)
+        numero_documento_externo = venta.nro_comprobante[-7:]
+
     filas = [{
         "Cliente": CLIENTE_GENERICO,
         "Fecha orden": venta.dia.fecha,
@@ -83,8 +99,8 @@ def _filas_de_venta(venta: Venta) -> list[dict]:
         "Es venta externa": 1,
         "Tipo de pago externo": MEDIO_ODOO.get(medio, medio),
         "ID de pago externo": venta.n_interno,
-        "Tipo de documento externo": TIPO_DOC_ODOO.get(venta.tipo_doc, venta.tipo_doc),
-        "Número de documento externo": venta.nro_comprobante[-7:],
+        "Tipo de documento externo": tipo_documento_externo,
+        "Número de documento externo": numero_documento_externo,
         "Líneas del pedido/Producto": lineas[0].articulo if lineas else "",
         "Líneas del pedido/Cantidad": lineas[0].cantidad if lineas else "",
         "Líneas del pedido/Precio un.": lineas[0].precio_unitario if lineas else "",
@@ -103,8 +119,32 @@ def _filas_de_venta(venta: Venta) -> list[dict]:
     return filas
 
 
+def _fila_otros_ingresos(excepcion) -> dict:
+    """Un movimiento del proveedor sin comanda, aceptado como ingreso
+    legítimo (motivo "Forma de pago sin boleta"): se exporta con su
+    propia boleta, identificado como "OTROS INGRESOS" en vez de un
+    producto de línea, ya que no hay comanda que lo respalde."""
+    movimiento = excepcion.movimiento
+    return {
+        "Cliente": CLIENTE_GENERICO,
+        "Fecha orden": excepcion.dia.fecha,
+        "Vencimiento": excepcion.dia.fecha,
+        "Es venta externa": 1,
+        "Tipo de pago externo": MEDIO_ODOO.get(movimiento.medio, movimiento.medio),
+        "ID de pago externo": f"OI-{excepcion.pk}",
+        "Tipo de documento externo": "Boleta Electrónica",
+        "Número de documento externo": excepcion.factura_asociada,
+        "Líneas del pedido/Producto": "OTROS INGRESOS",
+        "Líneas del pedido/Cantidad": 1,
+        "Líneas del pedido/Precio un.": movimiento.monto_venta_valido_abono,
+        "Líneas del pedido/Impuestos": IMPUESTO_LINEA,
+    }
+
+
 @transaction.atomic
 def generar_exportacion(dia: DiaArqueo, usuario) -> Exportacion:
+    from nucleo.documentos_servicio import otros_ingresos_pendientes
+
     if dia.estado not in (DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO):
         raise ExportacionInvalida("Solo se exportan días Aprobados o Cerrados.")
 
@@ -114,6 +154,16 @@ def generar_exportacion(dia: DiaArqueo, usuario) -> Exportacion:
         .prefetch_related("pagos", "lineas")
     )
     anuladas = Venta.objects.filter(dia=dia, estado="ANULADA").count()
+
+    if otros_ingresos_pendientes(dia).exists():
+        raise ExportacionInvalida(
+            f"{otros_ingresos_pendientes(dia).count()} caso(s) de \"otros ingresos\" sin boleta asignada — "
+            "asígnala en Cierre y exportación antes de generar el archivo."
+        )
+    otros_ingresos = Excepcion.objects.filter(
+        dia=dia, tipo=Excepcion.Tipo.MOVIMIENTO_SIN_PAGO, resolucion=Excepcion.Resolucion.ACEPTAR,
+        motivo__codigo="forma_pago_sin_boleta",
+    ).select_related("movimiento")
 
     avisos = []
     for venta in ventas:
@@ -126,6 +176,8 @@ def generar_exportacion(dia: DiaArqueo, usuario) -> Exportacion:
     filas = []
     for venta in ventas:
         filas.extend(_filas_de_venta(venta))
+    for excepcion in otros_ingresos:
+        filas.append(_fila_otros_ingresos(excepcion))
 
     CARPETA_EXPORTACIONES.mkdir(exist_ok=True)
     ultima_version = dia.exportaciones.order_by("-version").first()
