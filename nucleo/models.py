@@ -67,6 +67,10 @@ class LoteCarga(models.Model):
     version = models.PositiveIntegerField(default=1)
     cargado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     cargado_en = models.DateTimeField(auto_now_add=True)
+    avisos = models.JSONField(
+        default=list, blank=True,
+        help_text="Avisos de calidad detectados al importar (no bloqueantes) — regla de conservación §8.",
+    )
 
     class Meta:
         ordering = ["-cargado_en"]

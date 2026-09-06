@@ -61,7 +61,7 @@ form.inline{display:inline}
     </div>
     <a class="nav-i{% if request.resolver_match.url_name == 'ventas_dashboard' %} nav-on{% endif %}" href="{% url 'ventas_dashboard' %}">Ventas · mensual y anual</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'dashboard_dia' %} nav-on{% endif %}" href="{% url 'dashboard_dia' fecha='2026-09-02' %}">Dashboard del día</a>
-    <a class="nav-i" href="#">Carga de archivos</a>
+    <a class="nav-i{% if request.resolver_match.url_name == 'carga_de_archivos' %} nav-on{% endif %}" href="{% url 'carga_de_archivos' fecha='2026-09-02' %}">Carga de archivos</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha='2026-09-02' %}">Arqueo de efectivo</a>
     <a class="nav-i{% if request.resolver_match.url_name == 'cierre_y_exportacion' %} nav-on{% endif %}" href="{% url 'cierre_y_exportacion' fecha='2026-09-02' %}">Cierre y exportación</a>

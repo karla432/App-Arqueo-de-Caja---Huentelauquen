@@ -10,13 +10,14 @@ from nucleo.arqueo_servicio import (
     DENOMINACIONES_CLP, AutorizacionInvalida, ConteoInvalido, autorizar_diferencia,
     preparar_arqueos_del_dia, registrar_conteo,
 )
+from nucleo.carga_servicio import ArchivoInvalido, CargaDuplicada, CargaEnConflicto, procesar_carga, validaciones_de_carga
 from nucleo.cierre_servicio import CierreInvalido, aprobar_y_cerrar_dia, estado_checklist, puede_aprobar, reabrir_dia
 from nucleo.conciliacion_servicio import ejecutar_conciliacion
 from nucleo.dashboard_servicio import resumen_dia
 from nucleo.exportacion_servicio import ExportacionInvalida, generar_exportacion
 from nucleo.historico_servicio import buscar_transversal, calendario_mes, resumen_dias
 from nucleo.calidad_servicio import resumen_calidad
-from nucleo.models import ArqueoEfectivo, DiaArqueo, Excepcion, MotivoResolucion, MovimientoProveedor
+from nucleo.models import ArqueoEfectivo, DiaArqueo, Excepcion, LoteCarga, MotivoResolucion, MovimientoProveedor
 from nucleo.resolucion_servicio import ResolucionInvalida, resolver_excepcion
 from nucleo.ventas_dashboard_servicio import rango_del_atajo, resumen_periodo
 
@@ -346,3 +347,41 @@ def ventas_dashboard(request):
     contexto["max_hora"] = max([m for _, m in contexto["por_hora"]], default=0) or 1
     contexto["total_excluido"] = sum(de["monto_provisorio"] for de in contexto["dias_excluidos"])
     return render(request, "nucleo/ventas_dashboard.html", contexto)
+
+
+@login_required
+def carga_de_archivos(request, fecha):
+    dia, _ = DiaArqueo.objects.get_or_create(fecha=date.fromisoformat(fecha))
+    contexto = {
+        "dia": dia,
+        "lote_pos": dia.lotes.filter(fuente=LoteCarga.Fuente.POS).order_by("-cargado_en").first(),
+        "lote_tbk": dia.lotes.filter(fuente=LoteCarga.Fuente.TRANSBANK).order_by("-cargado_en").first(),
+        "resumen_pos": {"comandas": dia.ventas.count(), "lineas": sum(v.lineas.count() for v in dia.ventas.all())},
+        "resumen_tbk": {"movimientos": dia.movimientos.count()},
+        "validaciones": validaciones_de_carga(dia),
+    }
+    return render(request, "nucleo/carga_archivos.html", contexto)
+
+
+@login_required
+@require_POST
+def cargar_archivo_view(request, fecha, fuente):
+    dia, _ = DiaArqueo.objects.get_or_create(fecha=date.fromisoformat(fecha))
+    archivo = request.FILES.get("archivo")
+    if not archivo:
+        messages.error(request, "Selecciona un archivo primero.")
+        return redirect("carga_de_archivos", fecha=fecha)
+
+    try:
+        procesar_carga(dia, archivo, fuente, request.user)
+        messages.success(request, "Archivo cargado y procesado.")
+    except (ArchivoInvalido, CargaDuplicada, CargaEnConflicto) as exc:
+        messages.error(request, str(exc))
+    return redirect("carga_de_archivos", fecha=fecha)
+
+
+@login_required
+def descargar_archivo_original(request, lote_id):
+    from django.http import FileResponse
+    lote = get_object_or_404(LoteCarga, pk=lote_id)
+    return FileResponse(open(lote.ruta_almacenamiento, "rb"), as_attachment=True, filename=lote.nombre_archivo)

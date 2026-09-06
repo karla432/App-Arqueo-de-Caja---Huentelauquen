@@ -5,3 +5,4 @@ __pycache__/
 *.egg-info/
 db.sqlite3
 /exportaciones/
+/archivos_cargados/

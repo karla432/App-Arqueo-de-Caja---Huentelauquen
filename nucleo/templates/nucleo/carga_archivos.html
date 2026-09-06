@@ -1,0 +1,87 @@
+{% extends "nucleo/base.html" %}
+{% block titulo %}Carga de archivos · {{ dia.fecha }}{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 34px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+    <div>
+      <div class="kick">Nuevo día de arqueo</div>
+      <h2 style="font-size:27px;margin-top:2px">{{ dia.fecha }}</h2>
+    </div>
+    <span class="pill {% if dia.estado == 'sin_cargar' %}p-grey{% else %}p-ok{% endif %}" style="font-size:12px;padding:6px 12px">{{ dia.get_estado_display }}</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px">
+    <div style="border:1px solid var(--hu-line);background:var(--hu-pink-2);padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);font-weight:700">Fuente 1 · Punto de venta</div>
+        <span class="pill {% if lote_pos %}p-ok{% else %}p-grey{% endif %}">{% if lote_pos %}Cargado{% else %}Sin cargar{% endif %}</span>
+      </div>
+      {% if lote_pos %}
+      <div style="font-family:var(--hu-serif);font-size:16px;color:var(--hu-maroon);font-weight:700;line-height:1.35">{{ lote_pos.nombre_archivo }}</div>
+      <div style="font-size:12.5px;color:var(--hu-gray);margin-top:4px;margin-bottom:14px">huella {{ lote_pos.huella_sha256|slice:":8" }}… · cargado {{ lote_pos.cargado_en|date:"d-m H:i" }} por {{ lote_pos.cargado_por }}</div>
+      <div style="background:#fff;border:1px solid var(--hu-line);font-size:13px">
+        <div style="display:flex;justify-content:space-between;padding:7px 12px"><span style="color:var(--hu-gray)">VENTAS POR ARTICULO</span><strong>{{ resumen_pos.lineas }} líneas · {{ resumen_pos.comandas }} comandas</strong></div>
+      </div>
+      <a href="{% url 'descargar_archivo_original' lote_id=lote_pos.pk %}" class="btn btn-2" style="margin-top:12px;display:inline-flex">Descargar original</a>
+      {% else %}
+      <div style="font-size:13px;color:var(--hu-gray);margin-bottom:14px">Aún no se ha cargado el archivo del POS.</div>
+      {% endif %}
+      <form method="post" action="{% url 'cargar_archivo' fecha=dia.fecha|date:'Y-m-d' fuente='pos' %}" enctype="multipart/form-data" style="margin-top:14px;display:flex;gap:8px">
+        {% csrf_token %}
+        <input type="file" name="archivo" accept=".xlsx" required style="flex:1;font-size:12.5px">
+        <button type="submit" class="btn">{% if lote_pos %}Recargar{% else %}Cargar{% endif %}</button>
+      </form>
+    </div>
+
+    <div style="border:1px solid var(--hu-line);background:var(--hu-pink-2);padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);font-weight:700">Fuente 2 · Adquirente</div>
+        <span class="pill {% if lote_tbk %}p-ok{% else %}p-grey{% endif %}">{% if lote_tbk %}Cargado{% else %}Sin cargar{% endif %}</span>
+      </div>
+      {% if lote_tbk %}
+      <div style="font-family:var(--hu-serif);font-size:16px;color:var(--hu-maroon);font-weight:700;line-height:1.35">{{ lote_tbk.nombre_archivo }}</div>
+      <div style="font-size:12.5px;color:var(--hu-gray);margin-top:4px;margin-bottom:14px">huella {{ lote_tbk.huella_sha256|slice:":8" }}… · cargado {{ lote_tbk.cargado_en|date:"d-m H:i" }} por {{ lote_tbk.cargado_por }}</div>
+      <div style="background:#fff;border:1px solid var(--hu-line);font-size:13px">
+        <div style="display:flex;justify-content:space-between;padding:7px 12px"><span style="color:var(--hu-gray)">Movimientos</span><strong>{{ resumen_tbk.movimientos }}</strong></div>
+      </div>
+      <a href="{% url 'descargar_archivo_original' lote_id=lote_tbk.pk %}" class="btn btn-2" style="margin-top:12px;display:inline-flex">Descargar original</a>
+      {% else %}
+      <div style="font-size:13px;color:var(--hu-gray);margin-bottom:14px">Aún no se ha cargado la cartola del adquirente.</div>
+      {% endif %}
+      <form method="post" action="{% url 'cargar_archivo' fecha=dia.fecha|date:'Y-m-d' fuente='transbank' %}" enctype="multipart/form-data" style="margin-top:14px;display:flex;gap:8px">
+        {% csrf_token %}
+        <input type="file" name="archivo" accept=".xlsx" required style="flex:1;font-size:12.5px">
+        <button type="submit" class="btn">{% if lote_tbk %}Recargar{% else %}Cargar{% endif %}</button>
+      </form>
+    </div>
+  </div>
+
+  <div style="border:1px dashed var(--hu-line);background:#FEFCFC;padding:26px;text-align:center;margin-bottom:24px">
+    <div style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon);font-weight:700">Arrastrar aquí una fuente adicional</div>
+    <div style="font-size:13px;color:var(--hu-gray);margin-top:5px">Mercado Pago u otro adquirente · Fase 2. El día se puede conciliar sin ella.</div>
+  </div>
+
+  <div class="kick" style="margin-bottom:10px">Validaciones de carga</div>
+  <table class="tbl" style="margin-bottom:20px">
+    <thead><tr><th>Validación</th><th>Resultado</th><th>Detalle</th></tr></thead>
+    <tbody>
+      {% for v in validaciones %}
+      <tr>
+        <td>{{ v.validacion }}</td>
+        <td>
+          {% if v.ok is True %}<span class="pill p-ok">Correcto</span>
+          {% elif v.ok is False %}<span class="pill p-red">Revisar</span>
+          {% else %}<span class="pill p-grey">No evaluado</span>{% endif %}
+        </td>
+        <td style="color:var(--hu-gray)">{{ v.detalle }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if lote_pos %}
+  <a href="{% url 'dashboard_dia' fecha=dia.fecha|date:'Y-m-d' %}" class="btn">Ir al dashboard del día</a>
+  {% endif %}
+  <div style="font-size:12.5px;color:var(--hu-gray);margin-top:14px">Los originales se conservan íntegros e inmutables; ninguna corrección posterior los altera.</div>
+</div>
+{% endblock %}

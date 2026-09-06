@@ -19,7 +19,7 @@ from nucleo.models import (
 )
 
 
-def _huella(path: str | Path) -> str:
+def calcular_huella(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
@@ -36,13 +36,13 @@ def _parse_hora(texto: str):
 def cargar_pos(path: str | Path, fecha: date, usuario) -> LoteCarga:
     dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
 
+    resultado = importar_ventas_por_articulo(path, fecha)
+
     lote = LoteCarga.objects.create(
         dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo=Path(path).name,
-        huella_sha256=_huella(path), ruta_almacenamiento=str(path),
-        fecha_declarada=fecha, cargado_por=usuario,
+        huella_sha256=calcular_huella(path), ruta_almacenamiento=str(path),
+        fecha_declarada=fecha, cargado_por=usuario, avisos=resultado.avisos,
     )
-
-    resultado = importar_ventas_por_articulo(path, fecha)
     for venta_importada in resultado.ventas:
         venta = Venta.objects.create(
             dia=dia, lote=lote, n_interno=venta_importada.n_interno,
@@ -73,13 +73,13 @@ def cargar_pos(path: str | Path, fecha: date, usuario) -> LoteCarga:
 def cargar_transbank(path: str | Path, fecha: date, usuario) -> LoteCarga:
     dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
 
+    resultado = importar_cartola_transbank(path, fecha)
+
     lote = LoteCarga.objects.create(
         dia=dia, fuente=LoteCarga.Fuente.TRANSBANK, nombre_archivo=Path(path).name,
-        huella_sha256=_huella(path), ruta_almacenamiento=str(path),
-        fecha_declarada=fecha, cargado_por=usuario,
+        huella_sha256=calcular_huella(path), ruta_almacenamiento=str(path),
+        fecha_declarada=fecha, cargado_por=usuario, avisos=resultado.avisos,
     )
-
-    resultado = importar_cartola_transbank(path, fecha)
     MovimientoProveedor.objects.bulk_create([
         MovimientoProveedor(
             dia=dia, lote=lote, proveedor=m.proveedor, tipo=m.tipo, estado=m.estado,
