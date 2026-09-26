@@ -64,10 +64,40 @@ Recuperación si se pierde el acceso: `recuperar_acceso` exige acceso a la conso
 `python manage.py reiniciar_datos_de_prueba --confirmo-que-es-un-ambiente-de-pruebas` borra los días cargados y conserva la
 configuración. **Se niega a correr en producción.**
 
+## 7. Respaldos
+
+**Hacer un respaldo** (base + archivos cargados + comprobantes + exportaciones, en un solo zip, con verificación):
+
+```bash
+python manage.py respaldar --destino D:\Respaldos\Arqueo
+```
+
+- Sin `--destino` usa la variable `ARQUEO_RESPALDOS` o, por defecto, la carpeta `respaldos/` del proyecto (no se versiona).
+- Al terminar comprueba las huellas de cada archivo, la integridad de la base y la cadena de sellos de la bitácora. Si algo falla, termina con error para que el programador de tareas lo detecte.
+- **No incluye secretos** (clave secreta, `.env`, contraseñas). Esos se guardan aparte, en tu gestor de claves.
+- Conservación automática: los últimos 30 respaldos + el último de cada uno de los últimos 12 meses. Solo toca archivos `respaldo_AAAAmmdd_HHMMSS.zip` de esa carpeta.
+- **Guarda también una copia fuera de este equipo** (otro disco, otra oficina o la nube). Un respaldo en el mismo computador no protege si ese computador falla o se pierde.
+
+**Programarlo cada noche en Windows** (Programador de tareas; ejecutar desde la carpeta del proyecto, ajusta las rutas):
+
+```bash
+schtasks /Create /SC DAILY /ST 22:30 /TN "Respaldo Arqueo Diario" /TR "C:uta\proyecto\.venv\Scripts\python.exe C:uta\proyecto\manage.py respaldar --destino D:\Respaldos\Arqueo"
+```
+
+En Linux (cron): `30 22 * * * cd /ruta/proyecto && .venv/bin/python manage.py respaldar --destino /var/respaldos/arqueo`.
+
+**Comprobar un respaldo sin tocar nada:** `python manage.py restaurar RESPALDO.zip`
+
+**Ensayo de restauración** (extrae a una carpeta aparte para revisarla): `python manage.py restaurar RESPALDO.zip --ensayo CARPETA_VACIA`. Se recomienda hacerlo una vez al mes.
+
+**Restaurar de verdad** (con la aplicación DETENIDA): `python manage.py restaurar RESPALDO.zip --reemplazar-esta-instalacion --confirmo`. Lo que había antes no se borra: queda renombrado con el sufijo `.antes_de_restaurar_<fecha>` para poder volver atrás. Después, `python manage.py verificar_bitacora`.
+
+Con PostgreSQL el respaldo de la base es `pg_dump` (el comando `respaldar` es solo para SQLite).
+
 ## 6. Lo que este trabajo NO resuelve (declarado)
 
 - Doble factor de autenticación: no implementado.
 - Protección contra fórmulas maliciosas en archivos Excel cargados y validación profunda de xlsx: no verificada.
-- Respaldos automáticos de la base y de los archivos: no configurados aquí.
+- Que el respaldo se ejecute solo cada noche y se copie fuera del equipo: el comando existe y está probado, pero programarlo y elegir el destino externo se hace en el servidor real (ver sección 7).
 - La protección de la bitácora por triggers está implementada solo para SQLite; con otro motor hay que replicarla.
 - La configuración real de HTTPS del servidor no se puede verificar desde el desarrollo.
