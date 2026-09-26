@@ -32,14 +32,16 @@ h1,h2,h3,h4{font-family:var(--hu-serif);color:var(--hu-maroon);margin:0}
 .btn:hover{background:var(--hu-maroon);border-color:var(--hu-maroon);color:#fff;text-decoration:none}
 .btn-2{background:#fff;color:var(--hu-red)}
 .btn-2:hover{background:var(--hu-pink-2);color:var(--hu-maroon)}
+.btn-sm{font-size:12.5px;padding:7px 12px}
 .btn-off{background:#F2F2F2;border-color:var(--hu-card-line);color:#A8A8A8;cursor:not-allowed}
 .pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.4px;padding:3px 9px;border-radius:999px}
 .p-red{background:var(--hu-pink-2);color:var(--hu-maroon);border:1px solid var(--hu-line)}
 .p-ok{background:#E9F5EE;color:var(--hu-ok);border:1px solid #BFE0CC}
 .p-warn{background:#FDF3E3;color:var(--hu-warn);border:1px solid #EAD6AE}
 .p-grey{background:var(--hu-label);color:var(--hu-gray);border:1px solid var(--hu-card-line)}
-.nav-i{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;color:#E8C9CF;text-decoration:none}
+.nav-i{display:flex;align-items:center;gap:10px;padding:10px 20px 10px 36px;font-size:14px;color:#E8C9CF;text-decoration:none}
 .nav-i:hover{background:#7A0021;color:#fff;text-decoration:none}
+.nav-sec{padding:18px 20px 6px;font-size:13px;letter-spacing:1.6px;text-transform:uppercase;color:#D9A3AD;font-weight:700}
 .nav-on{background:#7A0021;color:#fff;border-left:3px solid var(--hu-red);font-weight:700}
 .layout{display:flex;min-height:100vh}
 .sidebar{width:244px;background:var(--hu-maroon);flex-shrink:0;padding:24px 0}
@@ -59,14 +61,39 @@ form.inline{display:inline}
       <div style="font-family:var(--hu-serif);font-size:17px;color:#fff;font-weight:700;line-height:1.25">Hacienda<br>Huentelauquén</div>
       <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#D9A3AD;margin-top:6px">Arqueo diario</div>
     </div>
-    <a class="nav-i{% if request.resolver_match.url_name == 'ventas_dashboard' %} nav-on{% endif %}" href="{% url 'ventas_dashboard' %}">Ventas · mensual y anual</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'dashboard_dia' %} nav-on{% endif %}" href="{% url 'dashboard_dia' fecha='2026-09-02' %}">Dashboard del día</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'carga_de_archivos' %} nav-on{% endif %}" href="{% url 'carga_de_archivos' fecha='2026-09-02' %}">Carga de archivos</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha='2026-09-02' %}">Excepciones</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha='2026-09-02' %}">Arqueo de efectivo</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'cierre_y_exportacion' %} nav-on{% endif %}" href="{% url 'cierre_y_exportacion' fecha='2026-09-02' %}">Cierre y exportación</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'historico' %} nav-on{% endif %}" href="{% url 'historico' %}">Histórico</a>
-    <a class="nav-i{% if request.resolver_match.url_name == 'calidad_registro' %} nav-on{% endif %}" href="{% url 'calidad_registro' %}">Calidad de registro</a>
+    {% with fecha_nav=dia.fecha|date:'Y-m-d'|default:fecha_menu %}
+    {% with url=request.resolver_match.url_name %}
+    <div class="nav-sec">Informes</div>
+    <a class="nav-i{% if url == 'ventas_dashboard' %} nav-on{% endif %}" href="{% url 'ventas_dashboard' %}">Ventas · Mensual y Anual</a>
+    <a class="nav-i{% if url == 'reporte_ventas_producto' %} nav-on{% endif %}" href="{% url 'reporte_ventas_producto' %}">Ventas · Por Producto</a>
+    <a class="nav-i{% if url == 'dashboard_dia' %} nav-on{% endif %}" href="{% url 'dashboard_dia' fecha=fecha_nav %}">Dashboard Forma de Pago del Día</a>
+
+    <div class="nav-sec">Diario</div>
+    <a class="nav-i{% if url == 'carga_de_archivos' %} nav-on{% endif %}" href="{% url 'carga_de_archivos' fecha=fecha_nav %}">Cargar Archivos</a>
+    <a class="nav-i{% if url == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha=fecha_nav %}">Excepciones</a>
+    <a class="nav-i{% if url == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha=fecha_nav %}">Arqueo de Efectivo</a>
+    <a class="nav-i{% if url == 'cierre_y_exportacion' %} nav-on{% endif %}" href="{% url 'cierre_y_exportacion' fecha=fecha_nav %}">Cierre del Día</a>
+    <a class="nav-i{% if url == 'exportaciones_odoo' %} nav-on{% endif %}" href="{% url 'exportaciones_odoo' %}">Archivos para Odoo{% if exportaciones_por_generar %} <span class="pill p-warn" style="margin-left:6px;padding:1px 7px" title="Días cerrados sin archivos para Odoo">{{ exportaciones_por_generar }}</span>{% endif %}</a>
+    {% endwith %}
+    {% endwith %}
+
+    {% with url=request.resolver_match.url_name %}
+    <div class="nav-sec">Controles y Odoo</div>
+    <a class="nav-i{% if url == 'control_depositos' %} nav-on{% endif %}" href="{% url 'control_depositos' %}">Depósitos bancarios</a>
+    <a class="nav-i{% if url == 'regularizacion_documentos' %} nav-on{% endif %}" href="{% url 'regularizacion_documentos' %}">Regularización de Documentos (GD-NCR)</a>
+    <a class="nav-i{% if url == 'reintegros_caja' %} nav-on{% endif %}" href="{% url 'reintegros_caja' %}">Reintegros de Cajeras</a>
+
+    <div class="nav-sec">Análisis</div>
+    <a class="nav-i{% if url == 'historico' %} nav-on{% endif %}" href="{% url 'historico' %}">Calendario · Estado del Proceso</a>
+    <a class="nav-i{% if url == 'consolidado_dias' or url == 'auditoria_reclasificaciones' %} nav-on{% endif %}" href="{% url 'consolidado_dias' %}">Auditoría de Pagos</a>
+    <a class="nav-i{% if url == 'seguimiento' %} nav-on{% endif %}" href="{% url 'seguimiento' %}">Regularizaciones y Reintegros</a>
+    <a class="nav-i{% if url == 'calidad_registro' %} nav-on{% endif %}" href="{% url 'calidad_registro' %}">Calidad de registro</a>
+
+    {% if puede_configurar %}
+    <div class="nav-sec">Sistema</div>
+    <a class="nav-i{% if url == 'configuracion' %} nav-on{% endif %}" href="{% url 'configuracion' %}">Configuración</a>
+    {% endif %}
+    {% endwith %}
     <div style="margin-top:32px;padding:16px 20px 0;border-top:1px solid #7A0021">
       <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:6px">Sesión</div>
       <div style="font-size:13px;color:#fff">{{ user.get_full_name|default:user.username }}</div>

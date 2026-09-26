@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Dashboard · {{ dia.fecha }}{% endblock %}
 {% block contenido %}
 
@@ -44,7 +45,7 @@
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Diferencia de caja</div>
     <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ efectivo.diferencia|floatformat:0 }}</div>
-    <div style="font-size:12px;color:var(--hu-gray)">umbral $5.000</div>
+    <div style="font-size:12px;color:var(--hu-gray)">umbral ${{ umbral_caja|miles }}</div>
   </div>
 </div>
 
@@ -52,12 +53,13 @@
   <div>
     <div class="kick" style="margin-bottom:10px">Cuadre por medio de pago</div>
     <table class="tbl">
-      <thead><tr><th>Medio</th><th class="n">Declarado POS</th><th class="n">Proveedor</th><th class="n">Conciliado</th><th class="n">Diferencia</th></tr></thead>
+      <thead><tr><th>Medio</th><th class="n">Declarado POS</th><th class="n">Guías de despacho</th><th class="n">Proveedor</th><th class="n">Conciliado</th><th class="n">Diferencia</th></tr></thead>
       <tbody>
         {% for f in cuadre_por_medio %}
         <tr>
           <td style="text-transform:capitalize">{{ f.medio }}</td>
           <td class="n">{{ f.declarado_pos|floatformat:0 }}</td>
+          <td class="n">{% if f.guias %}{{ f.guias|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
           <td class="n">{% if f.proveedor is not None %}{{ f.proveedor|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">sin contraparte</span>{% endif %}</td>
           <td class="n">{% if f.conciliado is not None %}{{ f.conciliado|floatformat:0 }}{% else %}—{% endif %}</td>
           <td class="n" {% if f.diferencia %}style="color:var(--hu-red);font-weight:700"{% endif %}>{% if f.diferencia is not None %}{{ f.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
@@ -65,13 +67,15 @@
         {% endfor %}
         <tr>
           <td>Efectivo</td>
-          <td class="n">{{ efectivo.teorico|floatformat:0 }}</td>
+          <td class="n">{{ efectivo.pos_efectivo|floatformat:0 }}</td>
+          <td class="n">{% if efectivo.guias_efectivo %}{{ efectivo.guias_efectivo|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
           <td class="n" style="color:var(--hu-gray)">sin contraparte</td>
           <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.contado|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
           <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
         </tr>
       </tbody>
     </table>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.5">Las guías de despacho no son ventas del libro, pero su cobro con tarjeta aparece en el proveedor y su efectivo entra a la caja. Diferencia = declarado POS + guías − proveedor (en efectivo: contado − esperado). Las notas de crédito no cambian ningún medio: Resto ya las descontó.</div>
 
     <div class="kick" style="margin:26px 0 10px">Cajas y turnos</div>
     <table class="tbl">

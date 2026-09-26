@@ -7,6 +7,7 @@ signo, no se eliminan). A validar contra un caso real esta semana.
 from datetime import date, datetime, time
 
 import pytest
+from pruebas.perfiles_de_prueba import GRUPO_ENCARGADO, crear_usuario
 
 from nucleo.anulaciones_servicio import es_movimiento_anulado, procesar_anulaciones
 from nucleo.conciliacion_servicio import ejecutar_conciliacion
@@ -17,7 +18,7 @@ FECHA = date(2026, 9, 2)
 
 @pytest.fixture
 def usuario(django_user_model):
-    return django_user_model.objects.create_user(username="operador", password="x")
+    return crear_usuario(django_user_model, "operador", GRUPO_ENCARGADO, password="x")
 
 
 @pytest.fixture

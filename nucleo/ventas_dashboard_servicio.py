@@ -143,7 +143,7 @@ def resumen_periodo(desde: date, hasta: date) -> dict:
     for dia in dias_incluidos:
         arqueos = dia.arqueos_caja.all()
         diferencias = [a.diferencia for a in arqueos if a.diferencia is not None]
-        diferencia_acumulada += sum(diferencias)
+        diferencia_acumulada += float(sum(diferencias))
         if diferencias and all(d == 0 for d in diferencias):
             dias_cerrados_sin_diferencia += 1
         elif any(a.autorizado_por_id for a in arqueos):

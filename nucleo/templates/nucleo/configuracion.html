@@ -1,0 +1,201 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Configuración{% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-fila{display:grid;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hu-card-line)}
+.cfg-nota{font-size:12px;color:var(--hu-gray)}
+.btn-sm{padding:6px 14px;font-size:12.5px}
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 40px">
+  <div class="kick">Mantenedores</div>
+  <h2 style="font-size:27px;margin:2px 0 6px">Configuración</h2>
+  <p class="cfg-nota" style="margin-bottom:28px;max-width:720px">Solo la Gerente de Administración y Finanzas ve y cambia esta pantalla. Cada cambio queda en la bitácora con quién lo hizo y cómo estaba antes. Los cambios rigen desde el siguiente cálculo; lo ya cerrado no se modifica.</p>
+
+  <section id="umbrales" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Umbrales y tolerancias</div>
+    <form method="post" action="{% url 'guardar_umbrales' %}" class="card" style="padding:18px 20px">
+      {% csrf_token %}
+      {% for u in umbrales %}
+      <div class="cfg-fila" style="grid-template-columns:1fr 230px">
+        <div>
+          <div style="font-weight:700">{{ u.nombre }}</div>
+          <div class="cfg-nota">{{ u.descripcion }}</div>
+          <div class="cfg-nota">{% if u.unidad == "$" %}Permitido: ${{ u.minimo|miles }} a ${{ u.maximo|miles }} · por defecto ${{ u.defecto|miles }}{% else %}Permitido: {{ u.minimo|miles }} a {{ u.maximo|miles }} {{ u.unidad }} · por defecto {{ u.defecto|miles }}{% endif %}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          {% if u.unidad == "$" %}<span>$</span>{% endif %}
+          <input class="cfg-in" style="width:130px;text-align:right" type="text" inputmode="numeric" autocomplete="off"
+                 name="{{ u.clave }}" value="{{ u.valor|floatformat:0 }}" aria-label="{{ u.nombre }}">
+          {% if u.unidad != "$" %}<span class="cfg-nota">{{ u.unidad }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <div style="margin-top:14px;text-align:right"><button type="submit" class="btn">Guardar umbrales</button></div>
+    </form>
+  </section>
+
+  <section id="cuentas" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Cuentas contables</div>
+    <div class="card" style="padding:18px 20px">
+      <div class="cfg-nota" style="margin-bottom:8px">Karla, 2026-09-21: pérdida y ganancia son siempre estas dos mismas cuentas — toda diferencia (de caja o de tarjeta) cae en una de ellas; no se pueden desactivar ni cambiar de tipo. Si el nombre real en Odoo cambia, se edita aquí. Las cuentas de Banco sí puedes agregar las que necesites (abajo).</div>
+      {% for c in cuentas %}
+      <form method="post" action="{% url 'editar_cuenta' cuenta_id=c.pk %}" class="cfg-fila" style="grid-template-columns:130px 1fr 110px 90px 90px;{% if not c.activo %}opacity:.6{% endif %}">
+        {% csrf_token %}
+        <strong>{{ c.codigo }}</strong>
+        <input class="cfg-in" type="text" name="nombre" value="{{ c.nombre }}" aria-label="Nombre de la cuenta {{ c.codigo }}">
+        <input class="cfg-in" type="text" value="{{ c.get_tipo_display }}" disabled aria-label="Tipo">
+        <input type="hidden" name="tipo" value="{{ c.tipo }}">
+        {% if c.tipo == "banco" %}
+        <label style="font-size:12.5px"><input type="checkbox" name="activo" {% if c.activo %}checked{% endif %}> Activa</label>
+        {% else %}
+        <input type="hidden" name="activo" value="on"><span></span>
+        {% endif %}
+        <button type="submit" class="btn btn-sm">Guardar</button>
+        {% if c.tipo == "banco" %}
+        <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr;gap:10px">
+          <div><label class="cfg-nota">Diario en Odoo{% if not c.diario_odoo %} <strong style="color:var(--hu-red)">· falta</strong>{% endif %}</label><input class="cfg-in" style="width:100%" type="text" name="diario_odoo" value="{{ c.diario_odoo }}" placeholder="Ej. Banco Estado"></div>
+        </div>
+        {% endif %}
+      </form>
+      {% endfor %}
+      <form method="post" action="{% url 'crear_cuenta_banco' %}" class="cfg-fila" style="grid-template-columns:130px 1fr 190px;border-bottom:0;margin-top:8px">
+        {% csrf_token %}
+        <input class="cfg-in" type="text" name="codigo" placeholder="Código, ej. 1101002" required aria-label="Código de la nueva cuenta de banco">
+        <input class="cfg-in" type="text" name="nombre" placeholder="Nombre, ej. BCI Cuenta Corriente" required aria-label="Nombre de la nueva cuenta de banco">
+        <button type="submit" class="btn btn-sm">Agregar cuenta de banco</button>
+        <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr;gap:10px">
+          <input class="cfg-in" style="width:100%" type="text" name="diario_odoo" placeholder="Diario en Odoo, ej. Banco Estado" aria-label="Diario en Odoo del nuevo banco">
+        </div>
+      </form>
+      <div class="cfg-nota" style="margin-top:8px">Cada banco lleva su Diario de Odoo: con eso se arma la «captura de depósito». Sin él no se puede descargar esa captura. El asiento de un reintegro usa la cuenta del banco que se elige en cada reintegro.</div>
+    </div>
+  </section>
+
+  <section id="arqueo-caja" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Asiento de arqueo — Fase 2</div>
+    <form method="post" action="{% url 'guardar_arqueo_caja' %}" class="card" style="padding:18px 20px">
+      {% csrf_token %}
+      <div class="cfg-nota" style="margin-bottom:12px">Datos fijos del segundo archivo ("captura de arqueo de caja"): el diario en Odoo, las cuentas de balance (efectivo, Transbank y Mercado Pago) y el código de la distribución analítica. Las cuentas de pérdida y ganancia son las de arriba, no se repiten aquí.</div>
+      <div class="cfg-fila" style="grid-template-columns:1fr 1fr">
+        <div><label class="cfg-nota">Diario</label><input class="cfg-in" style="width:100%" type="text" name="diario" value="{{ arqueo_caja.diario }}"></div>
+        <div><label class="cfg-nota">Código distribución analítica (vacío = no incluirla)</label><input class="cfg-in" style="width:100%" type="text" name="codigo_analitico" value="{{ arqueo_caja.codigo_analitico }}"></div>
+      </div>
+      <div class="cfg-fila" style="grid-template-columns:130px 1fr">
+        <label class="cfg-nota">Cuenta efectivo</label>
+        <div style="display:flex;gap:8px">
+          <input class="cfg-in" style="width:110px" type="text" name="cuenta_efectivo_codigo" value="{{ arqueo_caja.cuenta_efectivo_codigo }}" aria-label="Código cuenta efectivo">
+          <input class="cfg-in" style="flex:1" type="text" name="cuenta_efectivo_nombre" value="{{ arqueo_caja.cuenta_efectivo_nombre }}" aria-label="Nombre cuenta efectivo">
+        </div>
+      </div>
+      <div class="cfg-fila" style="grid-template-columns:130px 1fr">
+        <label class="cfg-nota">Cuenta Transbank</label>
+        <div style="display:flex;gap:8px">
+          <input class="cfg-in" style="width:110px" type="text" name="cuenta_transbank_codigo" value="{{ arqueo_caja.cuenta_transbank_codigo }}" aria-label="Código cuenta Transbank">
+          <input class="cfg-in" style="flex:1" type="text" name="cuenta_transbank_nombre" value="{{ arqueo_caja.cuenta_transbank_nombre }}" aria-label="Nombre cuenta Transbank">
+        </div>
+      </div>
+      <div class="cfg-fila" style="grid-template-columns:130px 1fr">
+        <label class="cfg-nota">Cuenta Mercado Pago</label>
+        <div style="display:flex;gap:8px">
+          <input class="cfg-in" style="width:110px" type="text" name="cuenta_mercado_pago_codigo" value="{{ arqueo_caja.cuenta_mercado_pago_codigo }}" aria-label="Código cuenta Mercado Pago">
+          <input class="cfg-in" style="flex:1" type="text" name="cuenta_mercado_pago_nombre" value="{{ arqueo_caja.cuenta_mercado_pago_nombre }}" aria-label="Nombre cuenta Mercado Pago">
+        </div>
+      </div>
+      <div class="cfg-fila" style="grid-template-columns:130px 1fr;border-bottom:0">
+        <label class="cfg-nota">Empresa en Odoo</label>
+        <input class="cfg-in" style="width:100%" type="text" name="razon_social" value="{{ arqueo_caja.razon_social }}" aria-label="Nombre de la empresa en Odoo">
+        <div class="cfg-nota" style="grid-column:1/-1">Es el «Cliente/proveedor» de la captura de depósito. La cuenta de banco de cada reintegro o depósito viene del banco que se elige al registrarlo, no de una configuración fija.</div>
+      </div>
+      <div style="margin-top:14px;text-align:right"><button type="submit" class="btn">Guardar</button></div>
+    </form>
+  </section>
+
+  <section id="cajeras" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Cajeras</div>
+    <div class="card" style="padding:18px 20px">
+      <div class="cfg-nota" style="margin-bottom:8px">Quién operó cada caja, para atribuir una pérdida a la persona responsable. Una cajera que ya no trabaja se desactiva, no se borra.</div>
+      {% for c in cajeras %}
+      <form method="post" action="{% url 'editar_cajera' cajera_id=c.pk %}" class="cfg-fila" style="grid-template-columns:1fr 100px 90px;{% if not c.activo %}opacity:.6{% endif %}">
+        {% csrf_token %}
+        <input class="cfg-in" type="text" name="nombre" value="{{ c.nombre }}" aria-label="Nombre de la cajera">
+        <label style="font-size:13px"><input type="checkbox" name="activo" {% if c.activo %}checked{% endif %}> Activa</label>
+        <button type="submit" class="btn btn-sm">Guardar</button>
+      </form>
+      {% empty %}
+      <div class="cfg-nota" style="padding:8px 0">Todavía no hay cajeras.</div>
+      {% endfor %}
+      <form method="post" action="{% url 'crear_cajera' %}" class="cfg-fila" style="grid-template-columns:1fr 190px;border-bottom:0;margin-top:8px">
+        {% csrf_token %}
+        <input class="cfg-in" type="text" name="nombre" placeholder="Nombre de la nueva cajera" required aria-label="Nombre de la nueva cajera">
+        <button type="submit" class="btn btn-sm">Agregar cajera</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="responsables-traslado" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Responsables de traslado</div>
+    <div class="card" style="padding:18px 20px">
+      <div class="cfg-nota" style="margin-bottom:8px">Quién puede retirar y llevar físicamente el efectivo al banco — no es necesariamente quien registra el depósito. Alimenta el seleccionable de Control de Depósitos.</div>
+      {% for r in responsables_traslado %}
+      <form method="post" action="{% url 'editar_responsable_traslado' responsable_id=r.pk %}" class="cfg-fila" style="grid-template-columns:1fr 100px 90px;{% if not r.activo %}opacity:.6{% endif %}">
+        {% csrf_token %}
+        <input class="cfg-in" type="text" name="nombre" value="{{ r.nombre }}" aria-label="Nombre">
+        <label style="font-size:13px"><input type="checkbox" name="activo" {% if r.activo %}checked{% endif %}> Activa</label>
+        <button type="submit" class="btn btn-sm">Guardar</button>
+      </form>
+      {% empty %}
+      <div class="cfg-nota" style="padding:8px 0">Todavía no hay nadie en la lista.</div>
+      {% endfor %}
+      <form method="post" action="{% url 'crear_responsable_traslado' %}" class="cfg-fila" style="grid-template-columns:1fr 190px;border-bottom:0;margin-top:8px">
+        {% csrf_token %}
+        <input class="cfg-in" type="text" name="nombre" placeholder="Nombre de la persona" required aria-label="Nombre de la nueva persona">
+        <button type="submit" class="btn btn-sm">Agregar</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="aprobadores" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Usuarios y perfiles</div>
+    <div class="card" style="padding:18px 20px">
+      <div class="cfg-nota" style="margin-bottom:8px">Cinco perfiles, uno por persona: <strong>Encargado de Ingresos</strong> (carga, cuenta y registra; no valida ni aprueba su propio trabajo), <strong>Jefe de Contabilidad</strong> (valida, visa y aprueba cierres ordinarios de lo que no preparó), <strong>Gerente de Administración y Finanzas</strong> (supervisa, autoriza excepciones con motivo, reabre días, configura y asigna perfiles), <strong>Solo Lectura</strong> (consulta y descarga archivos ya generados; nunca modifica) y <strong>Administrador técnico</strong> (usuarios y sistema; sin facultades financieras y sin acceso a estas pantallas). Una cuenta sin perfil no puede ver ni hacer nada. No puedes cambiar tu propio perfil, y siempre debe quedar al menos una Gerente.</div>
+      {% for fila in usuarios %}
+      <form method="post" action="{% url 'cambiar_rol' usuario_id=fila.usuario.pk %}" class="cfg-fila" style="grid-template-columns:1fr 290px 90px">
+        {% csrf_token %}
+        <div><strong>{{ fila.usuario.get_full_name|default:fila.usuario.username }}</strong> <span class="cfg-nota">· {{ fila.usuario.username }}{% if fila.usuario == request.user %} (tú){% endif %}</span></div>
+        {% if fila.es_admin_tecnico %}<div class="cfg-nota">Administrador técnico (lo maneja la administración técnica)</div>{% else %}
+        <select class="cfg-in" name="rol" aria-label="Perfil de {{ fila.usuario.username }}" {% if fila.usuario == request.user %}disabled{% endif %}>
+          {% for clave, texto in roles %}<option value="{{ clave }}" {% if clave == fila.rol %}selected{% endif %}>{{ texto }}</option>{% endfor %}
+        </select>
+        {% endif %}
+        {% if fila.usuario != request.user and not fila.es_admin_tecnico %}<button type="submit" class="btn btn-sm">Guardar</button>{% endif %}
+      </form>
+      {% endfor %}
+      <div class="cfg-nota" style="margin-top:10px">Para dar de alta a una persona nueva todavía hay que crearla en el panel técnico; después aparece aquí para asignarle su perfil.</div>
+    </div>
+  </section>
+
+  <section id="bitacora">
+    <div class="kick" style="margin-bottom:10px">Últimos cambios de configuración</div>
+    <table class="tbl">
+      <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>Antes</th><th>Después</th></tr></thead>
+      <tbody>
+        {% for e in cambios %}
+        <tr>
+          <td>{{ e.hora|date:"d-m-Y H:i" }}</td>
+          <td>{{ e.usuario.get_full_name|default:e.usuario.username }}</td>
+          <td>{{ e.accion }} · {{ e.entidad_id }}</td>
+          <td style="font-size:12px">{{ e.valor_anterior|default_if_none:"—" }}</td>
+          <td style="font-size:12px">{{ e.valor_posterior|default_if_none:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="color:var(--hu-gray);text-align:center;padding:14px">Todavía no se ha cambiado nada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

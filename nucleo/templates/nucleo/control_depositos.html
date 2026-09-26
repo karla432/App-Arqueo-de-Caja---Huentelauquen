@@ -1,0 +1,136 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Depósitos bancarios{% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-nota{font-size:12px;color:var(--hu-gray);display:block;margin-bottom:4px}
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 0">
+  <div class="kick">Depósitos bancarios</div>
+  <h2 style="font-size:27px;margin:2px 0 18px">Depósitos bancarios de efectivo</h2>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+    <a class="pill {% if not filtro %}p-red{% else %}p-grey{% endif %}" href="?">Todos · {{ depositos|length }}</a>
+    <a class="pill {% if filtro == 'pendiente_deposito' %}p-red{% else %}p-grey{% endif %}" href="?estado=pendiente_deposito">Pendiente de depósito · {{ resumen.pendiente_deposito }}</a>
+    <a class="pill {% if filtro == 'pendiente_validacion' %}p-red{% else %}p-grey{% endif %}" href="?estado=pendiente_validacion">Pendiente de validación · {{ resumen.pendiente_validacion }}</a>
+    <a class="pill {% if filtro == 'aprobado' %}p-red{% else %}p-grey{% endif %}" href="?estado=aprobado">Aprobados · {{ resumen.aprobado }}</a>
+    <a class="pill {% if filtro == 'observado' %}p-red{% else %}p-grey{% endif %}" href="?estado=observado">Observados · {{ resumen.observado }}</a>
+    <a class="pill {% if filtro == 'con_diferencia' %}p-warn{% else %}p-grey{% endif %}" href="?estado=con_diferencia">Con diferencia · {{ resumen.con_diferencia }}</a>
+    <a class="pill {% if filtro == 'sin_cotejar' %}p-warn{% else %}p-grey{% endif %}" href="?estado=sin_cotejar">Sin cotejar · {{ resumen.sin_cotejar }}</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:20px">
+    <div class="card" style="max-height:640px;overflow:auto">
+      {% for d in depositos %}
+      <a href="?{% if filtro %}estado={{ filtro }}&{% endif %}deposito={{ d.pk }}" style="display:block;padding:12px 16px;border-bottom:1px solid var(--hu-card-line);text-decoration:none;color:inherit;{% if deposito_actual.pk == d.pk %}background:var(--hu-pink-2){% endif %}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:13.5px">{{ d.dia.fecha|date:"d-m-Y" }}</strong>
+          {% if d.estado == "aprobado" %}<span class="pill p-ok" style="font-size:10px">Aprobado</span>
+          {% elif d.estado == "observado" %}<span class="pill p-red" style="font-size:10px">Observado</span>
+          {% elif d.estado == "pendiente_validacion" %}<span class="pill p-warn" style="font-size:10px">Pend. validación</span>
+          {% else %}<span class="pill p-grey" style="font-size:10px">Pend. depósito</span>{% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">Esperado ${{ d.monto_esperado|miles }}{% if d.diferencia %} · dif. ${{ d.diferencia|abs_valor|miles }}{% endif %}</div>
+      </a>
+      {% empty %}
+      <div style="padding:20px;color:var(--hu-gray);font-size:13px">No hay depósitos con este filtro.</div>
+      {% endfor %}
+    </div>
+
+    {% if deposito_actual %}
+    {% with d=deposito_actual %}
+    <div>
+      <div class="card" style="padding:18px 20px;margin-bottom:16px">
+        <div class="kick" style="margin-bottom:10px">Depósito del {{ d.dia.fecha|date:"d-m-Y" }}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:6px">
+          <div><div class="cfg-nota">Esperado (según arqueo)</div><div style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-maroon)">${{ d.monto_esperado|miles }}</div></div>
+          <div><div class="cfg-nota">Depositado</div><div style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-maroon)">{% if d.monto_depositado is not None %}${{ d.monto_depositado|miles }}{% else %}—{% endif %}</div></div>
+          <div><div class="cfg-nota">Diferencia</div><div style="font-family:var(--hu-serif);font-size:20px;color:{% if d.diferencia %}var(--hu-warn){% else %}var(--hu-ok){% endif %}">{% if d.diferencia is not None %}${{ d.diferencia|miles }}{% else %}—{% endif %}</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--hu-gray)">Registrado por {{ d.registrado_por.get_full_name|default:d.registrado_por.username }} el {{ d.registrado_en|date:"d-m-Y H:i" }}
+          {% if d.aprobado_por %} · Revisado por {{ d.aprobado_por.get_full_name|default:d.aprobado_por.username }} el {{ d.aprobado_en|date:"d-m-Y H:i" }}{% endif %}
+        </div>
+      </div>
+
+      {% if not d.cotejado %}
+      <div class="kick" style="margin-bottom:10px">{% if d.estado == "pendiente_deposito" %}Registrar el depósito{% else %}Editar antes de validar{% endif %}</div>
+      <form method="post" action="{% url 'registrar_detalle_deposito' deposito_id=d.pk %}" enctype="multipart/form-data" class="card" style="padding:18px 20px;margin-bottom:20px">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label class="cfg-nota">Fecha del depósito</label><input class="cfg-in" style="width:100%" type="date" name="fecha_deposito" value="{{ d.fecha_deposito|date:'Y-m-d' }}" required></div>
+          <div><label class="cfg-nota">Monto depositado</label><input class="cfg-in" style="width:100%" type="text" inputmode="numeric" name="monto_depositado" value="{{ d.monto_depositado|default:'' }}" required></div>
+          <div><label class="cfg-nota">Banco</label>
+            <select class="cfg-in" style="width:100%" name="banco" required>
+              <option value="">Elegir...</option>
+              {% for b in bancos %}<option value="{{ b.nombre }}" {% if b.nombre == d.banco %}selected{% endif %}>{{ b.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div><label class="cfg-nota">N° de operación / comprobante</label><input class="cfg-in" style="width:100%" type="text" name="numero_operacion" value="{{ d.numero_operacion }}" required></div>
+          <div><label class="cfg-nota">Quién llevó el efectivo al banco</label>
+            <select class="cfg-in" style="width:100%" name="responsable_traslado" required>
+              <option value="">Elegir...</option>
+              {% for r in responsables_traslado %}<option value="{{ r.nombre }}" {% if r.nombre == d.responsable_traslado %}selected{% endif %}>{{ r.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div style="grid-column:1/-1"><label class="cfg-nota">Comprobante adjunto (PDF o imagen) — obligatorio{% if d.comprobante_nombre_original %}, actual: {{ d.comprobante_nombre_original }}{% endif %}</label><input class="cfg-in" style="width:100%" type="file" name="comprobante" required></div>
+        </div>
+        <button type="submit" class="btn">Guardar y enviar a validación</button>
+      </form>
+      {% endif %}
+
+      {% if d.estado != "pendiente_deposito" %}
+      <div class="card" style="padding:12px 18px;margin-bottom:20px;border-left:3px solid var(--hu-red);font-size:13px">
+        La <strong>Captura Depósito</strong> para Odoo se descarga en <a href="{% url 'exportaciones_odoo' %}#deposito">Archivos para Odoo →</a>{% if captura_faltante %} <span style="color:var(--hu-red)">· pendiente: {{ captura_faltante }}</span>{% endif %}
+      </div>
+      {% endif %}
+
+      {% if d.estado == "pendiente_validacion" %}
+      <div class="kick" style="margin-bottom:10px">Validación del Jefe de Contabilidad</div>
+      <form method="post" action="{% url 'validar_deposito' deposito_id=d.pk %}" class="card" style="padding:18px 20px">
+        {% csrf_token %}
+        {% if d.diferencia %}<div class="cfg-nota" style="color:var(--hu-warn);margin-bottom:10px">Diferencia de ${{ d.diferencia|abs_valor|miles }}. Si supera el umbral configurado, solo se podrá dejar Observado.</div>{% endif %}
+        <div style="margin-bottom:12px">
+          <label class="cfg-nota">Movimiento bancario con el que se cotejó (obligatorio para aprobar)</label>
+          <input class="cfg-in" style="width:100%" type="text" name="movimiento_bancario_referencia" placeholder="Ej. Abono visto en cartola BCI del 02/09, folio 445566">
+        </div>
+        <div style="margin-bottom:12px"><label class="cfg-nota">Comentarios</label><textarea class="cfg-in" style="width:100%" name="comentarios" rows="2"></textarea></div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" name="accion" value="aprobar" class="btn" {% if not puede_validar %}disabled title="Solo el Jefe de Contabilidad o superior puede validar"{% endif %}>Aprobar</button>
+          <button type="submit" name="accion" value="observar" class="btn btn-2" {% if not puede_validar %}disabled{% endif %}>Observar</button>
+        </div>
+      </form>
+      {% endif %}
+
+      {% if d.cotejado %}
+      <div class="card" style="padding:18px 20px">
+        <div class="cfg-nota" style="margin-bottom:6px">Resultado del cotejo: {{ d.resultado_cotejo|default:"—" }}</div>
+        <div style="font-size:13px;margin-bottom:6px"><strong>Movimiento bancario:</strong> {{ d.movimiento_bancario_referencia|default:"—" }}</div>
+        {% if d.comentarios %}<div style="font-size:13px;color:var(--hu-gray)">{{ d.comentarios }}</div>{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="kick" style="margin:20px 0 10px">¿Más de un depósito este día?</div>
+      <form method="post" action="{% url 'agregar_deposito_adicional' dia_id=d.dia_id %}" class="card" style="padding:14px 18px;display:flex;gap:10px;align-items:end">
+        {% csrf_token %}
+        <div style="flex:1"><label class="cfg-nota">Monto de este depósito adicional (se resta del depósito principal: el total del día se reparte, no se suma)</label><input class="cfg-in" style="width:100%" type="text" inputmode="numeric" name="monto_esperado" placeholder="Ej. 100000" required></div>
+        <button type="submit" class="btn btn-2">Agregar depósito adicional</button>
+      </form>
+    </div>
+    {% endwith %}
+    {% else %}
+    <div class="card" style="padding:30px;color:var(--hu-gray);text-align:center">Sin depósitos que mostrar. Nacen automáticamente al cerrar un día (Cierre).</div>
+    {% endif %}
+  </div>
+
+  <div class="kick" style="margin:32px 0 10px">Reporte mensual a Gerencia <span style="text-transform:none;letter-spacing:0;color:var(--hu-gray)">· todos los depósitos del mes, con su estado y diferencia</span></div>
+  <form method="get" action="{% url 'descargar_reporte_mensual_depositos' %}" class="card" style="padding:14px 18px;display:flex;gap:12px;align-items:end;margin-bottom:30px">
+    <div><label class="cfg-nota">Año</label><input class="cfg-in" type="number" name="anio" value="{{ anio_reporte }}" style="width:100px"></div>
+    <div><label class="cfg-nota">Mes</label><input class="cfg-in" type="number" min="1" max="12" name="mes" value="{{ mes_reporte }}" style="width:80px"></div>
+    <div class="cfg-nota" style="flex:1">Depósitos del mes: <strong>{{ resumen_mes.total }}</strong> · con diferencia: <strong>{{ resumen_mes.con_diferencia }}</strong> · sin validar: <strong>{{ resumen_mes.sin_validar }}</strong>{% if not resumen_mes.total %}<br>No hay depósitos en este mes: el archivo lo indicará.{% endif %}</div>
+    <button type="submit" class="btn">⬇ Descargar Excel</button>
+  </form>
+</div>
+{% endblock %}

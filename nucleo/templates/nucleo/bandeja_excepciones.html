@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Excepciones · {{ dia.fecha }}{% endblock %}
 {% block contenido %}
 
@@ -96,12 +97,47 @@
             {% for m in motivos %}<option value="{{ m.pk }}">{{ m.texto }}</option>{% endfor %}
           </select>
           <textarea name="comentario" placeholder="Comentario opcional para la bitácora…" style="width:100%;margin-top:10px;padding:10px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans);min-height:70px"></textarea>
+          {% if excepcion_actual.tipo == "movimiento_sin_pago" %}
+          <div style="margin-top:12px;padding:10px 12px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);font-size:12.5px;line-height:1.5">
+            <strong>¿La cajera cobró de menos en el POS de Transbank?</strong> No se resuelve desde aquí: abre la excepción <em>«Pago sin movimiento»</em> de esa comanda, elige este movimiento en <em>«Vincular con otro movimiento»</em> y usa <em>«Registrar pérdida/ganancia de caja»</em>. Las dos excepciones se cierran juntas.
+          </div>
+          {% endif %}
           {% if excepcion_actual.tipo == "pago_sin_movimiento" and movimientos_libres %}
           <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin:14px 0 8px">Vincular con otro movimiento</div>
           <select name="movimiento_alternativo" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans)">
             <option value="">— ninguno —</option>
             {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
           </select>
+          {% endif %}
+          {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Pérdida/ganancia de caja · sobre ${{ umbral_visado|miles }} exige visto bueno del Jefe de Contabilidad</div>
+          <select name="cuenta_contable_id" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans);margin-bottom:8px">
+            <option value="">Cuenta contable…</option>
+            {% for c in cuentas_contables %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
+          </select>
+          <select name="cajera_id" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans)">
+            <option value="">Cajera responsable…</option>
+            {% for c in cajeras %}<option value="{{ c.pk }}" {% if cajera_sugerida.pk == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+          </select>
+          {% endif %}
+          {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Mezcla de medios · las líneas deben sumar ${{ excepcion_actual.pago.monto|floatformat:0 }}</div>
+          {% for i in "123" %}
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <select name="linea_medio_{{ i }}" style="flex:1;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px;font-family:var(--hu-sans)">
+              <option value="">Medio…</option>
+              <option value="debito">Débito</option>
+              <option value="credito">Crédito</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+            <input type="number" name="linea_monto_{{ i }}" placeholder="Monto" style="width:110px;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px">
+            <select name="linea_movimiento_{{ i }}" style="flex:1;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px;font-family:var(--hu-sans)">
+              <option value="">Sin movimiento (ej. efectivo)</option>
+              {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
+            </select>
+          </div>
+          {% endfor %}
           {% endif %}
         </div>
         <div>
@@ -113,9 +149,15 @@
             {% elif excepcion_actual.tipo == "movimiento_sin_pago" %}
             <button type="submit" name="resolucion" value="aceptar" class="btn" style="justify-content:center">Aceptar como otros ingresos</button>
             <button type="submit" name="resolucion" value="rechazar" class="btn btn-2" style="justify-content:center">Rechazar</button>
+            {% elif excepcion_actual.tipo == "pago_duplicado" %}
+            <button type="submit" name="resolucion" value="rechazar" class="btn btn-2" style="justify-content:center">Rechazar (documentar como duplicado)</button>
             {% endif %}
             {% if excepcion_actual.tipo == "pago_sin_movimiento" %}
             <button type="submit" name="resolucion" value="vincular_otro" class="btn btn-2" style="justify-content:center">Vincular otro movimiento…</button>
+            {% endif %}
+            {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
+            <button type="submit" name="resolucion" value="perdida_ganancia" class="btn btn-2" style="justify-content:center">Registrar pérdida/ganancia de caja</button>
+            <button type="submit" name="resolucion" value="mezcla_medios" class="btn btn-2" style="justify-content:center">Registrar mezcla de medios</button>
             {% endif %}
           </div>
           <div style="font-size:12px;color:var(--hu-gray);margin-top:12px;line-height:1.55">Queda en bitácora: usuario, hora y motivo. El dato original no se modifica.</div>

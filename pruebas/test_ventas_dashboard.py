@@ -6,6 +6,7 @@ como excluido con su monto provisorio.
 from datetime import date, time
 
 import pytest
+from pruebas.perfiles_de_prueba import GRUPO_ENCARGADO, crear_usuario
 
 from nucleo.models import DiaArqueo, LineaVenta, LoteCarga, PagoDeclarado, Venta
 from nucleo.ventas_dashboard_servicio import rango_del_atajo, resumen_periodo
@@ -13,7 +14,7 @@ from nucleo.ventas_dashboard_servicio import rango_del_atajo, resumen_periodo
 
 @pytest.fixture
 def usuario(django_user_model):
-    return django_user_model.objects.create_user(username="operador", password="x")
+    return crear_usuario(django_user_model, "operador", GRUPO_ENCARGADO, password="x")
 
 
 def _crear_dia(fecha, estado, usuario, ventas_data):

@@ -71,8 +71,16 @@ def test_brecha_de_tarjetas_queda_explicada_en_excepciones(resultado_dia_referen
     # y el POS no registró, menos lo que el POS declaró y el proveedor no
     # cobró — con un margen de $50 por comanda, la tolerancia de monto
     # que el propio diseño define (§9).
+    # "pago_duplicado" (Karla, 2026-09-18: caso 11) es, para efectos de
+    # esta brecha, el mismo tipo de movimiento sin comanda que
+    # "movimiento_sin_pago" — solo lleva una etiqueta más precisa cuando
+    # repite monto y medio de otro ya conciliado. El día de referencia
+    # real tiene un caso así (comanda 654751): antes del ajuste quedaba
+    # contado como "movimiento_sin_pago" genérico, ahora como duplicado —
+    # la brecha total no cambia, solo cómo se explica.
     sin_pago = sum(
-        e.monto_en_juego for e in resultado_dia_referencia.excepciones if e.tipo == "movimiento_sin_pago"
+        e.monto_en_juego for e in resultado_dia_referencia.excepciones
+        if e.tipo in ("movimiento_sin_pago", "pago_duplicado")
     )
     sin_mov = sum(
         e.monto_en_juego for e in resultado_dia_referencia.excepciones if e.tipo == "pago_sin_movimiento"

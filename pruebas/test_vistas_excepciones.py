@@ -7,6 +7,7 @@ caso con precisión.
 from datetime import date, datetime, time
 
 import pytest
+from pruebas.perfiles_de_prueba import GRUPO_ENCARGADO, crear_usuario
 from django.urls import reverse
 
 from nucleo.models import (
@@ -19,7 +20,7 @@ FECHA = date(2026, 9, 2)
 
 @pytest.fixture
 def usuario(django_user_model):
-    return django_user_model.objects.create_user(username="operador", password="clave-segura-123")
+    return crear_usuario(django_user_model, "operador", GRUPO_ENCARGADO, password="clave-segura-123")
 
 
 @pytest.fixture

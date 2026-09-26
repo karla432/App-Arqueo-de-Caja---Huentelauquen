@@ -12,11 +12,13 @@ from pathlib import Path
 
 from django.db import transaction
 
-from arqueo_diario.importadores.pos import importar_ventas_por_articulo
+from arqueo_diario.importadores.mercadopago import importar_settlement_mercadopago
+from arqueo_diario.importadores.pos import importar_ventas_con_libro_contable, importar_ventas_por_articulo
 from arqueo_diario.importadores.transbank import importar_cartola_transbank
 from nucleo.models import (
     DiaArqueo, LineaVenta, LoteCarga, MovimientoProveedor, PagoDeclarado, Venta,
 )
+from nucleo.regularizacion_servicio import crear_desde_libro
 
 
 def calcular_huella(path: str | Path) -> str:
@@ -32,17 +34,7 @@ def _parse_hora(texto: str):
         return None
 
 
-@transaction.atomic
-def cargar_pos(path: str | Path, fecha: date, usuario) -> LoteCarga:
-    dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
-
-    resultado = importar_ventas_por_articulo(path, fecha)
-
-    lote = LoteCarga.objects.create(
-        dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo=Path(path).name,
-        huella_sha256=calcular_huella(path), ruta_almacenamiento=str(path),
-        fecha_declarada=fecha, cargado_por=usuario, avisos=resultado.avisos,
-    )
+def _persistir_ventas(dia: DiaArqueo, lote: LoteCarga, resultado) -> None:
     for venta_importada in resultado.ventas:
         venta = Venta.objects.create(
             dia=dia, lote=lote, n_interno=venta_importada.n_interno,
@@ -66,17 +58,62 @@ def cargar_pos(path: str | Path, fecha: date, usuario) -> LoteCarga:
             for pago in venta_importada.pagos
         ])
 
+
+def _persistir_documentos_pendientes(dia: DiaArqueo, resultado, usuario) -> None:
+    """Guías de despacho (DES) y notas de crédito (CRED) del libro contable
+    (Karla, 2026-09-22): ninguna entra a la carga masiva de ventas ni al
+    arqueo automático — quedan como `RegularizacionDocumento` Pendiente
+    para que la Encargada de Ingresos las regularice a mano cuando
+    corresponda (menú "Regularización de Documentos"), sin perderlas."""
+    crear_desde_libro(dia, resultado.guias + resultado.notas_credito + resultado.sin_clasificar, usuario)
+
+
+@transaction.atomic
+def cargar_pos(path: str | Path, fecha: date, usuario) -> LoteCarga:
+    dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
+
+    resultado = importar_ventas_por_articulo(path, fecha)
+
+    lote = LoteCarga.objects.create(
+        dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo=Path(path).name,
+        huella_sha256=calcular_huella(path), ruta_almacenamiento=str(path),
+        fecha_declarada=fecha, cargado_por=usuario, avisos=resultado.avisos,
+    )
+    _persistir_ventas(dia, lote, resultado)
     return lote
 
 
 @transaction.atomic
-def cargar_transbank(path: str | Path, fecha: date, usuario) -> LoteCarga:
+def cargar_pos_con_libro_contable(
+    archivo_ventas: str | Path, archivo_libro_contable: str | Path, fecha: date, usuario,
+) -> LoteCarga:
+    """Como `cargar_pos`, pero a partir de los dos archivos tal cual salen
+    de Resto (sin consolidación manual): VENTAS POR ARTICULO sin N_INTERNO
+    + el libro contable del que se recupera (Karla, 2026-09-16)."""
     dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
 
-    resultado = importar_cartola_transbank(path, fecha)
+    resultado = importar_ventas_con_libro_contable(archivo_ventas, archivo_libro_contable, fecha)
 
     lote = LoteCarga.objects.create(
-        dia=dia, fuente=LoteCarga.Fuente.TRANSBANK, nombre_archivo=Path(path).name,
+        dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo=Path(archivo_ventas).name,
+        huella_sha256=calcular_huella(archivo_ventas), ruta_almacenamiento=str(archivo_ventas),
+        nombre_archivo_secundario=Path(archivo_libro_contable).name,
+        huella_sha256_secundario=calcular_huella(archivo_libro_contable),
+        ruta_almacenamiento_secundario=str(archivo_libro_contable),
+        fecha_declarada=fecha, cargado_por=usuario, avisos=resultado.avisos,
+    )
+    _persistir_ventas(dia, lote, resultado)
+    _persistir_documentos_pendientes(dia, resultado, usuario)
+    return lote
+
+
+def _cargar_movimientos_proveedor(path: str | Path, fecha: date, usuario, *, fuente: str, importar) -> LoteCarga:
+    dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
+
+    resultado = importar(path, fecha)
+
+    lote = LoteCarga.objects.create(
+        dia=dia, fuente=fuente, nombre_archivo=Path(path).name,
         huella_sha256=calcular_huella(path), ruta_almacenamiento=str(path),
         fecha_declarada=fecha, cargado_por=usuario, avisos=resultado.avisos,
     )
@@ -95,3 +132,17 @@ def cargar_transbank(path: str | Path, fecha: date, usuario) -> LoteCarga:
     ])
 
     return lote
+
+
+@transaction.atomic
+def cargar_transbank(path: str | Path, fecha: date, usuario) -> LoteCarga:
+    return _cargar_movimientos_proveedor(
+        path, fecha, usuario, fuente=LoteCarga.Fuente.TRANSBANK, importar=importar_cartola_transbank,
+    )
+
+
+@transaction.atomic
+def cargar_mercado_pago(path: str | Path, fecha: date, usuario) -> LoteCarga:
+    return _cargar_movimientos_proveedor(
+        path, fecha, usuario, fuente=LoteCarga.Fuente.MERCADO_PAGO, importar=importar_settlement_mercadopago,
+    )

@@ -1,0 +1,175 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Regularización de Documentos (GD-NCR){% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-nota{font-size:12px;color:var(--hu-gray);display:block;margin-bottom:4px}
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 0">
+  <div class="kick">Regularización de Documentos</div>
+  <h2 style="font-size:27px;margin:2px 0 6px">Guías de despacho y notas de crédito</h2>
+  <p class="cfg-nota" style="margin-bottom:18px;max-width:760px">Estos documentos no entran a la carga masiva de ventas ni al arqueo automático del día — quedan aquí para registrar a mano la factura o el documento afectado cuando corresponda, sin perderlos. Trazabilidad: documento original → documento relacionado → forma de pago → arqueo afectado.</p>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+    <a class="pill {% if filtro == 'pendiente' %}p-warn{% else %}p-grey{% endif %}" href="?estado=pendiente">Pendientes · {{ cantidad_pendientes }}</a>
+    <a class="pill {% if filtro == 'regularizado' %}p-ok{% else %}p-grey{% endif %}" href="?estado=regularizado">Regularizados</a>
+    <a class="pill {% if not filtro %}p-red{% else %}p-grey{% endif %}" href="?estado=">Todos</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:20px">
+    <div class="card" style="max-height:640px;overflow:auto">
+      {% for d in documentos %}
+      <a href="?{% if filtro %}estado={{ filtro }}&{% endif %}documento={{ d.pk }}" style="display:block;padding:12px 16px;border-bottom:1px solid var(--hu-card-line);text-decoration:none;color:inherit;{% if documento_actual.pk == d.pk %}background:var(--hu-pink-2){% endif %}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:13.5px">{{ d.get_tipo_display }} {{ d.folio|folio_corto }}</strong>
+          {% if d.tipo == "SIN" %}<span class="pill p-red" style="font-size:10px">Requiere clasificación</span>
+          {% elif d.estado == "regularizado" and d.tipo == "DES" %}<span class="pill p-ok" style="font-size:10px">Regularizado</span>
+          {% else %}<span class="pill p-warn" style="font-size:10px">Pendiente{% if d.dias_pendiente > 0 %} · {{ d.dias_pendiente }} día(s){% endif %}</span>{% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{{ d.dia.fecha|date:"d-m-Y" }} · ${{ d.monto|miles }}</div>
+      </a>
+      {% empty %}
+      <div style="padding:20px;color:var(--hu-gray);font-size:13px">No hay documentos con este filtro.</div>
+      {% endfor %}
+    </div>
+
+    {% if documento_actual %}
+    {% with d=documento_actual %}
+    <div>
+      <div class="card" style="padding:18px 20px;margin-bottom:16px">
+        <div class="kick" style="margin-bottom:10px">{{ d.get_tipo_display }} {{ d.folio|folio_corto }} · código Resto {{ d.codigo_original|default:d.tipo }} · Arqueo del {{ d.dia.fecha|date:"d-m-Y" }}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:6px">
+          <div><div class="cfg-nota">Monto del documento</div><div style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-maroon)">${{ d.monto|miles }}</div></div>
+          <div><div class="cfg-nota">Caja</div><div style="font-size:15px">{{ d.caja|default:"—" }}</div></div>
+          <div><div class="cfg-nota">ID de pago externo</div><div style="font-size:15px">{{ d.n_interno }}</div></div>
+          <div><div class="cfg-nota">Estado</div><div style="font-size:15px">{{ d.get_estado_display }}</div></div>
+        </div>
+        {% if d.forma_pago == "debito" or d.forma_pago == "credito" %}
+        <div style="margin-top:10px;font-size:12.5px;padding-top:10px;border-top:1px solid var(--hu-card-line)">
+          {% if d.movimiento %}
+          <span class="pill p-ok" style="font-size:10px">Cobro cotejado</span>
+          {{ d.movimiento.get_proveedor_display|default:d.movimiento.proveedor }} · {{ d.movimiento.fecha_hora|date:"d-m-Y H:i" }} · ${{ d.movimiento.monto_venta_valido_abono|miles }} · autorización {{ d.movimiento.autorizacion }}
+          {% if d.diferencia_con_cobro %}<span class="pill p-warn" style="font-size:10px">Diferencia de ${{ d.diferencia_con_cobro|abs_valor|miles }} registrada como {% if d.diferencia_con_cobro > 0 %}pérdida{% else %}ganancia{% endif %}</span>{% endif %}
+          {% else %}
+          <span class="pill p-warn" style="font-size:10px">Sin cobro cotejado</span>
+          <span style="color:var(--hu-gray)">No hay un cobro del proveedor por este monto y medio (o hay más de uno igual). Corre la conciliación del día.</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if d.tipo == "SIN" %}
+      <div class="card" style="padding:16px 20px;margin-bottom:16px;border-left:3px solid var(--hu-red)">
+        <div class="kick" style="color:var(--hu-red);margin-bottom:6px">Código de documento no configurado: «{{ d.codigo_original }}»</div>
+        <div style="font-size:13px;line-height:1.55;margin-bottom:10px">Resto envió un tipo de documento que la app no conoce. No se descartó, pero <strong>no tiene ningún efecto en caja ni en ventas</strong> y <strong>bloquea el cierre del día</strong> hasta que se clasifique. El código original queda guardado sin cambios.</div>
+        {% if puede_clasificar %}
+        <form method="post" action="{% url 'clasificar_documento' documento_id=d.pk %}" style="display:grid;grid-template-columns:200px 1fr auto;gap:10px;align-items:end">
+          {% csrf_token %}
+          <div><label class="cfg-nota">Clasificar como</label>
+            <select class="cfg-in" style="width:100%" name="tipo" required><option value="">Elegir...</option><option value="DES">Guía de despacho</option><option value="CRED">Nota de crédito</option></select></div>
+          <div><label class="cfg-nota">Motivo / evidencia (ej. el PDF del documento en el SII)</label><input class="cfg-in" style="width:100%" type="text" name="motivo" required></div>
+          <button type="submit" class="btn">Clasificar</button>
+        </form>
+        {% else %}
+        <div class="cfg-nota">Solo el Jefe de Contabilidad o la Gerente pueden clasificarlo.</div>
+        {% endif %}
+      </div>
+      {% elif d.tipo == "CRED" %}
+      <div class="card" style="padding:16px 20px;margin-bottom:16px;border-left:3px solid {% if d.verificacion_estado == 'verificada' %}var(--hu-ok){% elif d.forma_pago == 'efectivo' %}var(--hu-warn){% else %}var(--hu-card-line){% endif %}">
+        <div class="kick" style="margin-bottom:6px;color:{% if d.verificacion_estado == 'verificada' %}var(--hu-ok){% else %}var(--hu-warn){% endif %}">Respaldo de la devolución · {{ d.get_verificacion_estado_display }}</div>
+        <div style="font-size:13px;line-height:1.55;margin-bottom:10px">
+          Resto la anotó como <strong>{{ d.get_forma_pago_display|lower }}</strong> en su detalle, pero eso <strong>no dice cómo se devolvió el dinero</strong> (por norma se devuelve en efectivo).
+          {% if d.verificacion_estado == "verificada" %}Respaldo verificado. La nota no cambia el efectivo de {{ d.caja|default:"la caja" }}: Resto ya la descontó.
+          {% else %}<strong>No se descuenta del efectivo de {{ d.caja|default:"la caja" }}</strong>: el cierre de Resto ya trae la nota descontada. Falta el respaldo (vale firmado y boleta original) y, mientras no esté verificado, <strong>bloquea el cierre del día</strong>.{% endif %}
+        </div>
+
+        {% if d.verificacion_estado == "sin_verificar" or d.verificacion_estado == "rechazada" %}
+        {% if d.verificacion_estado == "rechazada" %}<div style="font-size:12.5px;color:var(--hu-red);margin-bottom:8px"><strong>Evidencia rechazada:</strong> {{ d.verificacion_comentario }}. Carga una nueva.</div>{% endif %}
+        <form method="post" action="{% url 'registrar_evidencia_nc' documento_id=d.pk %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div><label class="cfg-nota">Cómo se devolvió el dinero (por norma: efectivo)</label>
+              <select class="cfg-in" style="width:100%" name="medio" required>{% for valor, texto in medios_verificados %}<option value="{{ valor }}" {% if valor == "efectivo" %}selected{% endif %}>{{ texto }}</option>{% endfor %}</select></div>
+            <div><label class="cfg-nota">Boleta original {% if boletas_candidatas %}(candidatas por monto y caja){% endif %}</label>
+              {% if boletas_candidatas %}<select class="cfg-in" style="width:100%;margin-bottom:6px" name="boleta_original"><option value="">— ninguna / otra —</option>{% for b in boletas_candidatas %}<option value="{{ b.boleta }}">{{ b.boleta }} · {{ b.fecha|date:"d-m" }} {{ b.hora|time:"H:i" }} · {{ b.medios }}{% if b.mismo_dia %} · mismo día{% endif %}</option>{% endfor %}</select>{% endif %}
+              <input class="cfg-in" style="width:100%" type="text" name="boleta_original_texto" placeholder="{% if boletas_candidatas %}O escribe otra{% else %}N° de la boleta original o de reemplazo{% endif %}"></div>
+            <div style="grid-column:1/-1"><label class="cfg-nota">Evidencia (PDF o imagen) — obligatoria: vale firmado por el cliente con su RUT (o, si fue una excepción, el comprobante de la anulación, transferencia o boleta de reemplazo)</label><input class="cfg-in" style="width:100%" type="file" name="comprobante" required></div>
+            <div style="grid-column:1/-1"><label class="cfg-nota">Comentario</label><textarea class="cfg-in" style="width:100%" name="comentario" rows="2"></textarea></div>
+          </div>
+          <button type="submit" class="btn">Registrar evidencia</button>
+        </form>
+
+        {% elif d.verificacion_estado == "evidencia_cargada" or d.verificacion_estado == "pendiente_segunda_firma" %}
+        <div style="font-size:13px;margin-bottom:8px"><strong>Medio real:</strong> {{ d.get_medio_verificado_display }} · <strong>Boleta:</strong> {{ d.boleta_original|default:"—" }} · <strong>Evidencia:</strong> {{ d.evidencia_nombre_original }} · cargada por {{ d.evidencia_por.get_full_name|default:d.evidencia_por.username }} el {{ d.evidencia_en|date:"d-m-Y H:i" }}{% if d.evidencia_comentario %}<br><span style="color:var(--hu-gray)">{{ d.evidencia_comentario }}</span>{% endif %}</div>
+        {% if d.verificacion_estado == "evidencia_cargada" %}
+        <form method="post" action="{% url 'verificar_nc' documento_id=d.pk %}">
+          {% csrf_token %}
+          <div style="margin-bottom:8px"><label class="cfg-nota">Comentario (obligatorio si rechazas){% if requiere_segunda_firma %} · sobre ${{ umbral_firma|miles }} exige además la segunda firma de la Gerente{% endif %}</label><textarea class="cfg-in" style="width:100%" name="comentario" rows="2"></textarea></div>
+          <div style="display:flex;gap:8px">
+            <button type="submit" name="accion" value="aprobar" class="btn" {% if nivel < 1 %}disabled title="Solo el Jefe de Contabilidad o superior verifica"{% endif %}>Verificar</button>
+            <button type="submit" name="accion" value="rechazar" class="btn btn-2" {% if nivel < 1 %}disabled{% endif %}>Rechazar evidencia</button>
+          </div>
+        </form>
+        {% else %}
+        <div style="font-size:12.5px;margin-bottom:8px">Verificada por {{ d.verificado_por.get_full_name|default:d.verificado_por.username }} — <strong>falta la segunda firma de la Gerente</strong> (monto sobre ${{ umbral_firma|miles }}).</div>
+        <form method="post" action="{% url 'segunda_firma_nc' documento_id=d.pk %}">
+          {% csrf_token %}
+          <div style="margin-bottom:8px"><textarea class="cfg-in" style="width:100%" name="comentario" rows="2" placeholder="Comentario (obligatorio si rechazas)"></textarea></div>
+          <div style="display:flex;gap:8px">
+            <button type="submit" name="accion" value="aprobar" class="btn" {% if nivel < 2 %}disabled title="Solo la Gerente firma"{% endif %}>Firmar</button>
+            <button type="submit" name="accion" value="rechazar" class="btn btn-2" {% if nivel < 2 %}disabled{% endif %}>Rechazar</button>
+          </div>
+        </form>
+        {% endif %}
+
+        {% else %}
+        <div style="font-size:13px"><strong>Verificada:</strong> medio real <strong>{{ d.get_medio_verificado_display }}</strong>{% if d.medio_verificado == "efectivo" %} — descontada del efectivo de {{ d.caja }}{% else %} — <strong>excepción a la norma: no mueve el efectivo</strong>{% endif %}.
+          Boleta: {{ d.boleta_original|default:"—" }} · Evidencia: {{ d.evidencia_nombre_original }}<br>
+          <span style="color:var(--hu-gray)">Verificó {{ d.verificado_por.get_full_name|default:d.verificado_por.username }} el {{ d.verificado_en|date:"d-m-Y H:i" }}{% if d.segunda_firma_por %} · segunda firma {{ d.segunda_firma_por.get_full_name|default:d.segunda_firma_por.username }}{% endif %}</span></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if d.estado == "pendiente" and d.tipo == "DES" %}
+      <div class="kick" style="margin-bottom:10px">{% if d.tipo == "DES" %}Registrar la factura asociada{% else %}Registrar a qué documento afecta{% endif %}</div>
+      <form method="post" action="{% url 'regularizar_documento' documento_id=d.pk %}" enctype="multipart/form-data" class="card" style="padding:18px 20px">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label class="cfg-nota">{% if d.tipo == "DES" %}N° de factura asociada{% else %}Documento que afecta{% endif %}</label>
+            <input class="cfg-in" style="width:100%" type="text" name="documento_relacionado" placeholder="{% if d.tipo == 'DES' %}Ej. 123456{% else %}Ej. Boleta B0000045{% endif %}" required>
+          </div>
+          <div><label class="cfg-nota">Fecha del documento relacionado</label><input class="cfg-in" style="width:100%" type="date" name="fecha_documento_relacionado" value="{{ hoy|date:'Y-m-d' }}"></div>
+          <div>
+            <label class="cfg-nota">Forma de pago — la que quedó en el cotejo de Resto, no se puede cambiar acá</label>
+            {% if d.forma_pago %}
+            <input class="cfg-in" style="width:100%" type="text" value="{{ d.get_forma_pago_display }}" disabled>
+            {% else %}
+            <input class="cfg-in" style="width:100%;color:var(--hu-warn)" type="text" value="Sin forma de pago única declarada — corrígelo en el libro contable" disabled>
+            {% endif %}
+          </div>
+          <div><label class="cfg-nota">Referencia / comentario</label><textarea class="cfg-in" style="width:100%" name="referencia" rows="2"></textarea></div>
+          <div style="grid-column:1/-1"><label class="cfg-nota">Comprobante del pago de la factura (PDF o imagen) — obligatorio</label><input class="cfg-in" style="width:100%" type="file" name="comprobante" required></div>
+        </div>
+        <button type="submit" class="btn" {% if not d.forma_pago %}disabled title="Corrige la forma de pago en el libro contable antes de regularizar"{% endif %}>Regularizar</button>
+      </form>
+      {% elif d.estado == "regularizado" %}
+      <div class="card" style="padding:18px 20px">
+        <div style="font-size:13px;margin-bottom:6px"><strong>Documento relacionado:</strong> {{ d.documento_relacionado }}{% if d.fecha_documento_relacionado %} · {{ d.fecha_documento_relacionado|date:"d-m-Y" }}{% endif %}</div>
+        <div style="font-size:13px;margin-bottom:6px"><strong>Forma de pago:</strong> {{ d.get_forma_pago_display }}</div>
+        {% if d.referencia %}<div style="font-size:13px;color:var(--hu-gray);margin-bottom:6px">{{ d.referencia }}</div>{% endif %}
+        {% if d.comprobante_nombre_original %}<div style="font-size:13px;color:var(--hu-gray);margin-bottom:6px">Comprobante: {{ d.comprobante_nombre_original }}</div>{% endif %}
+        <div class="cfg-nota">Regularizado por {{ d.regularizado_por.get_full_name|default:d.regularizado_por.username }} el {{ d.regularizado_en|date:"d-m-Y H:i" }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endwith %}
+    {% else %}
+    <div class="card" style="padding:30px;color:var(--hu-gray);text-align:center">Sin documentos que mostrar con este filtro.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

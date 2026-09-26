@@ -11,19 +11,31 @@ contemplaba:
    boleta emitida al cierre.
 
 Ambos casos comparten el mismo control: cerrar el día con documentos
-pendientes exige un aprobador, y el nivel exigido escala según cuántos
-casos haya ese día:
-  - 1 a 10 casos: Jefe de Contabilidad (o superior) alcanza.
-  - Más de 10 casos: solo la Gerente de Administración y Finanzas.
+pendientes exige un aprobador: el Jefe de Contabilidad (o la Gerente) alcanza,
+sea cual sea la cantidad de casos (Karla, 2026-09-26; antes, con más de 10 casos
+solo podía la Gerente).
 """
 from django.db import transaction
 
 from nucleo.models import DiaArqueo, EventoAuditoria, Excepcion, Venta
 
-GRUPO_JEFE_CONTABILIDAD = "Jefe de Contabilidad"
-GRUPO_GERENTE_ADM_FINANZAS = "Gerente de Administración y Finanzas"
-UMBRAL_ESCALAMIENTO = 10
+from nucleo.permisos import (  # noqa: E402  (los perfiles viven en nucleo.permisos)
+    GRUPO_ADMIN_TECNICO, GRUPO_ENCARGADO as GRUPO_ENCARGADA_INGRESOS, GRUPO_GERENTE as GRUPO_GERENTE_ADM_FINANZAS,
+    GRUPO_JEFE as GRUPO_JEFE_CONTABILIDAD, GRUPO_SOLO_LECTURA, GRUPO_SOLO_VISUALIZACION, Permiso, exigir, nivel_de, tiene_permiso,
+)
+# Perfiles de entrada a la app (Karla, 2026-09-22): antes solo existían
+# estos dos grupos, para aprobar cosas puntuales — cualquier otro usuario
+# autenticado podía operar todo. Ahora hay 4 perfiles reales; ver
+# nucleo.configuracion_servicio.ROLES y nucleo.middleware.
+UMBRAL_ESCALAMIENTO = 10  # valor por defecto; el vigente se ajusta en Configuración
 MOTIVO_OTROS_INGRESOS = "forma_pago_sin_boleta"
+
+
+def puede_operar(usuario) -> bool:
+    """¿Puede la persona operar (cargar, contar, registrar)? Solo el Encargado de Ingresos y la Gerente
+    (Karla, 2026-09-26: antes bastaba con no ser «Solo Visualización»). Lo usan las plantillas para ocultar
+    botones; el control real está en las vistas y en los servicios (`nucleo.permisos`)."""
+    return tiene_permiso(usuario, Permiso.OPERAR)
 
 
 class AsignacionInvalida(Exception):
@@ -46,19 +58,14 @@ def total_documentos_pendientes(dia: DiaArqueo) -> int:
 
 
 def nivel_requerido(cantidad_pendientes: int) -> int:
-    """0: nadie especial necesario (no hay pendientes). 1: Jefe de
-    Contabilidad. 2: Gerente de Administración y Finanzas."""
-    if cantidad_pendientes == 0:
-        return 0
-    return 2 if cantidad_pendientes > UMBRAL_ESCALAMIENTO else 1
+    """0: nadie especial necesario (no hay pendientes). 1: Jefe de Contabilidad (o la Gerente), sin importar cuántos
+    sean (Karla, 2026-09-26: el Jefe cierra con cualquier cantidad de pendientes; ya no escala a la Gerente)."""
+    return 0 if cantidad_pendientes == 0 else 1
 
 
 def nivel_usuario(usuario) -> int:
-    if usuario.groups.filter(name=GRUPO_GERENTE_ADM_FINANZAS).exists():
-        return 2
-    if usuario.groups.filter(name=GRUPO_JEFE_CONTABILIDAD).exists():
-        return 1
-    return 0
+    """Nivel de aprobación por PERFIL (2 Gerente, 1 Jefe, 0 el resto). Ser superusuario no cuenta."""
+    return nivel_de(usuario)
 
 
 def puede_cerrar_con_pendientes(dia: DiaArqueo, usuario) -> tuple[bool, str]:
@@ -67,18 +74,13 @@ def puede_cerrar_con_pendientes(dia: DiaArqueo, usuario) -> tuple[bool, str]:
     if requerido == 0:
         return True, "Sin documentos pendientes."
     if nivel_usuario(usuario) >= requerido:
-        nombre_nivel = "Gerente de Administración y Finanzas" if requerido == 2 else "Jefe de Contabilidad"
-        return True, f"{cantidad} documento(s) pendiente(s) — autorizado por rol {nombre_nivel}."
-    nombre_nivel = "la Gerente de Administración y Finanzas" if requerido == 2 else "el Jefe de Contabilidad"
-    return False, (
-        f"{cantidad} documento(s) pendiente(s) de emitir "
-        f"{'(más de ' + str(UMBRAL_ESCALAMIENTO) + ', escala de nivel)' if requerido == 2 else ''} "
-        f"— debe aprobar {nombre_nivel}."
-    )
+        return True, f"{cantidad} documento(s) pendiente(s) — autorizado por su perfil."
+    return False, f"{cantidad} documento(s) pendiente(s) de emitir — debe aprobar el Jefe de Contabilidad o la Gerente."
 
 
 @transaction.atomic
 def asignar_factura_a_venta(venta: Venta, factura: str, usuario) -> Venta:
+    exigir(usuario, Permiso.OPERAR, "Tu perfil no puede asignar documentos.")
     if not venta.es_guia_de_despacho:
         raise AsignacionInvalida("Esta venta no tiene guía de despacho asociada.")
     if not factura.strip():
@@ -99,6 +101,7 @@ def asignar_factura_a_venta(venta: Venta, factura: str, usuario) -> Venta:
 
 @transaction.atomic
 def asignar_factura_a_excepcion(excepcion: Excepcion, factura: str, usuario) -> Excepcion:
+    exigir(usuario, Permiso.OPERAR, "Tu perfil no puede asignar documentos.")
     if excepcion.motivo_id is None or excepcion.motivo.codigo != MOTIVO_OTROS_INGRESOS:
         raise AsignacionInvalida("Esta excepción no fue resuelta como otros ingresos.")
     if not factura.strip():

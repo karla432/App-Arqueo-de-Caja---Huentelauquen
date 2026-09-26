@@ -1,0 +1,99 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Regularizaciones y Reintegros{% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-nota{font-size:12px;color:var(--hu-gray);display:block;margin-bottom:4px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.kpi{padding:12px 16px}
+.kpi b{display:block;font-family:var(--hu-serif);font-size:21px;color:var(--hu-maroon)}
+.mal{color:var(--hu-red);font-weight:700}.aviso{color:var(--hu-warn);font-weight:700}.ok{color:var(--hu-ok);font-weight:700}.mudo{color:#A8A8A8}
+.tbl td.num,.tbl th.num{text-align:right}
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 40px">
+  <div class="kick">Seguimiento</div>
+  <h2 style="font-size:27px;margin:2px 0 6px">Regularizaciones y Reintegros</h2>
+  <p class="cfg-nota" style="max-width:820px;margin-bottom:16px">Qué guías y notas de crédito siguen sin regularizar, y cuánto falta por reintegrar de las pérdidas de cada cajera. La antigüedad cuenta desde el día de la venta: hasta 7 días normal, 8 a 15 ámbar, más de 15 rojo.</p>
+
+  <div class="kpis">
+    <div class="card kpi"><span class="cfg-nota">Documentos por regularizar</span><b {% if kpi_docs_pendientes %}class="aviso"{% endif %}>{{ kpi_docs_pendientes }}</b><span class="cfg-nota">{{ kpi_docs_monto|pesos }}</span></div>
+    <div class="card kpi"><span class="cfg-nota">Pérdidas de cajeras con saldo</span><b {% if kpi_reint_pendientes %}class="aviso"{% endif %}>{{ kpi_reint_pendientes }}</b></div>
+    <div class="card kpi"><span class="cfg-nota">Saldo por cobrar a cajeras</span><b {% if kpi_reint_saldo %}class="mal"{% endif %}>{{ kpi_reint_saldo|pesos }}</b></div>
+    <div class="card kpi"><span class="cfg-nota">Período</span><b style="font-size:15px">{{ desde|date:"d-m-Y" }} → {{ hasta|date:"d-m-Y" }}</b></div>
+  </div>
+
+  <form method="get" class="card" style="padding:12px 16px;display:flex;gap:12px;align-items:end;margin-bottom:18px;flex-wrap:wrap">
+    <input type="hidden" name="vista" value="{{ vista }}">
+    <div><label class="cfg-nota">Desde</label><input class="cfg-in" type="date" name="desde" value="{{ desde|date:'Y-m-d' }}"></div>
+    <div><label class="cfg-nota">Hasta</label><input class="cfg-in" type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}"></div>
+    {% if vista == "documentos" %}
+    <div><label class="cfg-nota">Estado</label><select class="cfg-in" name="estado"><option value="">Todos</option><option value="pendiente" {% if estado == "pendiente" %}selected{% endif %}>Pendientes</option><option value="regularizado" {% if estado == "regularizado" %}selected{% endif %}>Regularizados</option></select></div>
+    <div><label class="cfg-nota">Tipo</label><select class="cfg-in" name="tipo"><option value="">Todos</option>{% for v, n in tipos %}<option value="{{ v }}" {% if tipo == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+    {% else %}
+    <div><label class="cfg-nota">Estado</label><select class="cfg-in" name="estado"><option value="">Todos</option><option value="pendiente" {% if estado == "pendiente" %}selected{% endif %}>Pendiente</option><option value="parcial" {% if estado == "parcial" %}selected{% endif %}>Parcial</option><option value="reintegrado" {% if estado == "reintegrado" %}selected{% endif %}>Reintegrado</option></select></div>
+    {% endif %}
+    <button type="submit" class="btn btn-2">Aplicar</button>
+    <div style="flex:1"></div>
+    <a class="btn" href="{% url 'descargar_seguimiento' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}">⬇ Descargar Excel (documentos y reintegros)</a>
+  </form>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <a class="pill {% if vista == 'documentos' %}p-red{% else %}p-grey{% endif %}" href="?vista=documentos&desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}">Guías y documentos · {{ documentos|length }}</a>
+    <a class="pill {% if vista == 'reintegros' %}p-red{% else %}p-grey{% endif %}" href="?vista=reintegros&desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}">Pérdidas de cajeras · {{ reintegros|length }}</a>
+  </div>
+
+  {% if vista == "documentos" %}
+  <table class="tbl" style="width:100%;border-collapse:collapse">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Folio</th><th>Caja</th><th class="num">Monto</th><th>Forma de pago</th><th>Estado</th><th>Documento relacionado</th><th class="num">Días</th><th></th></tr></thead>
+    <tbody>
+      {% for f in documentos %}
+      <tr>
+        <td>{{ f.fecha|date:"d-m-Y" }}</td><td>{{ f.tipo }}{% if f.respaldo %}<br><span class="cfg-nota" style="margin:0">Respaldo: {{ f.respaldo|lower }}</span>{% endif %}</td>
+        <td>{{ f.folio|folio_corto }}</td><td>{{ f.caja|default:"—" }}</td><td class="num">{{ f.monto|pesos }}</td><td>{{ f.forma_pago|default:"—" }}</td>
+        <td>{% if f.pendiente %}<span class="pill p-warn">Pendiente</span>{% else %}<span class="pill p-ok">Regularizado</span>{% endif %}</td>
+        <td>{{ f.relacionado|default:"—" }}</td>
+        <td class="num {% if f.nivel == 'critico' %}mal{% elif f.nivel == 'atencion' %}aviso{% endif %}">{% if f.dias_pendiente is not None %}{{ f.dias_pendiente }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td><a href="{% url 'regularizacion_documentos' %}?estado=&documento={{ f.doc.pk }}">Abrir →</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="10" style="padding:24px;text-align:center;color:var(--hu-gray)">No hay documentos con estos filtros.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  {% if por_cajera %}
+  <div class="kick" style="margin-bottom:8px">Cuánto debe cada cajera (todo el período)</div>
+  <table class="tbl" style="width:auto;min-width:640px;border-collapse:collapse;margin-bottom:22px">
+    <thead><tr><th>Cajera</th><th class="num">Pérdidas</th><th class="num">Reintegrado</th><th class="num">Saldo</th><th class="num">Pendientes</th></tr></thead>
+    <tbody>
+      {% for r in por_cajera %}
+      <tr><td><strong>{{ r.cajera }}</strong></td><td class="num">{{ r.original|pesos }}</td><td class="num">{{ r.reintegrado|pesos }}</td><td class="num {% if r.saldo %}mal{% else %}ok{% endif %}">{{ r.saldo|pesos }}</td><td class="num">{{ r.pendientes }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <div class="kick" style="margin-bottom:8px">Detalle de pérdidas</div>
+  <table class="tbl" style="width:100%;border-collapse:collapse">
+    <thead><tr><th>Arqueo</th><th>Cajera</th><th>Origen</th><th class="num">Pérdida</th><th class="num">Reintegrado</th><th class="num">Saldo</th><th>Estado</th><th class="num">Días</th><th></th></tr></thead>
+    <tbody>
+      {% for f in reintegros %}
+      <tr>
+        <td>{{ f.fecha|date:"d-m-Y" }}</td><td>{{ f.cajera }}</td><td>{{ f.caja }}</td>
+        <td class="num">{{ f.original|pesos }}{% if f.menor %} <span class="pill p-grey" style="font-size:9.5px" title="No aparece en el panel de Reintegros de Caja">menor</span>{% endif %}</td>
+        <td class="num">{{ f.reintegrado|pesos }}</td><td class="num {% if f.saldo %}mal{% endif %}">{{ f.saldo|pesos }}</td>
+        <td>{% if f.estado == "reintegrado" %}<span class="pill p-ok">Reintegrado</span>{% elif f.estado == "parcial" %}<span class="pill p-warn">Parcial</span>{% else %}<span class="pill p-red">Pendiente</span>{% endif %}{% if f.abonos_en_tramite %} <span class="cfg-nota" style="display:inline;margin:0">· {{ f.abonos_en_tramite }} abono(s) en trámite</span>{% endif %}</td>
+        <td class="num {% if f.nivel == 'critico' %}mal{% elif f.nivel == 'atencion' %}aviso{% endif %}">{% if f.dias_pendiente is not None %}{{ f.dias_pendiente }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{% if f.saldo and not f.menor %}<a href="{% url 'reintegros_caja' %}?tipo={{ f.tipo }}&origen={{ f.origen_id }}">Reintegrar →</a>{% elif f.saldo %}<a href="{% url 'reintegros_caja' %}?tipo={{ f.tipo }}&origen={{ f.origen_id }}">Ver →</a>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="padding:24px;text-align:center;color:var(--hu-gray)">No hay pérdidas de cajeras en este período.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="cfg-nota" style="margin-top:10px">Las pérdidas «menores» (hasta el umbral de Configuración, hoy $500) no aparecen en el panel de Reintegros de Caja para no ensuciarlo, pero se cuentan y se ven aquí.</p>
+  {% endif %}
+</div>
+{% endblock %}

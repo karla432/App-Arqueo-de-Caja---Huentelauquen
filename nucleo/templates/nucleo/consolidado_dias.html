@@ -1,0 +1,134 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Auditoría de Pagos{% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-nota{font-size:12px;color:var(--hu-gray);display:block;margin-bottom:4px}
+.tabla-scroll{overflow-x:auto;border:1px solid var(--hu-card-line);background:#fff}
+.cons{border-collapse:collapse;font-size:12.5px;min-width:1900px;width:100%}
+.cons th{background:var(--hu-red);color:#fff;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;padding:7px 9px;border:1px solid var(--hu-line);text-align:right;white-space:nowrap}
+.cons th.grupo{background:var(--hu-maroon);text-align:center}
+.cons th:first-child,.cons td:first-child{text-align:left;position:sticky;left:0;z-index:1}
+.cons td{padding:7px 9px;border:1px solid var(--hu-card-line);text-align:right;white-space:nowrap;background:#fff}
+.cons td:first-child{background:#FAFAFA;font-weight:700}
+.cons tr.total td{background:var(--hu-pink-2);font-weight:700;border-top:2px solid var(--hu-red)}
+.cons .mal{color:var(--hu-red);font-weight:700}
+.cons .aviso{color:var(--hu-warn);font-weight:700}
+.cons .ok{color:var(--hu-ok)}
+.cons .mudo{color:#A8A8A8}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.kpi{padding:12px 16px}
+.kpi b{display:block;font-family:var(--hu-serif);font-size:21px;color:var(--hu-maroon)}
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 40px">
+  <div class="kick">Análisis · un día por fila</div>
+  <h2 style="font-size:27px;margin:2px 0 6px">Auditoría de Pagos</h2>
+  <p class="cfg-nota" style="max-width:820px;margin-bottom:16px">Una fila por día: lo vendido, cómo se cobró, el efectivo contado, guías, notas de crédito, excepciones, depósito y pérdidas de cajeras. «Sin explicar» = boletas − cobros declarados; debe ser $0. «Tarjetas contra Transbank» suma al POS las guías cobradas con tarjeta y lo compara con lo que cobró el proveedor: la diferencia son los ajustes de sencillo y de tarjeta. Las notas de crédito son solo informativas: Resto ya las trae descontadas de las ventas y del efectivo. «Correcciones de pago» = ventas cuya forma de pago se corrigió (regla automática o persona); el número lleva al detalle del día.</p>
+
+  <form method="get" class="card" style="padding:12px 16px;display:flex;gap:12px;align-items:end;margin-bottom:18px;flex-wrap:wrap">
+    <div><label class="cfg-nota">Desde</label><input class="cfg-in" type="date" name="desde" value="{{ desde|date:'Y-m-d' }}"></div>
+    <div><label class="cfg-nota">Hasta</label><input class="cfg-in" type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}"></div>
+    <button type="submit" class="btn btn-2">Aplicar</button>
+    <div style="flex:1"></div>
+    <a class="btn" href="{% url 'descargar_consolidado' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}">⬇ Descargar Excel del consolidado</a>
+  </form>
+
+  {% if totales %}
+  <div class="kpis">
+    <div class="card kpi"><span class="cfg-nota">Días en el período</span><b>{{ totales.dias }}</b></div>
+    <div class="card kpi"><span class="cfg-nota">Boletas</span><b>{{ totales.boletas_total|pesos }}</b><span class="cfg-nota">{{ totales.boletas_n }} documentos</span></div>
+    <div class="card kpi"><span class="cfg-nota">Efectivo contado</span><b>{{ totales.efectivo_contado|pesos }}</b><span class="cfg-nota">dif. {{ totales.diferencia_efectivo|pesos }}</span></div>
+    <div class="card kpi"><span class="cfg-nota">Excepciones abiertas</span><b {% if totales.excepciones_abiertas_n %}style="color:var(--hu-red)"{% endif %}>{{ totales.excepciones_abiertas_n }}</b><span class="cfg-nota">{{ totales.excepciones_abiertas_monto|pesos }} en juego</span></div>
+    <div class="card kpi"><span class="cfg-nota">Días que no cuadran</span><b {% if totales.dias_que_no_cuadran %}style="color:var(--hu-red)"{% else %}style="color:var(--hu-ok)"{% endif %}>{{ totales.dias_que_no_cuadran }}</b></div>
+  </div>
+
+  <div class="tabla-scroll">
+  <table class="cons">
+    <thead>
+      <tr>
+        <th rowspan="2">Día</th><th rowspan="2" style="text-align:center">Estado</th>
+        <th class="grupo" colspan="2">Ventas (boletas)</th>
+        <th class="grupo" colspan="4">Cobrado según el POS</th>
+        <th class="grupo" colspan="4">Tarjetas contra Transbank</th>
+        <th class="grupo" colspan="3">Efectivo de caja</th>
+        <th class="grupo" colspan="3">Guías de despacho</th>
+        <th class="grupo" colspan="3">Notas de crédito (informativo)</th>
+        <th class="grupo" colspan="3">Excepciones</th>
+        <th class="grupo" colspan="2">Correcciones de pago</th>
+        <th class="grupo" colspan="3">Depósito</th>
+        <th class="grupo" colspan="3">Pérdidas de cajeras</th>
+        <th rowspan="2" style="text-align:center">¿Cuadra?</th>
+      </tr>
+      <tr>
+        <th>N°</th><th>Total</th>
+        <th>Efectivo</th><th>Tarjetas</th><th>Otros</th><th>Sin explicar</th>
+        <th>Guías con tarjeta</th><th>Total (POS + guías)</th><th>Transbank</th><th>Diferencia</th>
+        <th>Esperado</th><th>Contado</th><th>Diferencia</th>
+        <th>N° · $</th><th>En efectivo</th><th>Por regularizar</th>
+        <th>N°</th><th>$</th><th>Sin respaldo</th>
+        <th>Abiertas</th><th>$ en juego</th><th>Result. tarjeta</th>
+        <th>N°</th><th>$</th>
+        <th>Esperado</th><th>Depositado</th><th>Diferencia</th>
+        <th>Pérdida</th><th>Reintegrado</th><th>Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in filas %}
+      <tr>
+        <td><a href="{% url 'dashboard_dia' fecha=f.fecha|date:'Y-m-d' %}">{{ f.fecha|date:"d-m-Y" }}</a></td>
+        <td style="text-align:center"><span class="pill p-grey" style="font-size:10px">{{ f.estado }}</span></td>
+        <td>{{ f.boletas_n }}</td><td>{{ f.boletas_total|pesos }}</td>
+        <td>{{ f.efectivo_pos|pesos }}</td><td>{{ f.tarjetas_pos|pesos }}</td><td>{{ f.otros_pos|pesos }}</td>
+        <td class="{% if f.sin_explicar %}mal{% else %}ok{% endif %}">{{ f.sin_explicar|pesos }}</td>
+        <td>{% if f.guias_tarjeta %}{{ f.guias_tarjeta|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{{ f.tarjetas_total|pesos }}</td><td>{{ f.proveedor_tarjeta|pesos }}</td>
+        <td class="{% if f.diferencia_tarjeta %}aviso{% endif %}">{{ f.diferencia_tarjeta|pesos }}</td>
+        <td>{{ f.efectivo_esperado|pesos }}</td>
+        <td>{{ f.efectivo_contado|pesos }}{% if f.cajas_sin_contar %} <span class="aviso" title="Cajas sin contar">({{ f.cajas_sin_contar }} sin contar)</span>{% endif %}</td>
+        <td class="{% if f.diferencia_efectivo %}aviso{% endif %}"><a href="{% url 'arqueo_efectivo' fecha=f.fecha|date:'Y-m-d' %}">{{ f.diferencia_efectivo|pesos }}</a></td>
+        <td>{% if f.guias_n %}{{ f.guias_n }} · {{ f.guias_total|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{% if f.guias_efectivo %}{{ f.guias_efectivo|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td class="{% if f.guias_pendientes %}aviso{% endif %}">{% if f.guias_pendientes %}<a href="{% url 'seguimiento' %}?vista=documentos&estado=pendiente&tipo=DES">{{ f.guias_pendientes }}</a>{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{% if f.notas_n %}{{ f.notas_n }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{% if f.notas_n %}{{ f.notas_total|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td class="{% if f.notas_sin_respaldo %}mal{% endif %}">{% if f.notas_sin_respaldo %}<a href="{% url 'regularizacion_documentos' %}">{{ f.notas_sin_respaldo }}</a>{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td class="{% if f.excepciones_abiertas_n %}mal{% endif %}">{% if f.excepciones_abiertas_n %}<a href="{% url 'bandeja_excepciones' fecha=f.fecha|date:'Y-m-d' %}">{{ f.excepciones_abiertas_n }}</a>{% else %}<span class="mudo">0</span>{% endif %}</td>
+        <td>{% if f.excepciones_abiertas_n %}{{ f.excepciones_abiertas_monto|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td class="{% if f.resultado_tarjeta < 0 %}aviso{% endif %}">{% if f.resultado_tarjeta %}{{ f.resultado_tarjeta|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td class="{% if f.correcciones_pago_n %}aviso{% endif %}">{% if f.correcciones_pago_n %}<a href="{% url 'auditoria_reclasificaciones' fecha=f.fecha|date:'Y-m-d' %}" title="Ver el detalle de las correcciones de forma de pago de este día">{{ f.correcciones_pago_n }}</a>{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{% if f.correcciones_pago_n %}{{ f.correcciones_pago_monto|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{{ f.deposito_esperado|pesos }}</td>
+        <td>{{ f.deposito_depositado|pesos }}{% if f.deposito_pendiente %} <span class="aviso" title="Hay un depósito sin validar">•</span>{% endif %}</td>
+        <td class="{% if f.deposito_diferencia %}aviso{% endif %}"><a href="{% url 'control_depositos' %}">{{ f.deposito_diferencia|pesos }}</a></td>
+        <td>{% if f.perdidas_cajeras %}{{ f.perdidas_cajeras|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td>{% if f.perdidas_cajeras %}{{ f.reintegrado|pesos }}{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td class="{% if f.saldo_cajeras %}mal{% endif %}">{% if f.perdidas_cajeras %}<a href="{% url 'seguimiento' %}?vista=reintegros">{{ f.saldo_cajeras|pesos }}</a>{% else %}<span class="mudo">—</span>{% endif %}</td>
+        <td style="text-align:center">{% if f.cuadra %}<span class="pill p-ok">Sí</span>{% else %}<span class="pill p-red">No</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total">
+        <td>TOTAL</td><td style="text-align:center">{{ totales.dias }} días</td>
+        <td>{{ totales.boletas_n }}</td><td>{{ totales.boletas_total|pesos }}</td>
+        <td>{{ totales.efectivo_pos|pesos }}</td><td>{{ totales.tarjetas_pos|pesos }}</td><td>{{ totales.otros_pos|pesos }}</td><td>{{ totales.sin_explicar|pesos }}</td>
+        <td>{{ totales.guias_tarjeta|pesos }}</td><td>{{ totales.tarjetas_total|pesos }}</td><td>{{ totales.proveedor_tarjeta|pesos }}</td><td>{{ totales.diferencia_tarjeta|pesos }}</td>
+        <td>{{ totales.efectivo_esperado|pesos }}</td><td>{{ totales.efectivo_contado|pesos }}</td><td>{{ totales.diferencia_efectivo|pesos }}</td>
+        <td>{{ totales.guias_n }} · {{ totales.guias_total|pesos }}</td><td>{{ totales.guias_efectivo|pesos }}</td><td>{{ totales.guias_pendientes }}</td>
+        <td>{{ totales.notas_n }}</td><td>{{ totales.notas_total|pesos }}</td><td>{{ totales.notas_sin_respaldo }}</td>
+        <td>{{ totales.excepciones_abiertas_n }}</td><td>{{ totales.excepciones_abiertas_monto|pesos }}</td><td>{{ totales.resultado_tarjeta|pesos }}</td>
+        <td>{{ totales.correcciones_pago_n }}</td><td>{{ totales.correcciones_pago_monto|pesos }}</td>
+        <td>{{ totales.deposito_esperado|pesos }}</td><td>{{ totales.deposito_depositado|pesos }}</td><td>{{ totales.deposito_diferencia|pesos }}</td>
+        <td>{{ totales.perdidas_cajeras|pesos }}</td><td>{{ totales.reintegrado|pesos }}</td><td>{{ totales.saldo_cajeras|pesos }}</td>
+        <td style="text-align:center">{{ totales.dias_que_no_cuadran }} no</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="cfg-nota" style="margin-top:10px">Cada cifra en rojo o ámbar es un enlace a la pantalla donde se resuelve. «Resultado tarjeta» = ganancias − pérdidas por diferencias con Transbank / Mercado Pago (negativo = pérdida). «•» junto al depósito = hay un depósito aún sin validar.</p>
+  {% else %}
+  <div class="card" style="padding:30px;color:var(--hu-gray);text-align:center">No hay días cargados entre {{ desde|date:"d-m-Y" }} y {{ hasta|date:"d-m-Y" }}. Cambia las fechas o carga un día en «Carga de archivos».</div>
+  {% endif %}
+</div>
+{% endblock %}

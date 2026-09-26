@@ -1,15 +1,28 @@
 {% extends "nucleo/base.html" %}
-{% block titulo %}Cierre y exportación · {{ dia.fecha }}{% endblock %}
+{% load formato %}
+{% block titulo %}Cierre del Día · {{ dia.fecha }}{% endblock %}
+{% block estilos_extra %}
+<style>
+.cz-fila{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--hu-card-line);font-size:13.5px}
+.cz-fila:last-child{border-bottom:0}
+.cz-marca{width:18px;font-weight:700;text-align:center}
+.cz-det{color:var(--hu-gray);font-size:12.5px;margin-top:2px}
+.cz-caja{background:var(--hu-card);border:1px solid var(--hu-card-line);padding:16px 22px;margin-bottom:18px}
+.cz-caja summary{cursor:pointer;font-weight:700;color:var(--hu-red);font-size:13px}
+</style>
+{% endblock %}
 {% block contenido %}
 
 <div style="padding:20px 32px;background:var(--hu-maroon);display:flex;justify-content:space-between;align-items:center">
   <div>
-    <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Cierre del día · {{ dia.fecha }}</div>
+    <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Cierre del Día · {{ dia.fecha|date:"d-m-Y" }}</div>
     <div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">
-      {% if dia.estado == "exportado" %}Exportado
-      {% elif dia.estado == "cerrado" %}Cerrado, listo para exportar
+      {% if dia_cerrado and exportacion_vigente %}Cerrado · archivos para Odoo listos
+      {% elif dia_cerrado and motivo_bloqueo_archivos %}Cerrado · archivos para Odoo bloqueados
+      {% elif dia_cerrado %}Cerrado
+      {% elif reabierto %}Reabierto · por aprobar
       {% elif puede_aprobar %}Listo para aprobar
-      {% else %}Pendiente{% endif %}
+      {% else %}Por aprobar{% endif %}
     </div>
   </div>
   <div style="text-align:right;font-size:12.5px;color:#E8C9CF;line-height:1.5">
@@ -18,52 +31,95 @@
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1.25fr;gap:0">
-  <div style="padding:26px 30px;border-right:1px solid var(--hu-card-line)">
-    <div class="kick" style="margin-bottom:12px">Verificación previa</div>
-    <div style="font-size:13.5px;line-height:1.55">
-      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
-        <span style="color:{% if checklist.sin_excepciones_bloqueantes.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.sin_excepciones_bloqueantes.ok %}✓{% else %}✗{% endif %}</span>
-        <span>Cero excepciones bloqueantes abiertas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.sin_excepciones_bloqueantes.detalle }}</span></span>
-      </div>
-      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
-        <span style="color:{% if checklist.arqueo_completo.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.arqueo_completo.ok %}✓{% else %}✗{% endif %}</span>
-        <span>Arqueo registrado en todas las cajas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.arqueo_completo.detalle }}</span></span>
-      </div>
-      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
-        <span style="color:{% if checklist.diferencias_autorizadas.ok %}var(--hu-ok){% else %}var(--hu-red){% endif %};font-weight:700">{% if checklist.diferencias_autorizadas.ok %}✓{% else %}✗{% endif %}</span>
-        <span>Diferencias de caja autorizadas<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.diferencias_autorizadas.detalle }}</span></span>
-      </div>
-      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--hu-card-line)">
-        <span style="color:var(--hu-warn);font-weight:700">{% if checklist.deposito_registrado.ok %}✓{% else %}!{% endif %}</span>
-        <span>Depósito bancario<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.deposito_registrado.detalle }}</span></span>
-      </div>
-      <div style="display:flex;gap:10px;padding:10px 0">
-        <span style="color:{% if checklist.documentos_pendientes.ok %}var(--hu-ok){% else %}var(--hu-warn){% endif %};font-weight:700">{% if checklist.documentos_pendientes.ok %}✓{% else %}!{% endif %}</span>
-        <span>Documentos pendientes de emitir<br><span style="color:var(--hu-gray);font-size:12.5px">{{ checklist.documentos_pendientes.detalle }}</span></span>
-      </div>
+<div style="padding:26px 32px 50px;max-width:960px">
+
+  {% if reabierto %}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-warn);background:#FDF3E3">
+    <strong style="color:var(--hu-warn)">Día reabierto</strong>
+    <div style="font-size:13px;margin-top:4px">Motivo: {{ reabierto.motivo }} · {{ reabierto.por.get_full_name|default:reabierto.por.username }} el {{ reabierto.hora|date:"d-m-Y H:i" }}. Los archivos anteriores quedaron invalidados; al volver a aprobar se generan de nuevo.</div>
+  </div>
+  {% endif %}
+
+  {% if not dia_cerrado %}
+  {# ------------------------- 1. Qué falta para cerrar ------------------------- #}
+  <div class="kick" style="margin-bottom:10px">Qué falta para cerrar{% if faltan %} · {{ faltan|length }}{% endif %}</div>
+  <div class="cz-caja" style="{% if faltan %}border-left:4px solid var(--hu-red){% else %}border-left:4px solid var(--hu-ok){% endif %}">
+    {% for f in faltan %}
+    <div class="cz-fila">
+      <span class="cz-marca" style="color:var(--hu-red)">✗</span>
+      <div style="flex:1"><strong>{{ f.titulo }}</strong><div class="cz-det">{{ f.detalle }}</div></div>
+      {% if f.clave == "conciliacion_ejecutada" %}
+      <form method="post" action="{% url 'reconciliar_dia' fecha=dia.fecha|date:'Y-m-d' %}">{% csrf_token %}<button type="submit" class="btn" style="padding:7px 14px;font-size:12.5px">Conciliar ahora</button></form>
+      {% elif f.url %}<a href="{{ f.url }}" class="btn btn-2" style="padding:7px 14px;font-size:12.5px">{{ f.etiqueta }}</a>{% endif %}
     </div>
+    {% empty %}
+    <div class="cz-fila"><span class="cz-marca" style="color:var(--hu-ok)">✓</span><div><strong>No falta nada para cerrar</strong><div class="cz-det">Todas las verificaciones obligatorias están cumplidas.</div></div></div>
+    {% endfor %}
+  </div>
 
-    <div style="background:var(--hu-pink-2);border-left:3px solid var(--hu-red);padding:13px 16px;margin-top:18px;font-size:13px;line-height:1.6">Al aprobar, el día queda bloqueado. Reabrirlo exige motivo, queda en bitácora e <strong>invalida la exportación</strong>: habrá que generar una versión nueva.</div>
-
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
-      {% if dia.estado == "aprobado" or dia.estado == "cerrado" or dia.estado == "exportado" %}
-      <form method="post" action="{% url 'reabrir_dia' fecha=dia.fecha|date:'Y-m-d' %}">
-        {% csrf_token %}
-        <input type="text" name="motivo" placeholder="Motivo de la reapertura…" required style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);margin-bottom:8px">
-        <button type="submit" class="btn btn-2" style="width:100%;justify-content:center">Reabrir día</button>
-      </form>
-      {% else %}
-        <div style="font-size:12.5px;color:var(--hu-maroon);margin-bottom:4px">{{ razon_aprobacion }}</div>
-        <form method="post" action="{% url 'aprobar_dia' fecha=dia.fecha|date:'Y-m-d' %}">
-          {% csrf_token %}
-          <button type="submit" class="btn" style="width:100%;justify-content:center" {% if not puede_aprobar %}disabled title="{{ razon_aprobacion }}"{% endif %}>Aprobar y cerrar el día</button>
-        </form>
-      {% endif %}
+  {% if avisos %}
+  <div class="kick" style="margin-bottom:10px">Avisos · no bloquean el cierre</div>
+  <div class="cz-caja" style="border-left:4px solid var(--hu-warn)">
+    {% for f in avisos %}
+    <div class="cz-fila">
+      <span class="cz-marca" style="color:var(--hu-warn)">!</span>
+      <div style="flex:1"><strong>{{ f.titulo }}</strong><div class="cz-det">{{ f.detalle }}</div></div>
+      {% if f.url %}<a href="{{ f.url }}" class="btn btn-2" style="padding:7px 14px;font-size:12.5px">{{ f.etiqueta }}</a>{% endif %}
     </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% else %}
+  {# ------------------------- Día cerrado: resumen + archivos ------------------------- #}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-ok)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div><strong>{{ cumplidas }} de {{ total_verificaciones }} verificaciones cumplidas</strong>{% if avisos %} <span class="pill p-warn" style="margin-left:6px">{{ avisos|length }} aviso{{ avisos|length|pluralize }}</span>{% endif %}</div>
+      <div class="cz-det" style="margin:0">Aprobado el {{ dia.aprobado_en|date:"d-m-Y H:i" }}</div>
+    </div>
+    <details style="margin-top:10px">
+      <summary>Ver el detalle</summary>
+      {% for f in filas_checklist %}
+      <div class="cz-fila" style="padding:8px 0">
+        <span class="cz-marca" style="color:{% if f.ok %}var(--hu-ok){% else %}var(--hu-warn){% endif %}">{% if f.ok %}✓{% else %}!{% endif %}</span>
+        <div style="flex:1">{{ f.titulo }}<div class="cz-det">{{ f.detalle }}</div></div>
+      </div>
+      {% endfor %}
+    </details>
+  </div>
 
+  <div class="kick" style="margin-bottom:10px">Archivos para Odoo</div>
+  {% if exportacion_vigente %}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-ok)">
+    <strong style="color:var(--hu-ok)">✓ Versión {{ exportacion_vigente.version }} generada</strong>
+    <div class="cz-det">Captura Ventas y Captura Arqueo Caja, generadas el {{ exportacion_vigente.generado_en|date:"d-m-Y H:i" }}.</div>
+  </div>
+  {% else %}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-warn);background:#FDF3E3">
+    <strong style="color:var(--hu-warn)">Los archivos todavía no se pueden generar</strong>
+    <div style="font-size:13px;margin-top:4px">{% if motivo_bloqueo_archivos %}{{ motivo_bloqueo_archivos }}{% else %}Reintenta desde «Archivos para Odoo».{% endif %}</div>
+    <div class="cz-det">El día quedó cerrado igual. Los archivos se generan solos apenas lo resuelvas{% if guias_pendientes or otros_ingresos_pendientes or perdidas_pendientes or diferencias_de_caja_pendientes %} <a href="#pendientes">(más abajo →)</a>{% endif %}.</div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {% if pagos_divididos %}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-warn)">
+    <div class="kick" style="color:var(--hu-warn);margin-bottom:6px">Comandas con pago dividido · {{ pagos_divididos|length }}</div>
+    <div class="cz-det" style="margin-bottom:8px">Odoo admite un solo medio de pago por venta. Cada comanda va completa bajo su medio principal, y la parte restante viaja como traspaso en la Captura Arqueo Caja. El efectivo y la conciliación con Transbank no cambian.</div>
+    {% for p in pagos_divididos %}
+    <div style="font-size:13px;padding:4px 0;border-top:1px solid var(--hu-card-line)">
+      <strong>Comanda {{ p.venta.n_interno }}</strong> · {{ p.venta.caja }} · {{ p.resumen }}
+      {% if p.problemas %}<span class="pill p-red" style="font-size:10px">Bloquea los archivos: {{ p.problemas.0 }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ------------------------- Pendientes que se resuelven aquí mismo ------------------------- #}
+  {% if guias_pendientes or otros_ingresos_pendientes or perdidas_pendientes or diferencias_de_caja_pendientes %}
+  <div id="pendientes" class="cz-caja">
     {% if guias_pendientes or otros_ingresos_pendientes %}
-    <div class="kick" style="margin:24px 0 10px">Documentos pendientes de emisión</div>
+    <div class="kick" style="margin-bottom:10px">Documentos por emitir</div>
     {% for v in guias_pendientes %}
     <form method="post" action="{% url 'asignar_factura_venta' venta_id=v.pk %}" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
       {% csrf_token %}
@@ -81,45 +137,56 @@
     </form>
     {% endfor %}
     {% endif %}
+
+    {% if perdidas_pendientes or diferencias_de_caja_pendientes %}
+    <div class="kick" style="margin:{% if guias_pendientes or otros_ingresos_pendientes %}20px{% else %}0{% endif %} 0 10px">Diferencias por visar (sobre ${{ umbral_visado|miles }})</div>
+    {% for e in perdidas_pendientes %}
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <span style="font-size:12.5px;flex:1">Tarjeta · {{ e.cuenta_contable.nombre }} · {{ e.cajera_responsable.nombre }} · ${{ e.monto_perdida_ganancia|floatformat:0 }}</span>
+      <form method="post" action="{% url 'visar_perdida' excepcion_id=e.pk %}">{% csrf_token %}
+        <input type="text" name="motivo_excepcion" placeholder="Motivo (solo si tú lo preparaste)" style="padding:5px 8px;border:1px solid var(--hu-card-line);font-size:11.5px;width:190px;margin-right:4px">
+        <button type="submit" class="btn btn-2" style="padding:6px 10px;font-size:12px" {% if not puede_visar_perdida %}disabled title="Solo el Jefe de Contabilidad o superior puede visar"{% endif %}>Visar</button></form>
+    </div>
+    {% endfor %}
+    {% for a in diferencias_de_caja_pendientes %}
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <span style="font-size:12.5px;flex:1">Efectivo · {{ a.caja }} · {{ a.cajera.nombre|default:"sin cajera asignada" }} · ${{ a.diferencia|abs_valor|floatformat:0 }}</span>
+      <form method="post" action="{% url 'visar_diferencia_caja' arqueo_id=a.pk %}">{% csrf_token %}
+        <input type="text" name="motivo_excepcion" placeholder="Motivo (solo si tú lo preparaste)" style="padding:5px 8px;border:1px solid var(--hu-card-line);font-size:11.5px;width:190px;margin-right:4px">
+        <button type="submit" class="btn btn-2" style="padding:6px 10px;font-size:12px" {% if not puede_visar_perdida %}disabled title="Solo el Jefe de Contabilidad o superior puede visar"{% endif %}>Visar</button></form>
+    </div>
+    {% endfor %}
+    {% endif %}
   </div>
+  {% endif %}
 
-  <div style="padding:26px 30px">
-    <div class="kick" style="margin-bottom:12px">Archivo para Odoo</div>
-    <table class="tbl" style="margin-bottom:14px">
-      <thead><tr><th>Campo Odoo</th><th>Origen</th><th>Ejemplo</th></tr></thead>
-      <tbody>
-        <tr><td>ID de pago externo</td><td>N_INTERNO</td><td>654747</td></tr>
-        <tr><td>N° de documento externo</td><td>7 últimos del comprobante</td><td>1666467</td></tr>
-        <tr><td>Tipo de documento externo</td><td>Tipo POS · TIPO_DOC</td><td>Boleta Electrónica</td></tr>
-        <tr><td>Tipo de pago externo</td><td>Medio aprobado</td><td>Tarjeta Transbank</td></tr>
-        <tr><td>Cliente</td><td>Genérico de sala (D5)</td><td>CLIENTE OCASIONAL</td></tr>
-      </tbody>
-    </table>
-
-    <form method="post" action="{% url 'generar_exportacion' fecha=dia.fecha|date:'Y-m-d' %}" style="margin-bottom:20px">
+  {# ------------------------- Aprobar / Reabrir ------------------------- #}
+  {% if not dia_cerrado %}
+  <div style="margin-top:6px">
+    {% if not puede_aprobar and razon_aprobacion %}<div style="font-size:12.5px;color:var(--hu-maroon);margin-bottom:8px">{{ razon_aprobacion }}</div>{% endif %}
+    <form method="post" action="{% url 'aprobar_dia' fecha=dia.fecha|date:'Y-m-d' %}">
       {% csrf_token %}
-      <button type="submit" class="btn" style="width:100%;justify-content:center" {% if not puede_exportar or not puede_aprobar_rol %}disabled title="El día debe estar aprobado o cerrado"{% endif %}>
-        Generar versión {{ exportaciones.count|add:1 }}
-      </button>
+      {% if requiere_motivo %}
+      <div class="cz-caja" style="border-left:4px solid var(--hu-warn);background:#FDF3E3">
+        <strong style="color:var(--hu-warn)">Excepción de control</strong>
+        <div style="font-size:13px;margin:4px 0 8px">Participaste en la preparación de este día. Aprobarlo tú misma es una excepción: indica el motivo (queda en la bitácora).</div>
+        <input type="text" name="motivo_excepcion" placeholder="Motivo de la excepción…" required style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line)">
+      </div>
+      {% endif %}
+      <button type="submit" class="btn" style="width:100%;justify-content:center;padding:14px 18px;font-size:15px" {% if not puede_aprobar %}disabled title="{{ razon_aprobacion }}"{% endif %}>Aprobar y cerrar el día</button>
     </form>
-    <div style="font-size:12px;color:var(--hu-gray);margin-bottom:20px">Habilitado una vez aprobado el día. Solo días aprobados o cerrados pueden exportarse.</div>
-
-    <div class="kick" style="margin-bottom:10px">Historial y acuse</div>
-    <table class="tbl">
-      <thead><tr><th>Versión</th><th>Generada</th><th>Por</th><th>Estado</th></tr></thead>
-      <tbody>
-        {% for e in exportaciones %}
-        <tr{% if e.invalidada %} style="opacity:.55"{% endif %}>
-          <td>v{{ e.version }}{% if e.invalidada %} · invalidada{% endif %}</td>
-          <td>{{ e.generado_en|date:"d-m-Y H:i" }}</td>
-          <td>{{ e.generado_por.get_full_name|default:e.generado_por.username }}</td>
-          <td>{{ e.get_acuse_estado_display }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4" style="color:var(--hu-gray);text-align:center;padding:14px">Sin exportaciones. El acuse cierra el ciclo: sin él, no hay constancia de que la contabilidad recibió el día.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="cz-det" style="margin-top:8px">Al aprobar, el día queda bloqueado y los archivos para Odoo (Captura Ventas y Captura Arqueo Caja) se generan solos.</div>
   </div>
+  {% else %}
+  <details class="cz-caja" style="margin-top:26px">
+    <summary>Reabrir el día</summary>
+    <div style="font-size:13px;line-height:1.55;margin:10px 0">Reabrirlo exige un motivo y queda en la bitácora. <strong>Invalida los archivos generados</strong>: al volver a aprobar se crean de nuevo. Si ya cargaste esos archivos en Odoo, evita duplicarlos.</div>
+    <form method="post" action="{% url 'reabrir_dia' fecha=dia.fecha|date:'Y-m-d' %}">
+      {% csrf_token %}
+      <input type="text" name="motivo" placeholder="Motivo de la reapertura…" required style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);margin-bottom:8px">
+      <button type="submit" class="btn btn-2" style="width:100%;justify-content:center">Reabrir día</button>
+    </form>
+  </details>
+  {% endif %}
 </div>
 {% endblock %}

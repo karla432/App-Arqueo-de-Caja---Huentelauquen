@@ -1,0 +1,44 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Auditoría de pagos · {{ dia.fecha }}{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 40px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px">
+    <div>
+      <div class="kick">Auditoría {{ dia.fecha }}</div>
+      <h2 style="font-size:27px;margin-top:2px">Correcciones de forma de pago</h2>
+      <p style="font-size:12.5px;color:var(--hu-gray);max-width:720px;margin-top:6px">Cada vez que una venta cambia de forma de pago (por una regla automática o por una persona) queda aquí con lo que informó la cajera, lo corregido, el monto, el motivo y la evidencia. No necesita aprobación previa: se revisa en este reporte.</p>
+    </div>
+    <a class="btn" href="{% url 'descargar_auditoria' fecha=dia.fecha|date:'Y-m-d' %}">Descargar Excel</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:26px;max-width:760px">
+    <div class="card" style="padding:14px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Correcciones</div><div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon)">{{ resumen.cantidad }}</div></div>
+    <div class="card" style="padding:14px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Por regla automática</div><div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon)">{{ resumen.automaticas }}</div><div style="font-size:12px;color:var(--hu-gray)">manuales: {{ resumen.manuales }}</div></div>
+    <div class="card" style="padding:14px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Monto reclasificado</div><div style="font-family:var(--hu-serif);font-size:28px;font-weight:700;color:var(--hu-maroon)">${{ resumen.monto|miles }}</div></div>
+  </div>
+
+  <table class="tbl">
+    <thead>
+      <tr><th>Nota de venta</th><th>Caja · cajera</th><th>Informada</th><th>Corregida</th><th style="text-align:right">Monto</th><th>Motivo</th><th>Quién o qué regla</th><th>Cuándo</th><th>Evidencia</th></tr>
+    </thead>
+    <tbody>
+      {% for f in filas %}
+      <tr>
+        <td><strong>{{ f.nota_de_venta }}</strong><div style="font-size:11px;color:var(--hu-gray)">{{ f.comprobante }}</div></td>
+        <td>{{ f.caja }}{% if f.cajera %}<div style="font-size:11px;color:var(--hu-gray)">{{ f.cajera }}</div>{% endif %}</td>
+        <td>{{ f.medio_original }}</td>
+        <td><strong>{{ f.medio_corregido }}</strong></td>
+        <td style="text-align:right">${{ f.monto|miles }}</td>
+        <td style="font-size:12.5px;max-width:260px">{{ f.motivo }}</td>
+        <td style="font-size:12.5px">{% if f.automatica %}<span class="pill p-warn">Automática</span> {% endif %}{{ f.quien }}</td>
+        <td style="font-size:12.5px;white-space:nowrap">{{ f.cuando|date:"d-m-Y H:i" }}</td>
+        <td style="font-size:12px;color:var(--hu-gray);max-width:300px">{{ f.evidencia }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="color:var(--hu-gray);text-align:center;padding:18px">Este día no tiene correcciones de forma de pago.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

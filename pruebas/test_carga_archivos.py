@@ -7,21 +7,36 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from pruebas.perfiles_de_prueba import GRUPO_ENCARGADO, crear_usuario
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from nucleo.carga_servicio import (
-    ArchivoInvalido, CargaDuplicada, CargaEnConflicto, procesar_carga, validaciones_de_carga,
+    ArchivoInvalido, CargaDuplicada, CargaEnConflicto, procesar_carga, procesar_carga_pos, validaciones_de_carga,
 )
 from nucleo.models import DiaArqueo, LoteCarga
 
 FECHA = date(2026, 9, 2)
 FIXTURES = Path(__file__).parent / "fixtures" / "dia_referencia_02-09-2026"
+FECHA_MP = date(2026, 9, 10)
+FIXTURE_MP = Path(__file__).parent / "fixtures" / "mercado_pago_10-09-2026" / "settlement_10-09-2026.xlsx"
+FECHA_RESTO = date(2026, 9, 1)
+FIXTURES_RESTO = Path(__file__).parent / "fixtures" / "dia_referencia_01-09-2026"
+
+
+def _archivo_ventas_resto():
+    contenido = (FIXTURES_RESTO / "ventas_por_articulo_01-09-2026.xlsx").read_bytes()
+    return SimpleUploadedFile("ventas_por_articulo_01-09-2026.xlsx", contenido)
+
+
+def _archivo_libro_contable_resto():
+    contenido = (FIXTURES_RESTO / "libro_contable_01-09-2026.xlsx").read_bytes()
+    return SimpleUploadedFile("libro_contable_01-09-2026.xlsx", contenido)
 
 
 @pytest.fixture
 def usuario(django_user_model):
-    return django_user_model.objects.create_user(username="operador", password="x")
+    return crear_usuario(django_user_model, "operador", GRUPO_ENCARGADO, password="x")
 
 
 @pytest.fixture
@@ -124,6 +139,74 @@ def test_vista_de_carga_completa(client, usuario, dia, tmp_path, monkeypatch):
     resp = client.get(reverse("carga_de_archivos", args=[FECHA.isoformat()]))
     assert resp.status_code == 200
     assert resp.context["resumen_pos"]["comandas"] == 336
+
+
+def test_carga_mercado_pago_real_de_punta_a_punta(usuario, tmp_path, monkeypatch):
+    import nucleo.carga_servicio as svc
+    monkeypatch.setattr(svc, "CARPETA_CARGAS", tmp_path)
+    dia_mp = DiaArqueo.objects.create(fecha=FECHA_MP)
+
+    archivo = SimpleUploadedFile("settlement_10-09-2026.xlsx", FIXTURE_MP.read_bytes())
+    lote = procesar_carga(dia_mp, archivo, LoteCarga.Fuente.MERCADO_PAGO, usuario)
+
+    assert lote.fuente == LoteCarga.Fuente.MERCADO_PAGO
+    dia_mp.refresh_from_db()
+    assert dia_mp.estado == DiaArqueo.Estado.CARGADO
+    assert dia_mp.movimientos.count() == 3
+    assert dia_mp.movimientos.filter(proveedor="mercado_pago", medio="debito").count() == 3
+
+
+def test_carga_pos_con_libro_contable_real_de_punta_a_punta(usuario, tmp_path, monkeypatch):
+    import nucleo.carga_servicio as svc
+    monkeypatch.setattr(svc, "CARPETA_CARGAS", tmp_path)
+    dia_resto = DiaArqueo.objects.create(fecha=FECHA_RESTO)
+
+    lote = procesar_carga_pos(dia_resto, _archivo_ventas_resto(), _archivo_libro_contable_resto(), usuario)
+
+    assert lote.fuente == LoteCarga.Fuente.POS
+    assert lote.nombre_archivo == "ventas_por_articulo_01-09-2026.xlsx"
+    assert lote.nombre_archivo_secundario == "libro_contable_01-09-2026.xlsx"
+    dia_resto.refresh_from_db()
+    assert dia_resto.estado == DiaArqueo.Estado.CARGADO
+    assert dia_resto.ventas.count() == 239
+    # Las dos guías de despacho del libro (folios 21184 y 21185) ya no se
+    # guardan como Venta: quedan pendientes en Regularización de Documentos
+    # (Karla, 2026-09-22) — ver test_regularizacion_documentos.py.
+    from nucleo.models import RegularizacionDocumento
+    guias = RegularizacionDocumento.objects.filter(dia=dia_resto, tipo="DES").order_by("folio")
+    assert [g.monto for g in guias] == [117406, 20300]
+    venta = dia_resto.ventas.get(nro_comprobante="B0390301666228")
+    assert venta.n_interno == 654506  # recuperado del libro contable, no venía en el archivo de ventas
+
+
+def test_recargar_los_mismos_dos_archivos_de_resto_se_detecta_como_duplicado(usuario, tmp_path, monkeypatch):
+    import nucleo.carga_servicio as svc
+    monkeypatch.setattr(svc, "CARPETA_CARGAS", tmp_path)
+    dia_resto = DiaArqueo.objects.create(fecha=FECHA_RESTO)
+
+    procesar_carga_pos(dia_resto, _archivo_ventas_resto(), _archivo_libro_contable_resto(), usuario)
+    with pytest.raises(CargaDuplicada):
+        procesar_carga_pos(dia_resto, _archivo_ventas_resto(), _archivo_libro_contable_resto(), usuario)
+    assert dia_resto.ventas.count() == 239
+
+
+def test_vista_de_carga_pos_con_libro_contable(client, usuario, tmp_path, monkeypatch):
+    import nucleo.carga_servicio as svc
+    monkeypatch.setattr(svc, "CARPETA_CARGAS", tmp_path)
+    client.force_login(usuario)
+    dia_resto = DiaArqueo.objects.create(fecha=FECHA_RESTO)
+
+    resp = client.post(
+        reverse("cargar_archivo_pos", args=[FECHA_RESTO.isoformat()]),
+        {"archivo_ventas": _archivo_ventas_resto(), "archivo_libro_contable": _archivo_libro_contable_resto()},
+    )
+    assert resp.status_code == 302
+    dia_resto.refresh_from_db()
+    assert dia_resto.ventas.exclude(tipo_doc="DES").count() == 239
+
+    resp = client.get(reverse("carga_de_archivos", args=[FECHA_RESTO.isoformat()]))
+    assert resp.context["resumen_pos"]["comandas"] == 239
+    assert resp.context["lote_pos"].nombre_archivo_secundario == "libro_contable_01-09-2026.xlsx"
 
 
 def test_descargar_archivo_original(client, usuario, dia, tmp_path, monkeypatch):

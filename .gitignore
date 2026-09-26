@@ -6,3 +6,9 @@ __pycache__/
 db.sqlite3
 /exportaciones/
 /archivos_cargados/
+.clave_secreta_local
+.env
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3.bak
+.entorno_desarrollo

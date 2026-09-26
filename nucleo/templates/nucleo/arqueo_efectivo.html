@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Arqueo de efectivo · {{ dia.fecha }}{% endblock %}
 {% block contenido %}
 
@@ -14,6 +15,13 @@
     <span class="pill p-ok" style="font-size:12px;padding:6px 12px">Todas las cajas contadas</span>
     {% endif %}
   </div>
+
+  {% if avisos_efectivo_guias %}
+  <div class="card" style="padding:14px 18px;margin-bottom:20px;border-left:3px solid var(--hu-warn)">
+    <div class="kick" style="color:var(--hu-warn);margin-bottom:6px">Revisar antes de cuadrar la caja</div>
+    {% for aviso in avisos_efectivo_guias %}<div style="font-size:12.5px;color:var(--hu-gray);margin-bottom:4px">{{ aviso }}</div>{% endfor %}
+  </div>
+  {% endif %}
 
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
     <div class="card" style="padding:16px 18px">
@@ -34,11 +42,23 @@
   </div>
 
   <table class="tbl" style="margin-bottom:10px">
-    <thead><tr><th>Caja</th><th class="n">Esperado</th><th class="n">Fondo inicial</th><th class="n">Gastos autorizados</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>Caja</th><th>Cajera</th><th class="n">Esperado</th><th class="n">Fondo inicial</th><th class="n">Gastos autorizados</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Estado</th><th></th></tr></thead>
     <tbody>
       {% for a in arqueos %}
       <tr{% if arqueo_actual.pk == a.pk %} style="outline:2px solid var(--hu-red);outline-offset:-2px"{% endif %}>
         <td><a href="?caja={{ a.pk }}"><strong>{{ a.caja }}</strong></a></td>
+        <td>
+          {% if a.pk and permisos.operar %}
+          <form method="post" action="{% url 'asignar_cajera' arqueo_id=a.pk %}" style="display:flex;gap:6px;align-items:center">
+            {% csrf_token %}
+            <select name="cajera_id" onchange="this.form.submit()" style="padding:5px 6px;border:1px solid var(--hu-card-line);font-size:12.5px">
+              <option value="">— sin asignar —</option>
+              {% for c in cajeras %}<option value="{{ c.pk }}" {% if a.cajera_id == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+            </select>
+            <noscript><button type="submit" class="btn btn-2" style="padding:4px 8px;font-size:11px">Guardar</button></noscript>
+          </form>
+          {% else %}{{ a.cajera.nombre|default:"— sin asignar —" }}{% endif %}
+        </td>
         <td class="n">{{ a.esperado|floatformat:0 }}</td>
         <td class="n">{{ a.fondo_inicial|floatformat:0 }}</td>
         <td class="n">{{ a.gastos_autorizados|floatformat:0 }}</td>
@@ -50,12 +70,23 @@
           {% elif a.estado == "dentro_de_umbral" %}<span class="pill p-warn">Dentro de umbral</span>
           {% elif a.estado == "requiere_autorizacion" %}<span class="pill p-red">Requiere autorización</span>
           {% else %}<span class="pill p-ok">Autorizada</span>{% endif %}
+          {% if a.contado is not None and a.diferencia|abs_valor > umbral_visado %}
+            {% if a.visado_por_id %}<div style="margin-top:4px"><span class="pill p-ok" style="font-size:10px">Visada</span></div>
+            {% elif a.pk and permisos.visar %}
+            <form method="post" action="{% url 'visar_diferencia_caja' arqueo_id=a.pk %}" style="margin-top:4px">
+              {% csrf_token %}
+              <input type="text" name="motivo_excepcion" placeholder="Motivo (solo si tú lo preparaste)" style="padding:5px 8px;border:1px solid var(--hu-card-line);font-size:11.5px;width:190px;margin-right:4px">
+              <button type="submit" class="btn btn-2" style="padding:3px 8px;font-size:11px" {% if not puede_visar_perdida %}disabled title="Solo el Jefe de Contabilidad o superior puede visar"{% endif %}>Visar (sobre ${{ umbral_visado|miles }})</button>
+            </form>
+            {% endif %}
+          {% endif %}
         </td>
-        <td><a href="?caja={{ a.pk }}">{% if a.contado is None %}Contar{% else %}Editar{% endif %}</a></td>
+        <td>{% if a.pk %}<a href="?caja={{ a.pk }}">{% if a.contado is None %}Contar{% else %}Editar{% endif %}</a>{% endif %}</td>
       </tr>
       {% endfor %}
       <tr style="background:var(--hu-pink-2)">
         <td style="font-weight:700;background:var(--hu-pink-2)">Consolidado del día</td>
+        <td style="background:var(--hu-pink-2)"></td>
         <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.esperado|floatformat:0 }}</td>
         <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.fondo_inicial|floatformat:0 }}</td>
         <td class="n" style="font-weight:700;background:var(--hu-pink-2)">{{ consolidado.gastos_autorizados|floatformat:0 }}</td>
@@ -65,9 +96,9 @@
       </tr>
     </tbody>
   </table>
-  <div style="font-size:12px;color:var(--hu-gray);margin-bottom:28px">El umbral es $5.000 por caja. El arqueo se controla por caja, no solo consolidado: un total en cero puede esconder un sobrante y un faltante en cajas distintas.</div>
+  <div style="font-size:12px;color:var(--hu-gray);margin-bottom:28px">El umbral es ${{ umbral_caja|miles }} por caja. El arqueo se controla por caja, no solo consolidado: un total en cero puede esconder un sobrante y un faltante en cajas distintas.</div>
 
-  {% if arqueo_actual %}
+  {% if arqueo_actual.pk %}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:30px">
     <div>
       <div class="kick" style="margin-bottom:10px">Registrar conteo · {{ arqueo_actual.caja }}</div>
@@ -80,21 +111,69 @@
           </div>
           <div>
             <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Gastos autorizados</label>
-            <input type="number" name="gastos_autorizados" value="{{ arqueo_actual.gastos_autorizados|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+            <div style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line);background:var(--hu-label);color:var(--hu-gray)">${{ arqueo_actual.gastos_autorizados|floatformat:0 }}</div>
           </div>
         </div>
-        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Conteo por denominación</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-          {% for d, cantidad in denominaciones_form %}
-          <div>
-            <label style="display:block;font-size:12px;color:var(--hu-gray);margin-bottom:4px">${{ d }}</label>
-            <input type="number" min="0" name="denom_{{ d }}" value="{{ cantidad }}"
-                   placeholder="0" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
+        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Total contado en efectivo</label>
+        <input type="text" inputmode="numeric" name="total_contado" required autocomplete="off"
+               value="{% if arqueo_actual.contado is not None %}{{ arqueo_actual.contado|floatformat:0 }}{% endif %}"
+               placeholder="Ej. 120000" style="width:100%;padding:10px 12px;border:1px solid var(--hu-card-line);font-size:16px;margin-bottom:6px">
+        <div style="font-size:12px;color:var(--hu-gray);margin-bottom:16px">Efectivo esperado según ventas: <strong>${{ arqueo_actual.esperado|floatformat:0 }}</strong> (más el fondo inicial, menos los gastos).</div>
+        <button type="submit" class="btn" style="width:100%;justify-content:center">Guardar conteo</button>
+      </form>
+
+      {% if pagos_divididos_de_la_caja %}
+      <div class="kick" style="margin:20px 0 10px">Comandas con pago dividido de {{ arqueo_actual.caja }}</div>
+      <div class="card" style="padding:14px 18px;margin-bottom:6px">
+        {% for p in pagos_divididos_de_la_caja %}
+        <div style="font-size:13px;padding:4px 0"><strong>Comanda {{ p.venta.n_interno }}</strong> · {{ p.resumen }}</div>
+        {% endfor %}
+        <div style="font-size:12px;color:var(--hu-gray);margin-top:6px">Cada medio está ingresado por separado: solo la parte en efectivo cuenta en el efectivo de esta caja. Al exportar a Odoo la venta va bajo un solo medio y el resto se regulariza con un traspaso en el asiento Arqueo Caja.</div>
+      </div>
+      {% endif %}
+
+      {% if documentos_de_la_caja %}
+      <div class="kick" style="margin:20px 0 10px">Guías y notas de crédito en efectivo de {{ arqueo_actual.caja }}</div>
+      <div class="card" style="padding:14px 18px;margin-bottom:6px">
+        {% for d in documentos_de_la_caja %}
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+          <span>{{ d.get_tipo_display }} {{ d.folio|folio_corto }} <a href="{% url 'regularizacion_documentos' %}?estado=&documento={{ d.pk }}" style="font-size:11.5px">ver</a></span>
+          {% if d.tipo == 'CRED' %}<span style="color:var(--hu-gray)">${{ d.monto|miles }} · informativa · Resto ya la descontó{% if d.verificacion_estado != 'verificada' %} · falta respaldo{% endif %}</span>
+          {% else %}<strong style="color:var(--hu-ok)">+${{ d.monto|miles }}</strong>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="cfg-nota" style="font-size:12px;color:var(--hu-gray);margin-top:6px">La guía suma lo cobrado y ya está incluida en el efectivo teórico. La nota de crédito solo resta cuando se sabe que la devolución salió en efectivo de esta caja (ver la regla en Configuración → Umbrales). Si una nota sin descontar sí salió de esta caja, el conteo mostrará un faltante por ese monto.</div>
+      </div>
+      {% endif %}
+
+      <div class="kick" style="margin:20px 0 10px">Gastos y devoluciones de {{ arqueo_actual.caja }}</div>
+      <div class="card" style="padding:18px">
+        {% if arqueo_actual.gastos.all %}
+        <div style="font-size:12.5px;line-height:1.9;margin-bottom:14px">
+          {% for g in arqueo_actual.gastos.all %}
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--hu-card-line);padding:4px 0">
+            <span>{{ g.motivo.texto }}{% if g.boleta_asociada %} · boleta {{ g.boleta_asociada }}{% endif %}</span>
+            <strong>${{ g.monto|floatformat:0 }}</strong>
           </div>
           {% endfor %}
         </div>
-        <button type="submit" class="btn" style="width:100%;justify-content:center">Guardar conteo</button>
-      </form>
+        {% else %}
+        <div style="font-size:13px;color:var(--hu-gray);margin-bottom:14px">Sin gastos ni devoluciones registrados todavía.</div>
+        {% endif %}
+        <form method="post" action="{% url 'registrar_gasto_caja' arqueo_id=arqueo_actual.pk %}">
+          {% csrf_token %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <select name="motivo_id" required style="padding:8px 10px;border:1px solid var(--hu-card-line)">
+              <option value="">Motivo…</option>
+              {% for m in motivos_gasto_caja %}<option value="{{ m.pk }}">{{ m.texto }}</option>{% endfor %}
+            </select>
+            <input type="number" name="monto" placeholder="Monto" required style="padding:8px 10px;border:1px solid var(--hu-card-line)">
+          </div>
+          <input type="text" name="boleta_asociada" placeholder="Boleta asociada (si es una devolución) — opcional" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line);margin-bottom:10px">
+          <input type="text" name="comentario" placeholder="Comentario opcional" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line);margin-bottom:10px">
+          <button type="submit" class="btn btn-2" style="width:100%;justify-content:center">Agregar gasto o devolución</button>
+        </form>
+      </div>
     </div>
 
     <div>
@@ -102,7 +181,7 @@
       <div class="kick" style="margin-bottom:10px">Autorización de la diferencia</div>
       <div style="background:var(--hu-pink-2);border:1px solid var(--hu-line);padding:18px">
         <div style="font-size:13.5px;line-height:1.6;margin-bottom:14px">
-          <strong style="color:var(--hu-maroon)">{{ arqueo_actual.caja }} · ${{ arqueo_actual.diferencia|floatformat:0 }} excede el umbral de $5.000.</strong>
+          <strong style="color:var(--hu-maroon)">{{ arqueo_actual.caja }} · ${{ arqueo_actual.diferencia|floatformat:0 }} excede el umbral de ${{ umbral_caja|miles }}.</strong>
           Solo un aprobador puede autorizar el cierre, con motivo desde lista cerrada.
         </div>
         {% if puede_autorizar %}
@@ -127,35 +206,32 @@
         {% if arqueo_actual.comentario %}<div style="margin-top:8px">{{ arqueo_actual.comentario }}</div>{% endif %}
       </div>
       {% endif %}
+
+      {% if reintegro_info %}
+      <div class="kick" style="margin:20px 0 10px">Reintegro de esta pérdida</div>
+      <div class="card" style="padding:18px;font-size:13.5px;line-height:1.7">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong>{{ arqueo_actual.cajera.nombre }}</strong>
+          {% if reintegro_info.estado == "reintegrado" %}<span class="pill p-ok">Reintegrado</span>
+          {% elif reintegro_info.estado == "parcialmente_reintegrado" %}<span class="pill p-warn">Parcialmente reintegrado</span>
+          {% else %}<span class="pill p-red">Pendiente de reintegro</span>{% endif %}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div><span style="color:var(--hu-gray);font-size:12px">Diferencia original (no se modifica)</span><div>${{ arqueo_actual.diferencia|floatformat:0 }}</div></div>
+          <div><span style="color:var(--hu-gray);font-size:12px">Saldo pendiente hoy</span><div style="color:{% if reintegro_info.saldo_pendiente %}var(--hu-warn){% else %}var(--hu-ok){% endif %}">${{ reintegro_info.saldo_pendiente|miles }}</div></div>
+        </div>
+        {% for r in reintegro_info.reintegros %}
+        <div style="font-size:12.5px;color:var(--hu-gray);border-top:1px solid var(--hu-card-line);padding-top:8px;margin-top:8px">
+          ${{ r.monto|miles }} · {{ r.get_estado_display }}{% if r.estado == "validado" %} · reintegrado el {{ r.fecha_reintegro|date:"d-m-Y" }}{% endif %}
+        </div>
+        {% endfor %}
+        <a href="{% url 'reintegros_caja' %}?tipo=arqueo&origen={{ arqueo_actual.pk }}" style="display:inline-block;margin-top:10px;font-size:12.5px">Ver / registrar en Reintegros de Caja →</a>
+      </div>
+      {% endif %}
     </div>
   </div>
   {% endif %}
 
-  <div class="kick" style="margin-bottom:10px">Depósito bancario</div>
-  <form method="post" action="{% url 'registrar_deposito' fecha=dia.fecha|date:'Y-m-d' %}" class="card" style="padding:18px;max-width:640px;margin-bottom:40px">
-    {% csrf_token %}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div>
-        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Monto depositado</label>
-        <input type="number" name="monto" value="{{ deposito.monto|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
-      </div>
-      <div>
-        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">N° de comprobante</label>
-        <input type="text" name="comprobante" value="{{ deposito.comprobante|default:'' }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div>
-        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fecha de depósito</label>
-        <input type="date" name="fecha" value="{{ deposito.fecha|date:'Y-m-d' }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
-      </div>
-      <div>
-        <label style="display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:5px">Fondo retenido</label>
-        <input type="number" name="fondo_retenido" value="{{ deposito.fondo_retenido|floatformat:0 }}" style="width:100%;padding:8px 10px;border:1px solid var(--hu-card-line)">
-      </div>
-    </div>
-    <button type="submit" class="btn btn-2">Registrar depósito</button>
-    <div style="font-size:12.5px;color:var(--hu-gray);margin-top:14px;line-height:1.55">El depósito puede registrarse después del cierre operativo, pero el día no se marca completo hasta que exista.</div>
-  </form>
+  <div style="font-size:12.5px;color:var(--hu-gray);margin:0 0 40px;line-height:1.55">El depósito bancario de este día se registra y se valida en <a href="{% url 'control_depositos' %}">Control de Depósitos →</a></div>
 </div>
 {% endblock %}

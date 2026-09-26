@@ -1,0 +1,221 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Archivos para Odoo{% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-nota{font-size:12px;color:var(--hu-gray);display:block;margin-bottom:4px}
+.cap{margin-bottom:22px}
+.cap-cab{display:flex;gap:14px;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--hu-card-line)}
+.cap-num{flex:0 0 40px;height:40px;border-radius:50%;background:var(--hu-red);color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center}
+.cap-tit{font-family:var(--hu-serif);font-size:21px;color:var(--hu-maroon);font-weight:700;margin:0}
+.cap-sirve{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--hu-body)}
+.cap-mas{padding:0 20px;background:#fff;border-bottom:1px solid var(--hu-card-line)}
+.cap-mas summary{cursor:pointer;padding:9px 0;font-size:12.5px;font-weight:700;color:var(--hu-red)}
+.cap-info{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:4px 0 14px}
+.cap-info b{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-red);margin-bottom:4px}
+.cap-info p{margin:0;font-size:13px;line-height:1.5;color:var(--hu-body)}
+.cap-lista{padding:14px 20px}
+.mal{color:var(--hu-red)}
+.pag{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:12.5px}
+.btn-c{padding:5px 12px;font-size:12.5px}
+.atencion{border-left:4px solid var(--hu-red);margin-bottom:22px}
+.atencion li{padding:8px 0;border-bottom:1px solid var(--hu-card-line);display:flex;gap:12px;align-items:baseline;font-size:13px}
+.atencion li:last-child{border-bottom:0}
+</style>
+{% endblock %}
+
+{% block contenido %}
+{% comment %}Macro simple de paginación: se repite por tarjeta con su propio parámetro.{% endcomment %}
+<div style="padding:30px 34px 40px">
+  <div class="kick">Odoo</div>
+  <h2 style="font-size:27px;margin:2px 0 6px">Archivos para Odoo</h2>
+  <p class="cfg-nota" style="max-width:820px;margin-bottom:16px">Las cuatro capturas que se cargan en Odoo, en un solo lugar. Aprobar el día y generar la versión de ventas y arqueo sigue siendo un paso de «Cierre».</p>
+
+  <form method="get" class="card" style="padding:12px 16px;display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:18px">
+    <div><label class="cfg-nota">Mes</label>
+      <select class="cfg-in" name="mes">
+        {% for n, nombre in meses %}<option value="{{ n }}" {% if mes == n %}selected{% endif %}>{{ nombre|capfirst }}</option>{% endfor %}
+        <option value="todo" {% if not mes %}selected{% endif %}>Todo el año</option>
+      </select></div>
+    <div><label class="cfg-nota">Año</label><input class="cfg-in" type="number" name="anio" value="{{ anio }}" style="width:90px"></div>
+    <button type="submit" class="btn btn-2">Ver</button>
+    <a class="btn btn-2" href="{{ url_anterior }}">← {% if mes %}Mes{% else %}Año{% endif %} anterior</a>
+    <a class="btn btn-2" href="{{ url_siguiente }}">{% if mes %}Mes{% else %}Año{% endif %} siguiente →</a>
+    <a class="btn btn-2" href="{{ url_anio }}">Todo el año</a>
+    <a class="btn btn-2" href="{{ url_mes_actual }}">Mes actual</a>
+    <div style="flex:1"></div>
+    <div class="cfg-nota" style="margin:0"><strong>Mostrando:</strong> {{ periodo }}</div>
+  </form>
+
+  <section class="card atencion" style="padding:14px 20px{% if not atencion %};border-left-color:var(--hu-ok){% endif %}">
+    {% if atencion %}
+    <div class="kick" style="margin-bottom:6px;color:var(--hu-red)">Requiere tu atención · {{ atencion|length }}</div>
+    <div class="cfg-nota">Siempre visible, sin importar el mes que estés mirando.</div>
+    <ul style="list-style:none;padding:0;margin:6px 0 0">
+      {% for a in atencion %}
+      <li><strong style="min-width:150px">{{ a.captura }}</strong><span style="min-width:90px;color:var(--hu-gray)">{{ a.fecha|date:"d-m-Y" }}</span><span style="flex:1" class="mal">{{ a.motivo }}</span>
+        {% if a.generar_fecha and puede_generar %}<form method="post" action="{% url 'generar_exportacion' fecha=a.generar_fecha %}" style="margin:0">{% csrf_token %}<input type="hidden" name="volver" value="exportaciones"><button type="submit" class="btn btn-c">Generar ahora</button></form>
+        {% elif a.etiqueta %}<a href="{{ a.url }}">{{ a.etiqueta }}</a>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="kick" style="color:var(--hu-ok)">Todo al día</div>
+    <div class="cfg-nota" style="margin:2px 0 0">No hay capturas pendientes ni bloqueadas.</div>
+    {% endif %}
+  </section>
+
+  {# ---------------- 1 y 2: Ventas y Arqueo Caja, una sola tabla por día ---------------- #}
+  <section class="card cap" id="ventas">
+    <div class="cap-cab">
+      <div class="cap-num">1·2</div>
+      <div style="flex:1">
+        <h3 class="cap-tit">Captura Ventas y Captura Arqueo Caja</h3>
+        <div style="margin-top:6px">
+          <span class="pill p-ok">{{ contadores.ventas.mes }} del período</span>
+          {% if contadores.ventas.pendientes %}<span class="pill p-warn">{{ contadores.ventas.pendientes }} por generar</span>{% endif %}
+          <span class="pill p-grey">{{ contadores.ventas.total }} en total</span>
+        </div>
+        {% for c in cap_ventas %}<p class="cap-sirve"><strong>{{ c.titulo }}:</strong> {{ c.sirve }}</p>{% endfor %}
+      </div>
+    </div>
+    <details class="cap-mas" id="arqueo">
+      <summary>¿Cuándo está disponible y qué contiene? ▸</summary>
+      {% for c in cap_ventas %}
+      <div class="cap-info"><div><b>{{ c.titulo }} · cuándo está disponible</b><p>{{ c.cuando }}</p></div><div><b>{{ c.titulo }} · qué contiene</b><p>{{ c.contiene }}</p></div></div>
+      {% endfor %}
+    </details>
+    <div class="cap-lista">
+      {% if pag_ventas %}
+      <table class="tbl" style="width:100%">
+        <thead><tr><th>Día</th><th>Versión</th><th>Generada</th><th>Acuse</th><th style="text-align:right">Descargas</th></tr></thead>
+        <tbody>
+          {% for f in pag_ventas %}
+          <tr>
+            <td>{{ f.fecha|date:"d-m-Y" }}</td><td>v{{ f.version }}</td><td>{{ f.generado_en|date:"d-m-Y H:i" }}</td><td>{{ f.acuse }}</td>
+            <td style="text-align:right;white-space:nowrap">
+              {% if f.ventas_disponible %}<a class="btn btn-c" title="Descargar Captura Ventas" href="{% url 'descargar_exportacion' exportacion_id=f.exportacion.pk %}">⬇ Ventas</a>{% else %}<span class="cfg-nota mal" style="display:inline">Ventas: genera una versión nueva en Cierre</span>{% endif %}
+              {% if f.arqueo_disponible %}<a class="btn btn-c" title="Descargar Captura Arqueo Caja" href="{% url 'descargar_arqueo_caja' exportacion_id=f.exportacion.pk %}">⬇ Arqueo</a>{% else %}<span class="cfg-nota mal" style="display:inline">Arqueo: genera una versión nueva en Cierre</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if pag_ventas.paginator.num_pages > 1 %}
+      <div class="pag">
+        {% if pag_ventas.has_previous %}<a href="?anio={{ base_paginas.anio }}&mes={{ base_paginas.mes }}&p_v={{ pag_ventas.previous_page_number }}">← Anterior</a>{% endif %}
+        <span>Página {{ pag_ventas.number }} de {{ pag_ventas.paginator.num_pages }}</span>
+        {% if pag_ventas.has_next %}<a href="?anio={{ base_paginas.anio }}&mes={{ base_paginas.mes }}&p_v={{ pag_ventas.next_page_number }}">Siguiente →</a>{% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="cfg-nota" style="margin:0">No hay versiones generadas en {{ periodo }}.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ---------------- 3: Depósito ---------------- #}
+  <section class="card cap" id="deposito">
+    <div class="cap-cab">
+      <div class="cap-num">3</div>
+      <div style="flex:1">
+        <h3 class="cap-tit">{{ cap_deposito.titulo }}</h3>
+        <div style="margin-top:6px">
+          <span class="pill p-ok">{{ contadores.deposito.mes }} del período</span>
+          {% if contadores.deposito.pendientes %}<span class="pill p-warn">{{ contadores.deposito.pendientes }} pendientes</span>{% endif %}
+          <span class="pill p-grey">{{ contadores.deposito.total }} en total</span>
+        </div>
+        <p class="cap-sirve">{{ cap_deposito.sirve }}</p>
+      </div>
+    </div>
+    <details class="cap-mas">
+      <summary>¿Cuándo está disponible y qué contiene? ▸</summary>
+      <div class="cap-info"><div><b>Cuándo está disponible</b><p>{{ cap_deposito.cuando }}</p></div><div><b>Qué contiene</b><p>{{ cap_deposito.contiene }}</p></div></div>
+    </details>
+    <div class="cap-lista">
+      {% if pag_depositos %}
+      <table class="tbl" style="width:100%">
+        <thead><tr><th>Día de caja</th><th>Banco</th><th style="text-align:right">Monto</th><th>Estado</th><th style="text-align:right">Descarga</th></tr></thead>
+        <tbody>
+          {% for f in pag_depositos %}
+          <tr>
+            <td>{{ f.fecha|date:"d-m-Y" }}</td><td>{{ f.banco|default:"—" }}</td><td style="text-align:right">{{ f.monto|pesos }}</td><td>{{ f.estado }}</td>
+            <td style="text-align:right">
+              {% if f.disponible %}
+                {% if f.generada %}<a class="btn btn-c" title="Descargar Captura Depósito" href="{% url 'captura_deposito' deposito_id=f.deposito.pk %}">⬇ Descargar</a>
+                  {% if puede_operar %}<form method="post" action="{% url 'generar_captura_deposito' deposito_id=f.deposito.pk %}" style="display:inline">{% csrf_token %}<input type="hidden" name="volver" value="{% url 'exportaciones_odoo' %}"><button type="submit" class="btn btn-2 btn-c" title="Volver a generar con los datos de hoy">Regenerar</button></form>{% endif %}
+                  {% if f.ultima %}<span class="cfg-nota" style="margin:3px 0 0">generada: {{ f.ultima|date:"d-m-Y H:i" }}</span>{% endif %}
+                {% elif puede_operar %}<form method="post" action="{% url 'generar_captura_deposito' deposito_id=f.deposito.pk %}" style="display:inline">{% csrf_token %}<input type="hidden" name="volver" value="{% url 'exportaciones_odoo' %}"><button type="submit" class="btn btn-c">Generar</button></form>
+                {% else %}<span class="cfg-nota" style="margin:0">Aún no generada</span>{% endif %}
+              {% else %}<span class="cfg-nota mal" style="margin:0">{{ f.motivo }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if pag_depositos.paginator.num_pages > 1 %}
+      <div class="pag">
+        {% if pag_depositos.has_previous %}<a href="?anio={{ base_paginas.anio }}&mes={{ base_paginas.mes }}&p_d={{ pag_depositos.previous_page_number }}#deposito">← Anterior</a>{% endif %}
+        <span>Página {{ pag_depositos.number }} de {{ pag_depositos.paginator.num_pages }}</span>
+        {% if pag_depositos.has_next %}<a href="?anio={{ base_paginas.anio }}&mes={{ base_paginas.mes }}&p_d={{ pag_depositos.next_page_number }}#deposito">Siguiente →</a>{% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="cfg-nota" style="margin:0">No hay depósitos en {{ periodo }}.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ---------------- 4: Reintegro ---------------- #}
+  <section class="card cap" id="reintegro">
+    <div class="cap-cab">
+      <div class="cap-num">4</div>
+      <div style="flex:1">
+        <h3 class="cap-tit">{{ cap_reintegro.titulo }}</h3>
+        <div style="margin-top:6px">
+          <span class="pill p-ok">{{ contadores.reintegro.mes }} del período</span>
+          {% if contadores.reintegro.pendientes %}<span class="pill p-warn">{{ contadores.reintegro.pendientes }} pendientes</span>{% endif %}
+          <span class="pill p-grey">{{ contadores.reintegro.total }} en total</span>
+        </div>
+        <p class="cap-sirve">{{ cap_reintegro.sirve }}</p>
+      </div>
+    </div>
+    <details class="cap-mas">
+      <summary>¿Cuándo está disponible y qué contiene? ▸</summary>
+      <div class="cap-info"><div><b>Cuándo está disponible</b><p>{{ cap_reintegro.cuando }}</p></div><div><b>Qué contiene</b><p>{{ cap_reintegro.contiene }}</p></div></div>
+    </details>
+    <div class="cap-lista">
+      {% if pag_reintegros %}
+      <table class="tbl" style="width:100%">
+        <thead><tr><th>Arqueo</th><th>Cajera</th><th>Banco</th><th style="text-align:right">Monto</th><th>Estado</th><th style="text-align:right">Descarga</th></tr></thead>
+        <tbody>
+          {% for f in pag_reintegros %}
+          <tr>
+            <td>{{ f.fecha|date:"d-m-Y" }}</td><td>{{ f.cajera }}</td><td>{{ f.banco|default:"—" }}</td><td style="text-align:right">{{ f.monto|pesos }}</td><td>{{ f.estado }}</td>
+            <td style="text-align:right">
+              {% if f.disponible %}
+                {% if f.generada %}<a class="btn btn-c" title="Descargar {{ f.nombre_archivo }}" href="{% url 'descargar_asiento_reintegro' reintegro_id=f.reintegro.pk %}">⬇ Descargar</a>
+                  {% if puede_operar %}<form method="post" action="{% url 'generar_captura_reintegro' reintegro_id=f.reintegro.pk %}" style="display:inline">{% csrf_token %}<input type="hidden" name="volver" value="{% url 'exportaciones_odoo' %}"><button type="submit" class="btn btn-2 btn-c" title="Volver a generar con los datos de hoy">Regenerar</button></form>{% endif %}
+                  <span class="cfg-nota" style="margin:3px 0 0">{{ f.nombre_archivo }}{% if f.ultima %} · generada: {{ f.ultima|date:"d-m-Y H:i" }}{% endif %}</span>
+                {% elif puede_operar %}<form method="post" action="{% url 'generar_captura_reintegro' reintegro_id=f.reintegro.pk %}" style="display:inline">{% csrf_token %}<input type="hidden" name="volver" value="{% url 'exportaciones_odoo' %}"><button type="submit" class="btn btn-c">Generar</button></form>
+                {% else %}<span class="cfg-nota" style="margin:0">Aún no generada</span>{% endif %}
+              {% else %}<span class="cfg-nota mal" style="margin:0">{{ f.motivo }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if pag_reintegros.paginator.num_pages > 1 %}
+      <div class="pag">
+        {% if pag_reintegros.has_previous %}<a href="?anio={{ base_paginas.anio }}&mes={{ base_paginas.mes }}&p_r={{ pag_reintegros.previous_page_number }}#reintegro">← Anterior</a>{% endif %}
+        <span>Página {{ pag_reintegros.number }} de {{ pag_reintegros.paginator.num_pages }}</span>
+        {% if pag_reintegros.has_next %}<a href="?anio={{ base_paginas.anio }}&mes={{ base_paginas.mes }}&p_r={{ pag_reintegros.next_page_number }}#reintegro">Siguiente →</a>{% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="cfg-nota" style="margin:0">No hay reintegros en {{ periodo }}.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -7,7 +7,7 @@ from datetime import date
 from django.db.models import Q
 
 from nucleo.dashboard_servicio import calidad_conciliacion, cuadre_por_medio, resumen_efectivo
-from nucleo.models import DiaArqueo, MovimientoProveedor, Venta
+from nucleo.models import DepositoBancario, DiaArqueo, MovimientoProveedor, Venta
 
 
 def resumen_dias(fecha_desde: date, fecha_hasta: date) -> list[dict]:
@@ -16,13 +16,18 @@ def resumen_dias(fecha_desde: date, fecha_hasta: date) -> list[dict]:
     for dia in dias:
         ventas = Venta.objects.filter(dia=dia)
         cuadre = cuadre_por_medio(dia)
-        transbank = sum(f["declarado_pos"] for f in cuadre if f["medio"] in ("debito", "credito"))
+        # Karla, 2026-09-25: el cobro con tarjeta de una guía de despacho también está en Transbank, así que
+        # la columna Transbank suma POS + guías (si no, nunca calza con lo que cobró el proveedor).
+        transbank = sum(f["declarado_pos"] + f["guias"] for f in cuadre if f["medio"] in ("debito", "credito"))
+        guias = sum(f["guias"] for f in cuadre if f["medio"] != "efectivo")
         efectivo = resumen_efectivo(dia)
+        guias += float(efectivo["guias_efectivo"])
         calidad = calidad_conciliacion(dia)
         exportacion = dia.exportaciones.filter(invalidada=False).order_by("-version").first()
         filas.append({
             "dia": dia,
             "venta_total": sum(v.total_comanda for v in ventas),
+            "guias": guias,
             "transbank": transbank,
             "efectivo": efectivo["teorico"],
             "mercado_pago": 0,  # Fase 2 (D12) — siempre en cero hasta entonces
@@ -30,7 +35,8 @@ def resumen_dias(fecha_desde: date, fecha_hasta: date) -> list[dict]:
             "excepciones_abiertas": calidad["total_excepciones_abiertas"],
             "diferencia_caja": efectivo["diferencia"],
             "exportacion": exportacion,
-            "tiene_deposito": hasattr(dia, "deposito"),
+            "tiene_deposito": DepositoBancario.objects.filter(dia=dia).exclude(
+                estado=DepositoBancario.Estado.PENDIENTE_DEPOSITO).exists(),
         })
     return filas
 

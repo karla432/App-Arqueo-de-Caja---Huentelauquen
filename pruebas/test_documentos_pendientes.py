@@ -9,6 +9,8 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
+from pruebas.perfiles_de_prueba import GRUPO_ENCARGADO, crear_usuario
+from nucleo.permisos import PermisoDenegado
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
@@ -20,7 +22,7 @@ from nucleo.documentos_servicio import (
 )
 from nucleo.models import (
     ArqueoEfectivo, DiaArqueo, Excepcion, LoteCarga, MotivoResolucion,
-    MovimientoProveedor, PagoDeclarado, Venta,
+    MovimientoProveedor, PagoDeclarado, Venta, VersionMotor,
 )
 from nucleo.resolucion_servicio import resolver_excepcion
 
@@ -37,7 +39,7 @@ def jefe(django_user_model):
 
 @pytest.fixture
 def gerente(django_user_model):
-    u = django_user_model.objects.create_user(username="gerente", password="x", is_superuser=True)
+    u = django_user_model.objects.create_user(username="gerente", password="x")
     grupo, _ = Group.objects.get_or_create(name=GRUPO_GERENTE_ADM_FINANZAS)
     u.groups.add(grupo)
     return u
@@ -45,7 +47,7 @@ def gerente(django_user_model):
 
 @pytest.fixture
 def sin_rol(django_user_model):
-    return django_user_model.objects.create_user(username="analista", password="x")
+    return crear_usuario(django_user_model, "analista", GRUPO_ENCARGADO)
 
 
 @pytest.fixture
@@ -62,6 +64,7 @@ def dia_con_guia(db, sin_rol):
     )
     PagoDeclarado.objects.create(venta=venta_guia, medio="debito", monto=15000)
     arqueo = ArqueoEfectivo.objects.create(dia=dia, caja="CAJA 1", contado=0, diferencia=0)
+    VersionMotor.objects.create(dia=dia, version_motor="test", parametros={}, ejecutado_por=sin_rol)
     return dia, venta_guia
 
 
@@ -70,26 +73,26 @@ def test_venta_con_comprobante_go_se_identifica_como_guia(dia_con_guia):
     assert venta_guia.es_guia_de_despacho is True
 
 
-def test_guia_pendiente_aparece_hasta_asignar_factura(dia_con_guia, jefe):
+def test_guia_pendiente_aparece_hasta_asignar_factura(dia_con_guia, sin_rol):
     dia, venta_guia = dia_con_guia
     assert list(guias_pendientes(dia)) == [venta_guia]
-    asignar_factura_a_venta(venta_guia, "F-9001", jefe)
+    asignar_factura_a_venta(venta_guia, "F-9001", sin_rol)
     assert list(guias_pendientes(dia)) == []
     venta_guia.refresh_from_db()
     assert venta_guia.factura_asociada == "F-9001"
 
 
-def test_no_se_puede_asignar_factura_vacia(dia_con_guia, jefe):
+def test_no_se_puede_asignar_factura_vacia(dia_con_guia, sin_rol):
     _, venta_guia = dia_con_guia
     with pytest.raises(AsignacionInvalida):
-        asignar_factura_a_venta(venta_guia, "   ", jefe)
+        asignar_factura_a_venta(venta_guia, "   ", sin_rol)
 
 
-def test_nivel_requerido_escala_sobre_10_casos():
+def test_nivel_requerido_es_el_jefe_sin_importar_la_cantidad(db):
     assert nivel_requerido(0) == 0
     assert nivel_requerido(1) == 1
     assert nivel_requerido(10) == 1
-    assert nivel_requerido(11) == 2
+    assert nivel_requerido(11) == 1 and nivel_requerido(500) == 1
 
 
 def test_nivel_de_usuario_por_grupo(jefe, gerente, sin_rol):
@@ -100,7 +103,7 @@ def test_nivel_de_usuario_por_grupo(jefe, gerente, sin_rol):
 
 def test_no_se_puede_cerrar_con_guia_pendiente_sin_rol(dia_con_guia, sin_rol):
     dia, _ = dia_con_guia
-    with pytest.raises(CierreInvalido):
+    with pytest.raises(PermisoDenegado):  # la Encargada no aprueba cierres, ni con pendientes ni sin ellos
         aprobar_y_cerrar_dia(dia, sin_rol)
 
 
@@ -113,7 +116,7 @@ def test_jefe_contabilidad_cierra_con_hasta_10_pendientes(dia_con_guia, jefe):
     assert dia.estado == DiaArqueo.Estado.CERRADO
 
 
-def test_mas_de_10_pendientes_exige_gerente(db, sin_rol, jefe, gerente):
+def test_con_mas_de_10_pendientes_el_jefe_igual_puede_cerrar(db, sin_rol, jefe, gerente):
     dia = DiaArqueo.objects.create(fecha=FECHA, operado_por=sin_rol)
     lote = LoteCarga.objects.create(
         dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo="x.xlsx", huella_sha256="a",
@@ -127,10 +130,13 @@ def test_mas_de_10_pendientes_exige_gerente(db, sin_rol, jefe, gerente):
         )
         PagoDeclarado.objects.create(venta=v, medio="debito", monto=1000)
     ArqueoEfectivo.objects.create(dia=dia, caja="CAJA 1", contado=0, diferencia=0)
+    VersionMotor.objects.create(dia=dia, version_motor="test", parametros={}, ejecutado_por=sin_rol)
 
     assert total_documentos_pendientes(dia) == 11
     puede_jefe, _ = puede_aprobar_usuario(dia, jefe)
-    assert puede_jefe is False
+    assert puede_jefe is True  # Karla, 2026-09-26: el Jefe cierra con cualquier cantidad de pendientes
+    puede_encargada, _ = puede_aprobar_usuario(dia, sin_rol)
+    assert puede_encargada is False
     puede_gerente, _ = puede_aprobar_usuario(dia, gerente)
     assert puede_gerente is True
 
@@ -170,7 +176,7 @@ def test_asignar_boleta_a_otros_ingresos(dia_con_otros_ingresos, sin_rol, jefe):
     resolver_excepcion(excepcion, resolucion="aceptar", motivo_id=motivo.pk, comentario="", usuario=sin_rol)
     excepcion.refresh_from_db()
 
-    asignar_factura_a_excepcion(excepcion, "B-500", jefe)
+    asignar_factura_a_excepcion(excepcion, "B-500", sin_rol)
     excepcion.refresh_from_db()
     assert excepcion.factura_asociada == "B-500"
     assert list(otros_ingresos_pendientes(dia)) == []

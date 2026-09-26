@@ -10,22 +10,86 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# ---------------------------------------------------------------------------
+# Entorno (Karla, 2026-09-26; a partir del informe de seguridad)
+#
+# ARQUEO_ENTORNO=produccion (POR DEFECTO)  → DEBUG apagado y todo lo siguiente OBLIGATORIO por variables de
+#                                            entorno (nada de credenciales en el código ni en archivos versionados):
+#     DJANGO_SECRET_KEY        clave secreta de la aplicación
+#     DJANGO_ALLOWED_HOSTS     servidores permitidos, separados por coma (ej. arqueo.miempresa.cl)
+#   opcionales:
+#     DJANGO_CSRF_TRUSTED_ORIGINS  orígenes https de confianza, separados por coma
+#     DJANGO_PROXY_SSL=1           si HTTPS termina en un proxy que envía X-Forwarded-Proto
+#     ARQUEO_DB_PATH               ruta de la base de datos SQLite (por defecto db.sqlite3 junto al proyecto)
+# ARQUEO_ENTORNO=desarrollo                → modo de trabajo local: DEBUG activo, sin HTTPS. Se elige con la variable o
+#                                            con el archivo local `.entorno_desarrollo` (gitignored) en la carpeta del proyecto.
+# Ver README_DESPLIEGUE.md.
+# ---------------------------------------------------------------------------
+from config.entorno import resolver_entorno  # noqa: E402
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-gc^+zlb^p7$tdf6_5y=muw%x4cg=vey-st&_27s0+b$(x69h*i'
+ENTORNO = resolver_entorno(os.environ.get("ARQUEO_ENTORNO"), BASE_DIR)
+if ENTORNO not in ("desarrollo", "produccion"):
+    raise ImproperlyConfigured("ARQUEO_ENTORNO debe ser «desarrollo» o «produccion».")
+PRODUCCION = ENTORNO == "produccion"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = []
+def _lista_de_entorno(nombre: str) -> list[str]:
+    return [x.strip() for x in os.environ.get(nombre, "").split(",") if x.strip()]
+
+
+def _clave_secreta() -> str:
+    clave = os.environ.get("DJANGO_SECRET_KEY", "").strip()
+    if clave:
+        return clave
+    if PRODUCCION:
+        raise ImproperlyConfigured("En producción hay que definir la variable de entorno DJANGO_SECRET_KEY.")
+    # Desarrollo: una clave propia de este equipo, generada la primera vez y guardada fuera del control de versiones.
+    archivo = BASE_DIR / ".clave_secreta_local"
+    if archivo.exists():
+        return archivo.read_text(encoding="utf-8").strip()
+    clave = get_random_secret_key()
+    archivo.write_text(clave, encoding="utf-8")
+    return clave
+
+
+SECRET_KEY = _clave_secreta()
+
+DEBUG = not PRODUCCION
+
+ALLOWED_HOSTS = _lista_de_entorno("DJANGO_ALLOWED_HOSTS") if PRODUCCION else ["localhost", "127.0.0.1", "[::1]"]
+if PRODUCCION and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured("En producción hay que definir DJANGO_ALLOWED_HOSTS (servidores permitidos, separados por coma).")
+CSRF_TRUSTED_ORIGINS = _lista_de_entorno("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+# Cookies y navegador: seguros en ambos entornos salvo lo que exige HTTPS.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+
+if PRODUCCION:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = False
+    SESSION_COOKIE_AGE = 8 * 60 * 60          # una jornada; luego hay que volver a iniciar sesión
+    SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+    if os.environ.get("DJANGO_PROXY_SSL") == "1":
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
@@ -37,7 +101,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'nucleo',
+    'nucleo.apps.NucleoConfig',
 ]
 
 MIDDLEWARE = [
@@ -48,6 +112,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'nucleo.middleware.PerfilesMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -62,6 +127,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'nucleo.contexto.fecha_del_menu',
+                'nucleo.contexto.configuracion_del_menu',
             ],
         },
     },
@@ -81,7 +148,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': Path(os.environ.get('ARQUEO_DB_PATH') or (BASE_DIR / 'db.sqlite3')),
+        # WAL deja leer mientras algo más escribe (ej. este servidor y un
+        # script de soporte a la vez) — sin esto, SQLite devuelve "database
+        # is locked" apenas hay dos conexiones simultáneas (visto en vivo,
+        # 2026-09-22). timeout: cuánto espera antes de fallar con ese error.
+        'OPTIONS': {'timeout': 20},
+        'ATOMIC_REQUESTS': False,
     }
 }
 
@@ -129,8 +202,13 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# La app no envía correos. En desarrollo van a la consola; en producción se declara SMTP (sin servidor configurado no envía nada) para
+# que nada salga por un canal sin configurar. Si algún día se envían correos, se define aquí el SMTP real.
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': (
+            'django.core.mail.backends.smtp.EmailBackend' if PRODUCCION
+            else 'django.core.mail.backends.console.EmailBackend'
+        ),
     },
 }

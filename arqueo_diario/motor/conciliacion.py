@@ -35,6 +35,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 TOLERANCIA_MONTO = 50  # $ — §9: "$0 exacto / hasta $50 con tolerancia"
+# Ajuste de sencillo (Karla, 2026-09-21): una diferencia de hasta $10, sea
+# positiva o negativa, con el mismo medio y dentro de la ventana de hora, se
+# calza sola — la diferencia se contabiliza aparte, en la cuenta de pérdida
+# por ajuste de sencillo, sin pasar por la bandeja de excepciones.
+TOLERANCIA_SENCILLO = 10
 VENTANA_NORMAL = timedelta(minutes=10)  # §9/§13
 VENTANA_ESTRECHA = timedelta(minutes=3)  # §13: desempate de montos repetidos
 
@@ -164,7 +169,7 @@ def _puntaje(nivel: int, *, unico: bool, tiene_competencia: bool, terminal_coinc
 
 
 def _clasificar(pago: PagoParaConciliar, mov: MovimientoParaConciliar,
-                 desfase: timedelta) -> Candidato | None:
+                 desfase: timedelta, tolerancia_sencillo: float = TOLERANCIA_SENCILLO) -> Candidato | None:
     """Evalúa un par (pago, movimiento) y devuelve el nivel que le
     corresponde, o None si no es candidato en ningún nivel 1-5 (la
     agrupación de nivel 6 se resuelve aparte, no par a par)."""
@@ -199,6 +204,8 @@ def _clasificar(pago: PagoParaConciliar, mov: MovimientoParaConciliar,
         nivel = 2
     elif monto_exacto and medio_coincide:
         nivel = 3
+    elif medio_coincide and 0 < diferencia_monto <= tolerancia_sencillo:
+        nivel = 3  # ajuste de sencillo: se calza solo, con la diferencia registrada aparte
     elif monto_exacto and not medio_coincide:
         nivel = 4
     elif monto_en_tolerancia:
@@ -429,7 +436,8 @@ def _resolver_nivel(candidatos: list[Candidato], nivel: int,
 
 
 def conciliar(pagos: list[PagoParaConciliar], movimientos: list[MovimientoParaConciliar],
-              *, desfase_reloj: timedelta = timedelta(0)) -> ResultadoConciliacion:
+              *, desfase_reloj: timedelta = timedelta(0),
+              tolerancia_sencillo: float = TOLERANCIA_SENCILLO) -> ResultadoConciliacion:
     """Corre los niveles 1 a 5 en orden sobre lo que cada nivel anterior
     deja libre. El nivel 6 (agrupación) queda fuera del alcance de esta
     primera versión del motor — el día de referencia no lo necesita (los
@@ -449,7 +457,7 @@ def conciliar(pagos: list[PagoParaConciliar], movimientos: list[MovimientoParaCo
         candidatos = []
         for pid in pagos_libres:
             for mid in movimientos_libres:
-                c = _clasificar(pagos_por_id[pid], movimientos_por_id[mid], desfase_reloj)
+                c = _clasificar(pagos_por_id[pid], movimientos_por_id[mid], desfase_reloj, tolerancia_sencillo)
                 if c and c.nivel == nivel:
                     candidatos.append(c)
 
@@ -475,10 +483,43 @@ def conciliar(pagos: list[PagoParaConciliar], movimientos: list[MovimientoParaCo
         ))
     for mid in sorted(movimientos_libres):
         mov = movimientos_por_id[mid]
-        resultado.excepciones.append(Excepcion(
-            tipo="movimiento_sin_pago", pagos=[], movimientos=[mid],
-            monto_en_juego=mov.monto,
-            decision_propuesta="Buscar comanda no cerrada; posible venta sin registrar.",
-        ))
+        # Un movimiento sin pago que además calza en monto, medio y hora
+        # con OTRO movimiento que sí quedó conciliado no es necesariamente
+        # "otros ingresos" ni un sobrante — puede ser un cobro repetido en
+        # el mismo terminal (Karla, 2026-09-18, caso 11: dos transacciones
+        # de $50.000 para una sola boleta de $50.000). Nunca se asume solo:
+        # queda marcado para que alguien lo confirme con el proveedor
+        # antes de aceptarlo como ingreso.
+        gemelo = next(
+            (
+                c for c in resultado.coincidencias
+                if c.movimientos and c.movimientos[0] != mid
+                and movimientos_por_id[c.movimientos[0]].medio == mov.medio
+                and abs(movimientos_por_id[c.movimientos[0]].monto - mov.monto) <= TOLERANCIA_MONTO
+                and abs((movimientos_por_id[c.movimientos[0]].momento + desfase_reloj) - mov.momento)
+                <= VENTANA_NORMAL
+            ),
+            None,
+        )
+        if gemelo:
+            pago_relacionado = pagos_por_id.get(gemelo.pagos[0]) if gemelo.pagos else None
+            resultado.excepciones.append(Excepcion(
+                tipo="pago_duplicado", pagos=[], movimientos=[mid],
+                monto_en_juego=mov.monto,
+                decision_propuesta=(
+                    f"Posible pago duplicado: ya existe un movimiento del mismo monto y medio "
+                    f"conciliado con la comanda {pago_relacionado.n_interno} — confirmar con el "
+                    "proveedor antes de aceptarlo como ingreso o sobrante."
+                    if pago_relacionado else
+                    "Posible pago duplicado: ya existe otro movimiento idéntico conciliado ese día "
+                    "— confirmar con el proveedor antes de aceptarlo como ingreso o sobrante."
+                ),
+            ))
+        else:
+            resultado.excepciones.append(Excepcion(
+                tipo="movimiento_sin_pago", pagos=[], movimientos=[mid],
+                monto_en_juego=mov.monto,
+                decision_propuesta="Buscar comanda no cerrada; posible venta sin registrar.",
+            ))
 
     return resultado

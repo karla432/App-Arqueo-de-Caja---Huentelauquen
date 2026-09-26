@@ -13,11 +13,12 @@ la fila 19 (índice 18).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
+
+from arqueo_diario.importadores.comun import MovimientoProveedor, ResultadoImportacionProveedor
 
 HOJA = "CartolaMovimientos"
 FILA_ENCABEZADO = 18  # 0-indexado: filas 0-17 son metadatos del reporte
@@ -61,44 +62,6 @@ def _o_ninguno(valor) -> str | None:
         return None
     texto = str(valor).strip()
     return None if texto in ("", "-") else texto
-
-
-@dataclass
-class MovimientoProveedor:
-    proveedor: str
-    tipo: str
-    estado: str
-    fecha_hora: datetime
-    fecha_abono: str | None
-    medio: str
-    tipo_tarjeta: str
-    numero_tarjeta: str  # ya viene enmascarado por Transbank (ej. 434561XXXXXX3760)
-    monto_original: float
-    monto_afecto: float
-    monto_exento: float
-    monto_vuelto: float
-    propina: float
-    monto_venta_valido_abono: float
-    monto_anulado: float
-    monto_cuota: float
-    autorizacion: str
-    terminal: str
-    moneda: str
-
-
-@dataclass
-class ResultadoImportacionProveedor:
-    fecha: date
-    movimientos: list[MovimientoProveedor]
-    avisos: list[str]
-
-    @property
-    def cantidad_movimientos(self) -> int:
-        return len(self.movimientos)
-
-    @property
-    def total_venta_valido_abono(self) -> float:
-        return sum(m.monto_venta_valido_abono for m in self.movimientos)
 
 
 def importar_cartola_transbank(path: str | Path, fecha: date) -> ResultadoImportacionProveedor:

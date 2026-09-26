@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
+from pruebas.perfiles_de_prueba import GRUPO_GERENTE, crear_usuario
 from django.urls import reverse
 
 from nucleo.arqueo_servicio import registrar_conteo
@@ -22,7 +23,7 @@ FECHA = date(2026, 9, 2)
 
 @pytest.fixture
 def usuario(django_user_model):
-    return django_user_model.objects.create_user(username="operador", password="x", is_superuser=True)
+    return crear_usuario(django_user_model, "operador", GRUPO_GERENTE)
 
 
 @pytest.fixture
@@ -68,7 +69,7 @@ def test_semaforo_rojo_con_diferencia_sin_autorizar(dia_conciliado, usuario):
     preparar_arqueos_del_dia(dia_conciliado)
     arqueo = ArqueoEfectivo.objects.get(dia=dia_conciliado, caja="CAJA 1")
     registrar_conteo(arqueo, fondo_inicial=Decimal(0), gastos_autorizados=Decimal(0),
-                      denominaciones={20000: 1}, usuario=usuario)  # muy por sobre lo esperado (0)
+                      total_contado=Decimal(20000), usuario=usuario)  # muy por sobre lo esperado (0)
     assert semaforo(dia_conciliado) == "rojo"
 
 
@@ -130,3 +131,47 @@ def test_vista_calidad_renderiza(client, usuario, dia_conciliado):
     resp = client.get(reverse("calidad_registro"), {"desde": "2026-09-01", "hasta": "2026-09-30"})
     assert resp.status_code == 200
     assert resp.context["total_comandas"] == 1
+
+
+def test_las_guias_cobradas_con_tarjeta_no_son_diferencia_de_cuadratura(dia_conciliado, usuario):
+    """Karla, 2026-09-25 (día 07): el cobro con tarjeta de una guía aparece en Transbank pero la guía no es
+    una venta del libro; con la columna «Guías de despacho» la diferencia del medio queda en cero."""
+    from nucleo.models import MovimientoProveedor, RegularizacionDocumento
+    lote = dia_conciliado.lotes.first()
+    MovimientoProveedor.objects.create(
+        dia=dia_conciliado, lote=lote, proveedor="transbank", tipo="Venta", estado="PENDIENTE",
+        fecha_hora=datetime(2026, 9, 2, 15, 0), medio="debito", tipo_tarjeta="debito",
+        monto_original=26775, monto_venta_valido_abono=26775, terminal="A1",
+    )
+    debito = {f["medio"]: f for f in cuadre_por_medio(dia_conciliado)}["debito"]
+    assert debito["diferencia"] == -26775  # sin la guía registrada parece un faltante del POS
+    RegularizacionDocumento.objects.create(dia=dia_conciliado, tipo="DES", n_interno=9, folio="21203", caja="CAJA 1", monto=26775, forma_pago="debito")
+    debito = {f["medio"]: f for f in cuadre_por_medio(dia_conciliado)}["debito"]
+    assert debito["guias"] == 26775 and debito["diferencia"] == 0
+
+
+def test_el_efectivo_del_dashboard_separa_pos_y_guias_y_la_nota_no_lo_mueve(dia_conciliado):
+    from nucleo.dashboard_servicio import resumen_efectivo
+    from nucleo.models import RegularizacionDocumento
+    RegularizacionDocumento.objects.create(dia=dia_conciliado, tipo="DES", n_interno=9, folio="21197", caja="CAJA 1", monto=23830, forma_pago="efectivo")
+    nota = RegularizacionDocumento.objects.create(dia=dia_conciliado, tipo="CRED", n_interno=10, folio="F0610600008311", caja="CAJA 1", monto=9600, forma_pago="credito")
+    nota.verificacion_estado, nota.medio_verificado = "verificada", "efectivo"
+    nota.save()
+    r = resumen_efectivo(dia_conciliado)
+    assert (r["guias_efectivo"], r["pos_efectivo"], r["teorico"]) == (23830, 0, 23830)  # la nota no resta
+
+
+def test_el_dashboard_muestra_la_columna_de_guias(client, usuario, dia_conciliado):
+    client.force_login(usuario)
+    html = client.get(reverse("dashboard_dia", args=[FECHA.isoformat()])).content.decode()
+    assert "Guías de despacho" in html and "Declarado POS + guías" in html or "declarado POS + guías" in html
+
+
+def test_el_historico_suma_las_guias_con_tarjeta_a_la_columna_transbank(dia_conciliado):
+    """Karla, 2026-09-25: la columna Transbank debe poder compararse con lo que cobró el proveedor."""
+    from nucleo.models import RegularizacionDocumento
+    RegularizacionDocumento.objects.create(dia=dia_conciliado, tipo="DES", n_interno=9, folio="21203", caja="CAJA 1", monto=26775, forma_pago="debito")
+    RegularizacionDocumento.objects.create(dia=dia_conciliado, tipo="DES", n_interno=10, folio="21204", caja="CAJA 1", monto=5000, forma_pago="efectivo")
+    fila = resumen_dias(FECHA, FECHA)[0]
+    assert fila["transbank"] == 10000 + 26775 and fila["guias"] == 26775 + 5000
+    assert fila["venta_total"] == 10000  # la venta del POS no cambia: las guías van aparte

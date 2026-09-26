@@ -78,6 +78,7 @@
       <tr>
         <th rowspan="2" style="vertical-align:bottom">Día</th>
         <th rowspan="2" class="n" style="vertical-align:bottom">Venta</th>
+        <th rowspan="2" class="n" style="vertical-align:bottom">Guías de despacho</th>
         <th colspan="3" style="text-align:center;background:var(--hu-maroon)">Desglose por forma de pago</th>
         <th rowspan="2" class="n" style="vertical-align:bottom">Conciliado auto</th>
         <th rowspan="2" class="n" style="vertical-align:bottom">Excep.</th>
@@ -92,6 +93,7 @@
       <tr>
         <td><a href="{% url 'dashboard_dia' fecha=f.dia.fecha|date:'Y-m-d' %}">{{ f.dia.fecha }}</a></td>
         <td class="n">{{ f.venta_total|floatformat:0 }}</td>
+        <td class="n">{% if f.guias %}{{ f.guias|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
         <td class="n">{{ f.transbank|floatformat:0 }}</td>
         <td class="n">{{ f.efectivo|floatformat:0 }}</td>
         <td class="n" style="color:var(--hu-gray)">{{ f.mercado_pago|floatformat:0 }}</td>
@@ -107,10 +109,10 @@
         <td>{% if f.exportacion %}v{{ f.exportacion.version }} · {{ f.exportacion.get_acuse_estado_display }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" style="text-align:center;color:var(--hu-gray);padding:20px">Sin días en este rango.</td></tr>
+      <tr><td colspan="10" style="text-align:center;color:var(--hu-gray);padding:20px">Sin días en este rango.</td></tr>
       {% endfor %}
     </tbody>
   </table>
-  <div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.55">Las columnas de forma de pago suman la venta del día. Mercado Pago es Fase 2 y llega en cero hasta entonces.</div>
+  <div style="font-size:12px;color:var(--hu-gray);margin-top:8px;line-height:1.55">Las columnas de forma de pago suman la venta del día más las guías de despacho (su cobro con tarjeta también está en Transbank y su efectivo entra a la caja). Los pagos por transferencia no tienen columna. Mercado Pago es Fase 2 y llega en cero hasta entonces.</div>
 </div>
 {% endblock %}

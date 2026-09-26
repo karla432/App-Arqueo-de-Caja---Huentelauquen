@@ -9,11 +9,23 @@ from django.utils import timezone
 
 from nucleo.arqueo_servicio import preparar_arqueos_del_dia
 from nucleo.documentos_servicio import puede_cerrar_con_pendientes, total_documentos_pendientes
-from nucleo.models import DiaArqueo, EventoAuditoria, UMBRAL_DIFERENCIA_CAJA
+from nucleo.templatetags.formato import folio_corto
+from nucleo.models import DiaArqueo, EventoAuditoria, PagoDeclarado
+from nucleo.umbrales import umbral
+from nucleo.perdidas_servicio import (
+    diferencias_de_caja_pendientes_de_visado, perdidas_pendientes_de_visado, puede_cerrar_con_perdidas_pendientes,
+)
+from nucleo.permisos import Perfil, Permiso, exigir, perfil_de, tiene_permiso
 
 
 class CierreInvalido(Exception):
     pass
+
+
+def _deposito_registrado(dia: DiaArqueo) -> bool:
+    """Karla, 2026-09-24: el depósito se lleva solo en Control de Depósitos."""
+    from nucleo.models import DepositoBancario
+    return DepositoBancario.objects.filter(dia=dia).exclude(estado=DepositoBancario.Estado.PENDIENTE_DEPOSITO).exists()
 
 
 def estado_checklist(dia: DiaArqueo) -> dict:
@@ -26,10 +38,50 @@ def estado_checklist(dia: DiaArqueo) -> dict:
     sin_contar = [a for a in arqueos if a.contado is None]
     sin_autorizar = [
         a for a in arqueos
-        if a.contado is not None and abs(a.diferencia) > UMBRAL_DIFERENCIA_CAJA and not a.autorizado_por_id
+        if a.contado is not None and abs(a.diferencia) > umbral("umbral_diferencia_caja") and not a.autorizado_por_id
     ]
 
+    # Sin correr la conciliación no puede haber excepciones: "cero abiertas"
+    # sería un falso verde (caso real de Karla, 2026-09-23: día cerrado sin
+    # conciliar, con un pago de tarjeta que nunca se cruzó con Transbank).
+    hay_que_conciliar = (
+        dia.movimientos.exists()
+        or PagoDeclarado.objects.filter(venta__dia=dia, medio__in=["debito", "credito"]).exists()
+    )
+    conciliacion_ok = dia.corridas_motor.exists() or not hay_que_conciliar
+
+    from nucleo.regularizacion_servicio import documentos_sin_clasificar
+    sin_clasificar = list(documentos_sin_clasificar(dia))
+
+    from nucleo.notas_credito_servicio import notas_efectivo_sin_verificar
+    notas_pendientes = list(notas_efectivo_sin_verificar(dia))
+
     return {
+        "notas_credito_verificadas": {
+            "ok": not notas_pendientes,
+            "detalle": (
+                "Sin notas de crédito pendientes de evidencia" if not notas_pendientes
+                else f"{len(notas_pendientes)} nota(s) de crédito sin evidencia "
+                     f"({', '.join(folio_corto(n.folio) for n in notas_pendientes)}) — carga el vale firmado y la boleta original"
+            ),
+        },
+        "documentos_sin_clasificar": {
+            "ok": not sin_clasificar,
+            "detalle": (
+                "Todos los documentos del libro están clasificados" if not sin_clasificar
+                else f"{len(sin_clasificar)} documento(s) con código no configurado "
+                     f"({', '.join(sorted({d.codigo_original for d in sin_clasificar}))}) — "
+                     "clasifícalos en Regularización de Documentos"
+            ),
+        },
+        "conciliacion_ejecutada": {
+            "ok": conciliacion_ok,
+            "detalle": (
+                "Conciliación ejecutada" if dia.corridas_motor.exists()
+                else "Nada que conciliar" if conciliacion_ok
+                else "Falta ejecutar la conciliación del día (pantalla Excepciones → Conciliar)"
+            ),
+        },
         "sin_excepciones_bloqueantes": {
             "ok": not excepciones_bloqueantes.exists(),
             "detalle": (
@@ -53,8 +105,9 @@ def estado_checklist(dia: DiaArqueo) -> dict:
             ),
         },
         "deposito_registrado": {
-            "ok": hasattr(dia, "deposito"),
-            "detalle": "Registrado" if hasattr(dia, "deposito") else "No bloquea el cierre; queda pendiente",
+            "ok": _deposito_registrado(dia),
+            "detalle": "Registrado en Control de Depósitos" if _deposito_registrado(dia)
+                       else "No bloquea el cierre: se registra después, en Control de Depósitos",
             "bloqueante": False,
         },
         "documentos_pendientes": {
@@ -66,6 +119,17 @@ def estado_checklist(dia: DiaArqueo) -> dict:
             ),
             "bloqueante": False,  # el bloqueo real depende de QUIÉN aprueba — ver puede_aprobar_usuario
         },
+        "perdidas_pendientes_de_visado": {
+            "ok": not perdidas_pendientes_de_visado(dia).exists() and not diferencias_de_caja_pendientes_de_visado(dia),
+            "detalle": (
+                "Sin diferencias pendientes de visar"
+                if not perdidas_pendientes_de_visado(dia).exists() and not diferencias_de_caja_pendientes_de_visado(dia)
+                else f"{perdidas_pendientes_de_visado(dia).count() + len(diferencias_de_caja_pendientes_de_visado(dia))} "
+                     "diferencia(s) de caja o de tarjeta sobre el umbral sin visar — no bloquea por sí solo, "
+                     "pero exige aprobador del nivel correspondiente"
+            ),
+            "bloqueante": False,  # el bloqueo real depende de QUIÉN aprueba — ver puede_aprobar_usuario
+        },
     }
 
 
@@ -74,23 +138,59 @@ def puede_aprobar(dia: DiaArqueo) -> bool:
     return all(v["ok"] for k, v in checklist.items() if v.get("bloqueante", True))
 
 
+ACCIONES_DE_PREPARACION = (
+    "registrar_conteo", "registrar_gasto_caja", "asignar_cajera", "asignar_factura_guia", "asignar_boleta_otros_ingresos",
+    "ejecutar_conciliacion", "carga_archivo",
+)
+
+
+def preparadores_del_dia(dia: DiaArqueo) -> set[int]:
+    """Quiénes prepararon la operación de un día: quien la operó, quien cargó los archivos y quien contó, asignó
+    cajeras, resolvió excepciones o asignó documentos. Nadie aprueba su propio trabajo sin dejar una excepción."""
+    ids = {dia.operado_por_id} | set(dia.lotes.values_list("cargado_por_id", flat=True))
+    eventos = EventoAuditoria.objects.filter(dia=dia)
+    ids |= set(eventos.filter(accion__in=ACCIONES_DE_PREPARACION).values_list("usuario_id", flat=True))
+    ids |= set(eventos.filter(accion__startswith="resolver_excepcion").values_list("usuario_id", flat=True))
+    return {i for i in ids if i}
+
+
+def preparo_el_dia(dia: DiaArqueo, usuario) -> bool:
+    return usuario.pk in preparadores_del_dia(dia)
+
+
+def requiere_motivo_de_excepcion(dia: DiaArqueo, usuario) -> bool:
+    """La Gerente puede aprobar un día que ella misma preparó, pero solo como excepción con motivo."""
+    return perfil_de(usuario) == Perfil.GERENTE and preparo_el_dia(dia, usuario)
+
+
 def puede_aprobar_usuario(dia: DiaArqueo, usuario) -> tuple[bool, str]:
-    """Combina la lista de verificación fija con el nivel de aprobación
-    que exigen los documentos pendientes de emitir (guías de despacho,
-    otros ingresos) — este último depende de quién está aprobando, no
-    solo del estado del día."""
+    """Combina el permiso del perfil, la lista de verificación fija, la segregación de funciones (nadie aprueba lo
+    que preparó; la Gerente solo con motivo) y el nivel que exigen los documentos y las pérdidas pendientes."""
+    if not tiene_permiso(usuario, Permiso.APROBAR_CIERRE):
+        return False, "Tu perfil no puede aprobar cierres."
     if not puede_aprobar(dia):
         return False, "Quedan pendientes bloqueantes en la lista de verificación."
-    return puede_cerrar_con_pendientes(dia, usuario)
+    if perfil_de(usuario) == Perfil.JEFE and preparo_el_dia(dia, usuario):
+        return False, "Participaste en la preparación de este día: no puedes aprobarlo. Debe aprobarlo la Gerente."
+    puede, razon = puede_cerrar_con_pendientes(dia, usuario)
+    if not puede:
+        return False, razon
+    return puede_cerrar_con_perdidas_pendientes(dia, usuario)
 
 
 @transaction.atomic
-def aprobar_y_cerrar_dia(dia: DiaArqueo, usuario) -> DiaArqueo:
+def aprobar_y_cerrar_dia(dia: DiaArqueo, usuario, motivo_excepcion: str = "") -> DiaArqueo:
+    exigir(usuario, Permiso.APROBAR_CIERRE, "Tu perfil no puede aprobar cierres.")
     if dia.estado in (DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO):
         raise CierreInvalido("Este día ya fue aprobado.")
     puede, razon = puede_aprobar_usuario(dia, usuario)
     if not puede:
         raise CierreInvalido(razon)
+    autoaprobacion = preparo_el_dia(dia, usuario)
+    if autoaprobacion and not motivo_excepcion.strip():
+        raise CierreInvalido(
+            "Preparaste este día: aprobarlo tú misma es una excepción de control y exige indicar el motivo."
+        )
 
     valor_anterior = {"estado": dia.estado}
     dia.estado = DiaArqueo.Estado.CERRADO
@@ -99,26 +199,32 @@ def aprobar_y_cerrar_dia(dia: DiaArqueo, usuario) -> DiaArqueo:
     dia.cerrado_en = timezone.now()
     dia.save(update_fields=["estado", "aprobado_por", "aprobado_en", "cerrado_en"])
 
-    evento = EventoAuditoria.objects.create(
+    EventoAuditoria.objects.create(
         dia=dia, entidad="DiaArqueo", entidad_id=str(dia.pk), accion="aprobar_y_cerrar",
         valor_anterior=valor_anterior,
-        valor_posterior={"estado": dia.estado, "aprobado_por": usuario.username},
+        valor_posterior={"estado": dia.estado, "aprobado_por": usuario.username, "perfil": perfil_de(usuario).value},
         usuario=usuario,
     )
-    if dia.operado_por_id == usuario.pk:
-        # Control C1: se permite, pero queda registrado como excepción de
-        # control — no se bloquea por dotación insuficiente.
+    if autoaprobacion:
+        # Control C1: solo la Gerente y solo con motivo; queda como excepción de control en la bitácora.
         EventoAuditoria.objects.create(
             dia=dia, entidad="DiaArqueo", entidad_id=str(dia.pk),
             accion="excepcion_de_control:aprobador_igual_operador",
-            valor_anterior=None, valor_posterior={"usuario": usuario.username},
+            valor_anterior=None, valor_posterior={"usuario": usuario.username, "motivo": motivo_excepcion.strip()},
             usuario=usuario,
         )
+
+    # Control de Depósitos (Karla, 2026-09-21): nace del cierre, para que
+    # la Analista lo complete y el Jefe de Contabilidad lo valide después.
+    from nucleo.depositos_servicio import crear_al_cerrar
+    crear_al_cerrar(dia, usuario)
+
     return dia
 
 
 @transaction.atomic
 def reabrir_dia(dia: DiaArqueo, usuario, motivo: str) -> DiaArqueo:
+    exigir(usuario, Permiso.REABRIR_DIA, "Solo la Gerente de Administración y Finanzas puede reabrir un día.")
     if dia.estado not in (DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO):
         raise CierreInvalido("Solo se puede reabrir un día cerrado o exportado.")
     if not motivo.strip():

@@ -1,0 +1,115 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Reintegros de Cajeras{% endblock %}
+{% block estilos_extra %}
+<style>
+.cfg-in{padding:8px 10px;border:1px solid var(--hu-card-line);font:inherit;background:#fff}
+.cfg-nota{font-size:12px;color:var(--hu-gray);display:block;margin-bottom:4px}
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="padding:30px 34px 0">
+  <div class="kick">Reintegros de Cajeras</div>
+  <h2 style="font-size:27px;margin:2px 0 6px">Devoluciones de diferencias de caja</h2>
+  <p class="cfg-nota" style="margin-bottom:18px;max-width:760px">Cuando una cajera devuelve, total o parcialmente, una pérdida de caja que se le atribuyó, antes de que se le descuente de la remuneración. Saldo pendiente = pérdida original − reintegros ya validados. No modifica el resultado histórico del arqueo original.</p>
+
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:20px">
+    <div class="card" style="max-height:640px;overflow:auto">
+      {% for p in pendientes %}
+      <a href="?tipo={{ p.tipo }}&origen={{ p.id }}" style="display:block;padding:12px 16px;border-bottom:1px solid var(--hu-card-line);text-decoration:none;color:inherit;{% if origen_actual.pk == p.id and tipo_actual == p.tipo %}background:var(--hu-pink-2){% endif %}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:13.5px">{{ p.cajera.nombre }}</strong>
+          {% if p.estado_agregado == "parcialmente_reintegrado" %}<span class="pill p-warn" style="font-size:10px">Parcial</span>
+          {% else %}<span class="pill p-red" style="font-size:10px">Pendiente</span>{% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">Arqueo {{ p.dia.fecha|date:"d-m-Y" }} · pérdida ${{ p.monto_perdida_original|miles }} · saldo ${{ p.saldo_pendiente|miles }}</div>
+      </a>
+      {% empty %}
+      <div style="padding:20px;color:var(--hu-gray);font-size:13px">No hay pérdidas de caja pendientes de reintegro.</div>
+      {% endfor %}
+      {% if menores_ocultas %}
+      <div style="padding:10px 16px;font-size:12px;color:var(--hu-gray);background:#FAFAFA">{{ menores_ocultas }} pérdida(s) de hasta ${{ umbral_menores|miles }} oculta(s) · <a href="?ver_menores=1">Ver</a></div>
+      {% elif ver_menores %}
+      <div style="padding:10px 16px;font-size:12px;color:var(--hu-gray);background:#FAFAFA">Mostrando también las menores a ${{ umbral_menores|miles }} · <a href="?">Ocultar</a></div>
+      {% endif %}
+    </div>
+
+    {% if origen_actual %}
+    <div>
+      <div class="card" style="padding:18px 20px;margin-bottom:16px">
+        <div class="kick" style="margin-bottom:10px">{{ cajera_actual.nombre }} · Arqueo {{ origen_actual.dia.fecha|date:"d-m-Y" }}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <div><div class="cfg-nota">Pérdida original</div><div style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-maroon)">${{ monto_perdida_original|miles }}</div></div>
+          <div><div class="cfg-nota">Reintegrado (validado)</div><div style="font-family:var(--hu-serif);font-size:20px;color:var(--hu-ok)">${{ reintegrado_validado|miles }}</div></div>
+          <div><div class="cfg-nota">Saldo pendiente</div><div style="font-family:var(--hu-serif);font-size:20px;color:{% if saldo_pendiente %}var(--hu-warn){% else %}var(--hu-ok){% endif %}">${{ saldo_pendiente|miles }}</div></div>
+        </div>
+      </div>
+
+      {% if saldo_pendiente > 0 %}
+      <div class="kick" style="margin-bottom:10px">Registrar un abono</div>
+      <form method="post" action="{% url 'registrar_reintegro' tipo=tipo_actual origen_id=origen_actual.pk %}" class="card" style="padding:16px 18px;margin-bottom:20px;display:flex;gap:10px;align-items:end">
+        {% csrf_token %}
+        <div style="flex:1"><label class="cfg-nota">Monto que la cajera está devolviendo (puede ser parcial)</label><input class="cfg-in" style="width:100%" type="text" inputmode="numeric" name="monto" placeholder="Ej. 10000" required></div>
+        <button type="submit" class="btn">Registrar abono</button>
+      </form>
+      {% endif %}
+
+      <div class="kick" style="margin-bottom:10px">Abonos de este origen</div>
+      {% for r in reintegros_del_origen %}
+      <div class="card" style="padding:16px 18px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>${{ r.monto|miles }}</strong>
+          {% if r.estado == "validado" %}<span class="pill p-ok">Validado</span>
+          {% elif r.estado == "observado" %}<span class="pill p-red">Observado</span>
+          {% elif r.estado == "pendiente_validacion_bancaria" %}<span class="pill p-warn">Pend. validación</span>
+          {% else %}<span class="pill p-grey">Registrado</span>{% endif %}
+        </div>
+        <div class="cfg-nota">Registrado por {{ r.registrado_por.get_full_name|default:r.registrado_por.username }} el {{ r.registrado_en|date:"d-m-Y H:i" }}</div>
+
+        {% if r.estado == "registrado" %}
+        <form method="post" action="{% url 'completar_detalle_reintegro' reintegro_id=r.pk %}" enctype="multipart/form-data" style="margin-top:10px">
+          {% csrf_token %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div><label class="cfg-nota">Fecha del reintegro</label><input class="cfg-in" style="width:100%" type="date" name="fecha_reintegro" value="{{ hoy|date:'Y-m-d' }}" required></div>
+            <div><label class="cfg-nota">Banco</label>
+              <select class="cfg-in" style="width:100%" name="banco" required>
+                <option value="">Elegir...</option>
+                {% for b in bancos %}<option value="{{ b.nombre }}">{{ b.nombre }}</option>{% endfor %}
+              </select>
+            </div>
+            <div><label class="cfg-nota">N° de operación / referencia</label><input class="cfg-in" style="width:100%" type="text" name="numero_operacion" required></div>
+            <div style="grid-column:1/-1"><label class="cfg-nota">Comprobante adjunto (PDF o imagen) — obligatorio</label><input class="cfg-in" style="width:100%" type="file" name="comprobante" required></div>
+            <div style="grid-column:1/-1"><label class="cfg-nota">Observaciones</label><textarea class="cfg-in" style="width:100%" name="observaciones" rows="2"></textarea></div>
+          </div>
+          <button type="submit" class="btn btn-sm">Guardar y enviar a validación</button>
+        </form>
+        {% endif %}
+
+        {% if r.estado != "registrado" %}
+        <div class="cfg-nota" style="margin-top:8px">La <strong>Captura Reintegro Caja</strong> para Odoo se descarga en <a href="{% url 'exportaciones_odoo' %}#reintegro">Archivos para Odoo →</a></div>
+        {% endif %}
+
+        {% if r.estado == "pendiente_validacion_bancaria" %}
+        <form method="post" action="{% url 'validar_reintegro' reintegro_id=r.pk %}" style="margin-top:10px">
+          {% csrf_token %}
+          <div style="margin-bottom:8px"><label class="cfg-nota">Movimiento bancario con el que se cotejó (obligatorio para validar)</label><input class="cfg-in" style="width:100%" type="text" name="movimiento_bancario_referencia" placeholder="Ej. Abono visto en cartola del 16/09, folio 778899"></div>
+          <div style="margin-bottom:8px"><label class="cfg-nota">Comentario</label><textarea class="cfg-in" style="width:100%" name="comentario" rows="2"></textarea></div>
+          <div style="display:flex;gap:8px">
+            <button type="submit" name="accion" value="aprobar" class="btn btn-sm" {% if not puede_validar %}disabled title="Solo el Jefe de Contabilidad o superior puede validar"{% endif %}>Validar</button>
+            <button type="submit" name="accion" value="observar" class="btn btn-2 btn-sm" {% if not puede_validar %}disabled{% endif %}>Observar</button>
+          </div>
+        </form>
+        {% endif %}
+
+        {% if r.estado == "validado" %}
+        <div class="cfg-nota" style="margin-top:6px"><strong>Movimiento bancario:</strong> {{ r.movimiento_bancario_referencia }} · validado por {{ r.validado_por.get_full_name|default:r.validado_por.username }} el {{ r.validado_en|date:"d-m-Y H:i" }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="padding:30px;color:var(--hu-gray);text-align:center">No hay ninguna pérdida de caja pendiente de reintegro.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

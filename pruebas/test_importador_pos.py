@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from arqueo_diario.importadores.pos import importar_ventas_por_articulo
+from arqueo_diario.importadores.pos import importar_ventas_con_libro_contable, importar_ventas_por_articulo
 
 FIXTURE = (
     Path(__file__).parent
@@ -20,6 +20,11 @@ FIXTURE = (
     / "Captura_Ventas_Sala_de_Ventas_02.09.26.xlsx"
 )
 DIA_REFERENCIA = date(2026, 9, 2)
+
+FIXTURES_01_09 = Path(__file__).parent / "fixtures" / "dia_referencia_01-09-2026"
+FIXTURE_VENTAS_01_09 = FIXTURES_01_09 / "ventas_por_articulo_01-09-2026.xlsx"
+FIXTURE_LIBRO_01_09 = FIXTURES_01_09 / "libro_contable_01-09-2026.xlsx"
+DIA_01_09 = date(2026, 9, 1)
 
 
 @pytest.fixture(scope="module")
@@ -66,3 +71,72 @@ def test_comanda_654747_caso_documentado(resultado):
     assert venta.total_comanda == 17_600
     assert venta.caja == "CAJA 4"
     assert [p.medio for p in venta.pagos] == ["debito"]
+
+
+# Caso real del 01-09-2026 aportado por Karla (2026-09-16): dos archivos
+# tal cual salen de Resto (VENTAS POR ARTICULO sin N_INTERNO + libro
+# contable), sin ninguna consolidación manual — reemplaza el trabajo que
+# antes hacía a mano pegando el N_INTERNO ella misma.
+
+
+@pytest.fixture(scope="module")
+def resultado_con_libro_contable():
+    return importar_ventas_con_libro_contable(FIXTURE_VENTAS_01_09, FIXTURE_LIBRO_01_09, DIA_01_09)
+
+
+def test_libro_contable_cantidad_comandas_y_lineas(resultado_con_libro_contable):
+    # 240 comprobantes en el reporte de ventas, menos la fila de totales
+    # del pie del reporte (sin FECHA, se filtra sola) = 239 comandas.
+    assert resultado_con_libro_contable.cantidad_comandas == 239
+    assert resultado_con_libro_contable.cantidad_lineas == 558
+
+
+def test_libro_contable_sin_comprobantes_huerfanos(resultado_con_libro_contable):
+    # Las 239 comandas del reporte de ventas calzan una a una contra el
+    # libro contable — ninguna se queda sin N_INTERNO.
+    assert resultado_con_libro_contable.avisos == []
+
+
+def test_libro_contable_desglose_por_medio_de_pago(resultado_con_libro_contable):
+    totales = resultado_con_libro_contable.total_por_medio
+    assert totales["efectivo"] == 714_889
+    assert totales["transferencia"] == 0
+    assert totales["debito"] == 2_621_233
+    assert totales["credito"] == 682_247
+    assert sum(totales.values()) == resultado_con_libro_contable.total_venta
+
+
+def test_libro_contable_n_interno_recuperado_del_cruce(resultado_con_libro_contable):
+    # La primera comanda del día: N_INTERNO no viene en el reporte de
+    # ventas, se recupera cruzando NRO. COMPROBANTE contra el libro
+    # contable (N_COMP en ese archivo).
+    venta = next(v for v in resultado_con_libro_contable.ventas if v.nro_comprobante == "B0390301666228")
+    assert venta.n_interno == 654506
+    assert venta.total_comanda == 5000
+    assert [p.medio for p in venta.pagos] == ["debito"]
+
+
+def test_libro_contable_comprobante_sin_match_queda_en_avisos_y_no_se_importa(tmp_path):
+    import pandas as pd
+
+    ventas_df = pd.DataFrame([{
+        "SUCURSAL": "Huentelauquen Central", "CLIENTE": "CLIENTE OCASIONAL",
+        "NRO. COMPROBANTE": "B999999999999", "TIPO_DOC": "FAC", "NRO. COMANDA": 999999,
+        "ESTADO COMANDA": "COBRADA", "HORA APERTURA": "10:00 HS.", "HORA CIERRE": "10:01 HS.",
+        "CAJA CIERRE": "CAJA 1", "FECHA": pd.Timestamp(DIA_01_09), "ARTíCULO": "TE",
+        "CANTIDAD": 1, "PRECIO UNITARIO": 1000, "TOTAL POR ARTICULO": 1000, "TOTAL_COMADA": 1000,
+        "EFECTVO": 1000, "TRANSFERENCIAS": 0, "TARJETA DE DEBITO": 0, "TARJETA DE CREDITO": 0,
+        "TURNO": "TURNO CAJA 1",
+    }])
+    archivo_ventas = tmp_path / "ventas.xlsx"
+    ventas_df.to_excel(archivo_ventas, sheet_name="VENTAS POR ARTICULO", index=False)
+
+    libro_df = pd.DataFrame([{
+        "N_INTERNO": 1, "FEC_COMPR": pd.Timestamp(DIA_01_09), "COD_COMP": "FAC", "N_COMP": "OTRO-COMPROBANTE",
+    }])
+    archivo_libro = tmp_path / "libro.xlsx"
+    libro_df.to_excel(archivo_libro, index=False)
+
+    resultado = importar_ventas_con_libro_contable(archivo_ventas, archivo_libro, DIA_01_09)
+    assert resultado.cantidad_comandas == 0
+    assert "B999999999999" in resultado.avisos[0]

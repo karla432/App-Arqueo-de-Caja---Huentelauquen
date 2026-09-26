@@ -2,9 +2,14 @@
 segundos "¿cuadró el día, cuánto falta y puedo aprobarlo?" — agrega datos
 que ya existen en otras partes del sistema, no calcula nada nuevo.
 """
-from nucleo.arqueo_servicio import UMBRAL_DIFERENCIA_CAJA, preparar_arqueos_del_dia
+from decimal import Decimal
+
+from nucleo.arqueo_servicio import preparar_arqueos_del_dia
+from nucleo.umbrales import umbral
 from nucleo.cierre_servicio import estado_checklist, puede_aprobar
-from nucleo.models import Coincidencia, DiaArqueo, Excepcion, MovimientoProveedor, PagoDeclarado, Venta
+from nucleo.models import (
+    Coincidencia, DiaArqueo, Excepcion, MovimientoProveedor, PagoDeclarado, RegularizacionDocumento, Venta,
+)
 
 # Un movimiento "prepago" se reporta junto al débito, consistente con el
 # supuesto de conciliación que Karla confirmó (2026-09-05): el POS lo
@@ -13,7 +18,18 @@ from nucleo.models import Coincidencia, DiaArqueo, Excepcion, MovimientoProveedo
 MEDIO_REPORTE = {"debito": "debito", "credito": "credito", "prepago": "debito"}
 
 
+def guias_por_medio(dia: DiaArqueo) -> dict[str, float]:
+    """Guías de despacho del día por forma de pago. No son ventas del libro, pero el cobro con
+    tarjeta de una guía SÍ aparece en Transbank y el efectivo de una guía SÍ entra a la caja:
+    sin esta columna esa plata parece una diferencia de cuadratura y no lo es (Karla, 2026-09-25)."""
+    guias: dict[str, float] = {}
+    for d in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA).exclude(forma_pago=""):
+        guias[d.forma_pago] = guias.get(d.forma_pago, 0) + float(d.monto)
+    return guias
+
+
 def cuadre_por_medio(dia: DiaArqueo) -> list[dict]:
+    guias = guias_por_medio(dia)
     declarado: dict[str, float] = {}
     for pago in PagoDeclarado.objects.filter(venta__dia=dia).exclude(medio__in=["efectivo", "transferencia"]):
         declarado[pago.medio] = declarado.get(pago.medio, 0) + float(pago.monto)
@@ -33,9 +49,11 @@ def cuadre_por_medio(dia: DiaArqueo) -> list[dict]:
         filas.append({
             "medio": medio,
             "declarado_pos": declarado.get(medio, 0),
+            "guias": guias.get(medio, 0),
             "proveedor": proveedor.get(medio, 0),
             "conciliado": conciliado.get(medio, 0),
-            "diferencia": declarado.get(medio, 0) - proveedor.get(medio, 0),
+            # POS + guías cobradas con ese medio, contra lo que cobró el proveedor
+            "diferencia": declarado.get(medio, 0) + guias.get(medio, 0) - proveedor.get(medio, 0),
         })
 
     transferencia = sum(
@@ -43,7 +61,7 @@ def cuadre_por_medio(dia: DiaArqueo) -> list[dict]:
         PagoDeclarado.objects.filter(venta__dia=dia, medio="transferencia").values_list("monto", flat=True)
     )
     filas.append({
-        "medio": "transferencia", "declarado_pos": transferencia, "proveedor": None,
+        "medio": "transferencia", "declarado_pos": transferencia, "guias": guias.get("transferencia", 0), "proveedor": None,
         "conciliado": None, "diferencia": None,
     })
     return filas
@@ -51,8 +69,16 @@ def cuadre_por_medio(dia: DiaArqueo) -> list[dict]:
 
 def resumen_efectivo(dia: DiaArqueo) -> dict:
     arqueos = preparar_arqueos_del_dia(dia)
+    guias_efectivo = sum(
+        (d.monto for d in RegularizacionDocumento.objects.filter(
+            dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago=PagoDeclarado.Medio.EFECTIVO).exclude(caja="")),
+        Decimal(0),
+    )
+    teorico = sum(a.teorico for a in arqueos)
     return {
-        "teorico": sum(a.teorico for a in arqueos),
+        "teorico": teorico,
+        "guias_efectivo": guias_efectivo,
+        "pos_efectivo": teorico - guias_efectivo,  # lo declarado por el POS en efectivo (sin las guías)
         "contado": sum(a.contado for a in arqueos if a.contado is not None),
         "diferencia": sum(a.diferencia for a in arqueos if a.diferencia is not None),
         "todas_contadas": all(a.contado is not None for a in arqueos) and bool(arqueos),
@@ -86,7 +112,7 @@ def semaforo(dia: DiaArqueo) -> str:
     autorizar."""
     arqueos = preparar_arqueos_del_dia(dia)
     tiene_diferencia_sin_autorizar = any(
-        a.contado is not None and abs(a.diferencia) > UMBRAL_DIFERENCIA_CAJA and not a.autorizado_por_id
+        a.contado is not None and abs(a.diferencia) > umbral("umbral_diferencia_caja") and not a.autorizado_por_id
         for a in arqueos
     )
     if tiene_diferencia_sin_autorizar:
@@ -103,7 +129,8 @@ def resumen_dia(dia: DiaArqueo) -> dict:
         "dia": dia,
         "semaforo": semaforo(dia),
         "venta_total": sum(v.total_comanda for v in ventas),
-        "cantidad_comandas": ventas.count(),
+        "cantidad_comandas": ventas.exclude(tipo_doc="DES").count(),
+        "cantidad_guias": ventas.filter(tipo_doc="DES").count(),
         "cuadre_por_medio": cuadre_por_medio(dia),
         "efectivo": resumen_efectivo(dia),
         "calidad": calidad_conciliacion(dia),
