@@ -115,6 +115,9 @@ MIDDLEWARE = [
     'nucleo.middleware.PerfilesMiddleware',
 ]
 
+# El respaldo de autenticación aplica el bloqueo por intentos fallidos (nucleo/bloqueo_acceso.py).
+AUTHENTICATION_BACKENDS = ['nucleo.autenticacion.RespaldoConBloqueo']
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [

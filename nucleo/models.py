@@ -1026,3 +1026,14 @@ class ReintegroCaja(models.Model):
     @property
     def validado(self) -> bool:
         return self.estado == self.Estado.VALIDADO
+
+
+class IntentoFallido(models.Model):
+    """Un intento fallido de iniciar sesión (Karla, 2026-09-26). Alimenta el bloqueo temporal de `nucleo.bloqueo_acceso`;
+    no es la bitácora (esa solo registra los bloqueos de cuentas reales)."""
+    nombre = models.CharField(max_length=150, db_index=True)
+    momento = models.DateTimeField(default=timezone.now, db_index=True)
+    origen = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f"{self.nombre} · {self.momento:%Y-%m-%d %H:%M:%S}"

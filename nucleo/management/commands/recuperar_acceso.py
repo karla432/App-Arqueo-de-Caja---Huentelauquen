@@ -9,7 +9,7 @@ import os
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from nucleo import contexto_solicitud
+from nucleo import bloqueo_acceso, contexto_solicitud
 from nucleo.models import EventoAuditoria
 
 
@@ -40,6 +40,7 @@ class Command(BaseCommand):
                 cuenta.set_password(clave)
                 cambios.append("contraseña restablecida")
             cuenta.save()
+            bloqueo_acceso.limpiar(cuenta.get_username())  # también levanta un bloqueo por intentos fallidos
             EventoAuditoria.objects.create(
                 dia=None, entidad="Usuario", entidad_id=str(cuenta.pk), accion="recuperar_acceso_por_consola",
                 valor_posterior={"usuario": cuenta.username, "cambios": cambios or ["sin cambios"]}, usuario=cuenta,

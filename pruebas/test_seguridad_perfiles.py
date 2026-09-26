@@ -675,3 +675,88 @@ def test_sin_variables_ni_marca_la_app_no_arranca_en_produccion_sin_clave(tmp_pa
                        env={k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "ARQUEO_"))},
                        capture_output=True, text=True, timeout=120)
     assert r.returncode != 0 and "DJANGO_SECRET_KEY" in r.stderr
+
+
+# ---------------------------------------------------------------- bloqueo por intentos fallidos (Karla, 2026-09-26)
+
+def _intentar(client, usuario, clave):
+    return client.post(reverse("login"), {"username": usuario, "password": clave})
+
+
+def _fallar(client, usuario, veces):
+    for _ in range(veces):
+        _intentar(client, usuario, "clave-equivocada")
+
+
+def test_cinco_fallos_bloquean_la_cuenta_ni_con_la_clave_correcta(client, cuentas):
+    from nucleo import bloqueo_acceso
+    nombre = cuentas["gerente"].username
+    _fallar(client, nombre, bloqueo_acceso.MAX_INTENTOS - 1)
+    assert _intentar(client, nombre, "x").status_code == 302  # el cuarto fallo aún no bloquea: entra con la clave buena
+    client.logout()
+    _fallar(client, nombre, bloqueo_acceso.MAX_INTENTOS)
+    resp = _intentar(client, nombre, "x")  # la clave correcta ("x" en las pruebas)
+    assert resp.status_code == 200 and "bloqueada" in resp.content.decode()
+    assert "_auth_user_id" not in client.session
+    assert bloqueo_acceso.minutos_restantes(nombre) > 0
+    assert EventoAuditoria.objects.filter(accion="cuenta_bloqueada_por_intentos", usuario=cuentas["gerente"]).count() == 1
+
+
+def test_el_bloqueo_se_levanta_solo_pasados_los_minutos(client, cuentas):
+    from datetime import timedelta
+    from django.utils import timezone
+    from nucleo import bloqueo_acceso
+    from nucleo.models import IntentoFallido
+    nombre = cuentas["jefe"].username
+    _fallar(client, nombre, bloqueo_acceso.MAX_INTENTOS)
+    assert bloqueo_acceso.esta_bloqueado(nombre)
+    IntentoFallido.objects.filter(nombre=nombre.lower()).update(
+        momento=timezone.now() - timedelta(minutes=bloqueo_acceso.MINUTOS_DE_BLOQUEO + 1),
+    )
+    assert not bloqueo_acceso.esta_bloqueado(nombre)
+    assert _intentar(client, nombre, "x").status_code == 302
+
+
+def test_intentar_durante_el_bloqueo_no_lo_alarga_y_un_ingreso_bueno_limpia_los_fallos(client, cuentas):
+    from nucleo import bloqueo_acceso
+    from nucleo.models import IntentoFallido
+    nombre = cuentas["jefe"].username
+    _fallar(client, nombre, bloqueo_acceso.MAX_INTENTOS + 3)
+    assert IntentoFallido.objects.filter(nombre=nombre.lower()).count() == bloqueo_acceso.MAX_INTENTOS
+    otra = cuentas["encargada"].username
+    _fallar(client, otra, 2)
+    assert _intentar(client, otra, "x").status_code == 302
+    assert not IntentoFallido.objects.filter(nombre=otra.lower()).exists()
+
+
+def test_el_bloqueo_no_distingue_mayusculas_ni_revela_si_el_usuario_existe(client, cuentas):
+    from nucleo import bloqueo_acceso
+    _fallar(client, "Fantasma", bloqueo_acceso.MAX_INTENTOS)
+    assert bloqueo_acceso.esta_bloqueado("fantasma") and bloqueo_acceso.esta_bloqueado("FANTASMA")
+    assert "bloqueada" in _intentar(client, "fantasma", "cualquiera").content.decode()  # mismo trato que una cuenta real
+    assert not EventoAuditoria.objects.filter(accion="cuenta_bloqueada_por_intentos", valor_posterior__usuario="fantasma").exists()
+    real = cuentas["gerente"].username
+    _fallar(client, real.upper(), bloqueo_acceso.MAX_INTENTOS)
+    assert bloqueo_acceso.esta_bloqueado(real)
+
+
+def test_el_bloqueo_tambien_vale_para_el_login_de_admin(client, cuentas):
+    from nucleo import bloqueo_acceso
+    tecnico = cuentas["admin_tecnico"]
+    tecnico.is_staff = True
+    tecnico.save()
+    for _ in range(bloqueo_acceso.MAX_INTENTOS):
+        client.post("/admin/login/", {"username": tecnico.username, "password": "mala", "next": "/admin/"})
+    client.post("/admin/login/", {"username": tecnico.username, "password": "x", "next": "/admin/"})
+    assert client.get("/admin/").status_code in (302, 403)  # no quedó dentro
+
+
+def test_recuperar_acceso_levanta_el_bloqueo(client, cuentas, monkeypatch):
+    from nucleo import bloqueo_acceso
+    nombre = cuentas["gerente"].username
+    _fallar(client, nombre, bloqueo_acceso.MAX_INTENTOS)
+    assert bloqueo_acceso.esta_bloqueado(nombre)
+    monkeypatch.setenv("CLAVE_TMP_PRUEBA", "clave-nueva-de-prueba-77")
+    call_command("recuperar_acceso", nombre, "--password-desde-entorno", "CLAVE_TMP_PRUEBA", stdout=StringIO())
+    assert not bloqueo_acceso.esta_bloqueado(nombre)
+    assert _intentar(client, nombre, "clave-nueva-de-prueba-77").status_code == 302

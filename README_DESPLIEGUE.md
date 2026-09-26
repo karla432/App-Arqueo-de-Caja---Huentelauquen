@@ -32,6 +32,10 @@ Verificación previa a poner en marcha (con las variables ya cargadas):
 python manage.py check --deploy
 ```
 
+## 2b. Bloqueo por intentos fallidos
+
+5 intentos fallidos seguidos bloquean el usuario 15 minutos (se levanta solo; ni la clave correcta entra mientras dure). Aplica también a `/admin/login/`, cuenta usuarios inexistentes igual que reales y deja en la bitácora el bloqueo de cuentas reales (`cuenta_bloqueada_por_intentos`). Para levantarlo antes: `python manage.py recuperar_acceso USUARIO --password-desde-entorno VARIABLE`. No protege contra ataques distribuidos desde muchas cuentas ni sustituye al doble factor.
+
 ## 3. Puesta en marcha
 
 1. Respaldar `db.sqlite3` (copia del archivo con la aplicación detenida) y la carpeta de archivos cargados/exportaciones.
@@ -62,7 +66,7 @@ configuración. **Se niega a correr en producción.**
 
 ## 6. Lo que este trabajo NO resuelve (declarado)
 
-- Bloqueo por intentos fallidos de contraseña y doble factor: no implementados.
+- Doble factor de autenticación: no implementado.
 - Protección contra fórmulas maliciosas en archivos Excel cargados y validación profunda de xlsx: no verificada.
 - Respaldos automáticos de la base y de los archivos: no configurados aquí.
 - La protección de la bitácora por triggers está implementada solo para SQLite; con otro motor hay que replicarla.

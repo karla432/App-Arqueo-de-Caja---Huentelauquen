@@ -14,7 +14,7 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out, user_lo
 from django.db.models.signals import m2m_changed, pre_save
 from django.dispatch import receiver
 
-from nucleo import contexto_solicitud
+from nucleo import bloqueo_acceso, contexto_solicitud
 from nucleo.models import EventoAuditoria
 from nucleo.permisos import perfil_de
 
@@ -29,6 +29,7 @@ def _ip(request) -> str:
 
 @receiver(user_logged_in)
 def registrar_inicio_de_sesion(sender, request, user, **kwargs):
+    bloqueo_acceso.limpiar(user.get_username())
     EventoAuditoria.objects.create(
         dia=None, entidad="Usuario", entidad_id=str(user.pk), accion="iniciar_sesion",
         valor_posterior={"usuario": user.username, "perfil": perfil_de(user).value}, usuario=user, origen=_ip(request),
@@ -49,12 +50,23 @@ def registrar_cierre_de_sesion(sender, request, user, **kwargs):
 def registrar_inicio_fallido(sender, credentials, request=None, **kwargs):
     nombre = (credentials or {}).get("username", "")
     registro.warning("Inicio de sesión fallido para %r desde %s", nombre, _ip(request))
-    usuario = get_user_model().objects.filter(username=nombre).first() if nombre else None
-    if usuario is not None:
+    usuario = get_user_model().objects.filter(username__iexact=nombre).first() if nombre else None
+    ya_bloqueada = bloqueo_acceso.esta_bloqueado(nombre)
+    se_bloquea = bloqueo_acceso.registrar_fallo(nombre, _ip(request))
+    if usuario is not None and not ya_bloqueada:
         EventoAuditoria.objects.create(
             dia=None, entidad="Usuario", entidad_id=str(usuario.pk), accion="inicio_sesion_fallido",
             valor_posterior={"usuario": usuario.username}, usuario=usuario, origen=_ip(request),
         )
+    if usuario is not None and se_bloquea:
+        EventoAuditoria.objects.create(
+            dia=None, entidad="Usuario", entidad_id=str(usuario.pk), accion="cuenta_bloqueada_por_intentos",
+            valor_posterior={"usuario": usuario.username, "intentos": bloqueo_acceso.MAX_INTENTOS,
+                             "minutos": bloqueo_acceso.MINUTOS_DE_BLOQUEO},
+            usuario=usuario, origen=_ip(request),
+        )
+        registro.warning("Cuenta %r bloqueada %s minutos por intentos fallidos desde %s", nombre,
+                         bloqueo_acceso.MINUTOS_DE_BLOQUEO, _ip(request))
 
 
 @receiver(m2m_changed, sender=User.groups.through)
