@@ -17,7 +17,7 @@ from nucleo.models import Cajera, CuentaContable, EventoAuditoria, ResponsableTr
 from nucleo.umbrales import DEFINICIONES, umbrales_vigentes
 
 ENTIDADES_DE_CONFIGURACION = ["Parametro", "CuentaContable", "Cajera", "ResponsableTraslado", "Usuario"]
-from nucleo.permisos import PermisoDenegado
+from nucleo.permisos import Permiso, PermisoDenegado
 
 
 def solo_gerente(view):
@@ -30,6 +30,7 @@ def solo_gerente(view):
             messages.error(request, "Solo la Gerente de Administración y Finanzas puede cambiar la configuración.")
             return redirect("ventas_dashboard")
         return view(request, *args, **kwargs)
+    envoltura.permiso_requerido = Permiso.CONFIGURAR  # lo lee la prueba que audita todas las rutas
     return envoltura
 
 

@@ -86,7 +86,10 @@ if PRODUCCION:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = False
-    SESSION_COOKIE_AGE = 8 * 60 * 60          # una jornada; luego hay que volver a iniciar sesión
+    # Cierre por inactividad: la sesión vence a los 60 minutos SIN actividad (cada petición la renueva) y al cerrar el
+    # navegador. Renovarla escribe la fila de la sesión en cada petición: es lo único que escribe una consulta.
+    SESSION_COOKIE_AGE = 60 * 60
+    SESSION_SAVE_EVERY_REQUEST = True
     SESSION_EXPIRE_AT_BROWSER_CLOSE = True
     if os.environ.get("DJANGO_PROXY_SSL") == "1":
         SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -117,6 +120,10 @@ MIDDLEWARE = [
 
 # El respaldo de autenticación aplica el bloqueo por intentos fallidos (nucleo/bloqueo_acceso.py).
 AUTHENTICATION_BACKENDS = ['nucleo.autenticacion.RespaldoConBloqueo']
+
+# Verificación en dos pasos (nucleo/dos_pasos.py): obligatoria para Gerente, Jefe y Administrador técnico en producción.
+# ARQUEO_DOS_PASOS=1/0 la fuerza en cualquier entorno.
+DOS_PASOS_OBLIGATORIO = os.environ.get('ARQUEO_DOS_PASOS', '1' if PRODUCCION else '0') == '1'
 
 ROOT_URLCONF = 'config.urls'
 
@@ -171,6 +178,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},  # Karla, 2026-09-26: mínimo 12 caracteres para todas las cuentas
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -215,3 +223,28 @@ MAILERS = {
         ),
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# Registro de seguridad en archivo (Karla, 2026-09-26): accesos, fallos, bloqueos y verificaciones en dos pasos,
+# con rotación (10 archivos de 10 MB) para no llenar el disco. La carpeta sale de ARQUEO_LOGS (por defecto `logs/`,
+# no versionada). Además del archivo, todo va a la consola del servidor.
+# ---------------------------------------------------------------------------
+CARPETA_DE_LOGS = Path(os.environ.get('ARQUEO_LOGS') or (BASE_DIR / 'logs'))
+_handlers_de_seguridad = ['consola']
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'seguridad': {'format': '%(asctime)s %(levelname)s %(name)s %(message)s'}},
+    'handlers': {'consola': {'class': 'logging.StreamHandler', 'formatter': 'seguridad'}},
+    'loggers': {'nucleo.seguridad': {'handlers': _handlers_de_seguridad, 'level': 'INFO', 'propagate': False}},
+}
+try:
+    CARPETA_DE_LOGS.mkdir(parents=True, exist_ok=True)
+    LOGGING['handlers']['archivo_seguridad'] = {
+        'class': 'logging.handlers.RotatingFileHandler', 'formatter': 'seguridad', 'encoding': 'utf-8',
+        'filename': str(CARPETA_DE_LOGS / 'seguridad.log'), 'maxBytes': 10 * 1024 * 1024, 'backupCount': 10,
+    }
+    _handlers_de_seguridad.append('archivo_seguridad')
+except OSError:
+    pass  # sin carpeta escribible se sigue solo con la consola: el registro en archivo nunca debe impedir arrancar

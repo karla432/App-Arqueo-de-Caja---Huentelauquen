@@ -30,6 +30,9 @@ def _ip(request) -> str:
 @receiver(user_logged_in)
 def registrar_inicio_de_sesion(sender, request, user, **kwargs):
     bloqueo_acceso.limpiar(user.get_username())
+    if request is not None and hasattr(request, "session"):
+        request.session["dos_pasos_ok"] = False  # cada ingreso nuevo vuelve a pedir el segundo paso
+    registro.info("Inicio de sesión de %r (%s) desde %s", user.get_username(), perfil_de(user).value, _ip(request))
     EventoAuditoria.objects.create(
         dia=None, entidad="Usuario", entidad_id=str(user.pk), accion="iniciar_sesion",
         valor_posterior={"usuario": user.username, "perfil": perfil_de(user).value}, usuario=user, origen=_ip(request),
@@ -40,6 +43,7 @@ def registrar_inicio_de_sesion(sender, request, user, **kwargs):
 def registrar_cierre_de_sesion(sender, request, user, **kwargs):
     if user is None:
         return
+    registro.info("Cierre de sesión de %r desde %s", user.get_username(), _ip(request))
     EventoAuditoria.objects.create(
         dia=None, entidad="Usuario", entidad_id=str(user.pk), accion="cerrar_sesion",
         valor_posterior={"usuario": user.username}, usuario=user, origen=_ip(request),

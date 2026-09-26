@@ -760,3 +760,52 @@ def test_recuperar_acceso_levanta_el_bloqueo(client, cuentas, monkeypatch):
     call_command("recuperar_acceso", nombre, "--password-desde-entorno", "CLAVE_TMP_PRUEBA", stdout=StringIO())
     assert not bloqueo_acceso.esta_bloqueado(nombre)
     assert _intentar(client, nombre, "clave-nueva-de-prueba-77").status_code == 302
+
+
+# ---------------------------------------------------------------- auditoría de TODAS las rutas (Bloque D)
+
+# Rutas que a propósito no piden un permiso del negocio: solo sesión (o ni eso, como el ingreso).
+RUTAS_SIN_PERMISO_DEL_NEGOCIO = {
+    "login", "logout", "sin_perfil", "verificacion_dos_pasos", "activar_dos_pasos",
+}
+
+
+def _rutas_de_la_app():
+    from django.urls import URLPattern, URLResolver, get_resolver
+
+    def recorrer(patrones, prefijo=""):
+        for p in patrones:
+            if isinstance(p, URLResolver):
+                yield from recorrer(p.url_patterns, prefijo + str(p.pattern))
+            elif isinstance(p, URLPattern):
+                yield prefijo + str(p.pattern), p.name, p.callback
+    return list(recorrer(get_resolver().url_patterns))
+
+
+def test_toda_ruta_de_la_app_exige_un_permiso_o_esta_en_la_lista_de_excepciones():
+    """Si alguien agrega una vista nueva sin `@requiere(...)`, esta prueba falla: ninguna ruta queda abierta por olvido."""
+    sin_control = []
+    for ruta, nombre, vista in _rutas_de_la_app():
+        if ruta.startswith("admin/"):
+            continue  # el sitio de administración lo cubre el perfil Administrador técnico (has_permission)
+        if getattr(vista, "permiso_requerido", None) is None and nombre not in RUTAS_SIN_PERMISO_DEL_NEGOCIO:
+            sin_control.append((ruta, nombre))
+    assert sin_control == [], f"Rutas sin control de permiso: {sin_control}"
+
+
+def test_las_rutas_marcadas_como_lectura_no_exigen_mas_que_consultar_o_descargar():
+    """Las rutas que un perfil de solo lectura puede abrir (GET) son solo de consulta o de descarga de lo ya generado."""
+    de_lectura = {Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS}
+    for ruta, nombre, vista in _rutas_de_la_app():
+        permiso = getattr(vista, "permiso_requerido", None)
+        if permiso in de_lectura:
+            for prohibido in ("guardar", "registrar", "aprobar", "reabrir", "validar", "visar", "generar", "cambiar", "crear", "editar", "asignar"):
+                assert prohibido not in (nombre or "") or nombre in ("historico",), (nombre, permiso)
+
+
+@pytest.mark.parametrize("nombre,args,permiso", POSTS, ids=[p[0] for p in POSTS])
+def test_las_rutas_que_modifican_datos_rechazan_el_get(client, cuentas, nombre, args, permiso):
+    """Ninguna ruta de escritura acepta GET, ni con el perfil que sí puede escribir: un enlace o una imagen en un
+    correo no puede provocar un cambio."""
+    client.force_login(cuentas["gerente"])
+    assert client.get(reverse(nombre, args=args)).status_code == 405

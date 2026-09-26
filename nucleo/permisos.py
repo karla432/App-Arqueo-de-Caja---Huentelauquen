@@ -134,6 +134,7 @@ def requiere(permiso: Permiso, mensaje: str | None = None):
         def envoltura(request, *args, **kwargs):
             exigir(request.user, permiso, mensaje)
             return vista(request, *args, **kwargs)
+        envoltura.permiso_requerido = permiso  # lo lee la prueba que audita todas las rutas
         return envoltura
     return decorador
 

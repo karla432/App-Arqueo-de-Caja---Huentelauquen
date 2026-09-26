@@ -1037,3 +1037,23 @@ class IntentoFallido(models.Model):
 
     def __str__(self):
         return f"{self.nombre} · {self.momento:%Y-%m-%d %H:%M:%S}"
+
+
+class DispositivoTotp(models.Model):
+    """Aplicación de autenticación (Google/Microsoft Authenticator) de una persona (Karla, 2026-09-26; doble factor).
+    El secreto se muestra una sola vez al activar; `ultimo_paso` impide reutilizar un código ya usado."""
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="dispositivo_totp")
+    secreto = models.CharField(max_length=64)
+    confirmado = models.BooleanField(default=False)
+    ultimo_paso = models.BigIntegerField(default=0)
+    creado_en = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Doble factor de {self.usuario} ({'activo' if self.confirmado else 'pendiente'})"
+
+
+class CodigoDeRecuperacion(models.Model):
+    """Códigos de un solo uso para entrar si se pierde el teléfono. Solo se guarda su huella, nunca el código."""
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="codigos_de_recuperacion")
+    huella = models.CharField(max_length=64, db_index=True)
+    usado_en = models.DateTimeField(null=True, blank=True)

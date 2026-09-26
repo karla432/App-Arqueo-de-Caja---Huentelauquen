@@ -13,3 +13,4 @@ db.sqlite3
 *.sqlite3.bak
 .entorno_desarrollo
 /respaldos/
+/logs/

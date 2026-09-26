@@ -20,13 +20,14 @@ class Command(BaseCommand):
         parser.add_argument("usuario")
         parser.add_argument("--reactivar", action="store_true", help="Volver a activar la cuenta.")
         parser.add_argument("--password-desde-entorno", metavar="VARIABLE")
+        parser.add_argument("--reiniciar-dos-pasos", action="store_true", help="Quitar la verificación en dos pasos (pérdida del teléfono): se vuelve a activar al ingresar.")
 
-    def handle(self, *args, usuario, reactivar, password_desde_entorno, **opciones):
+    def handle(self, *args, usuario, reactivar, password_desde_entorno, reiniciar_dos_pasos=False, **opciones):
         cuenta = get_user_model().objects.filter(username=usuario).first()
         if cuenta is None:
             raise CommandError(f"No existe la cuenta «{usuario}».")
-        if not reactivar and not password_desde_entorno:
-            raise CommandError("Indica --reactivar y/o --password-desde-entorno VARIABLE.")
+        if not reactivar and not password_desde_entorno and not reiniciar_dos_pasos:
+            raise CommandError("Indica --reactivar, --password-desde-entorno VARIABLE y/o --reiniciar-dos-pasos.")
         cambios = []
         ficha = contexto_solicitud.fijar(cuenta, solo_lectura=False)
         try:
@@ -39,6 +40,10 @@ class Command(BaseCommand):
                     raise CommandError(f"La variable de entorno {password_desde_entorno} no existe o está vacía.")
                 cuenta.set_password(clave)
                 cambios.append("contraseña restablecida")
+            if reiniciar_dos_pasos:
+                from nucleo import dos_pasos
+                dos_pasos.reiniciar(cuenta, por=cuenta)
+                cambios.append("verificación en dos pasos reiniciada")
             cuenta.save()
             bloqueo_acceso.limpiar(cuenta.get_username())  # también levanta un bloqueo por intentos fallidos
             EventoAuditoria.objects.create(

@@ -6,3 +6,5 @@ pytest-django
 scipy
 defusedxml
 Pillow
+pyotp
+qrcode

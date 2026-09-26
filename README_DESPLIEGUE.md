@@ -36,6 +36,14 @@ python manage.py check --deploy
 
 5 intentos fallidos seguidos bloquean el usuario 15 minutos (se levanta solo; ni la clave correcta entra mientras dure). Aplica también a `/admin/login/`, cuenta usuarios inexistentes igual que reales y deja en la bitácora el bloqueo de cuentas reales (`cuenta_bloqueada_por_intentos`). Para levantarlo antes: `python manage.py recuperar_acceso USUARIO --password-desde-entorno VARIABLE`. No protege contra ataques distribuidos desde muchas cuentas ni sustituye al doble factor.
 
+## 2c. Doble factor, sesiones y contraseñas
+
+- **Doble factor (TOTP)** con Google/Microsoft Authenticator: obligatorio para **Gerente, Jefe de Contabilidad y Administrador técnico** en producción (en desarrollo no se exige; `ARQUEO_DOS_PASOS=1/0` lo fuerza). Al primer ingreso la persona escanea un QR, confirma con un código y recibe **8 códigos de recuperación** de un solo uso (solo se guarda su huella). En cada ingreso nuevo se pide el código; un código no se puede reutilizar y los fallos cuentan para el mismo bloqueo de 5 intentos / 15 minutos.
+- **Pérdida del teléfono:** un código de recuperación, o desde la consola del servidor `python manage.py recuperar_acceso USUARIO --reiniciar-dos-pasos` (la persona vuelve a activarlo al ingresar). Queda en la bitácora.
+- **Sesión:** en producción vence a los **60 minutos sin actividad** y al cerrar el navegador.
+- **Contraseñas:** mínimo **12 caracteres** (además de las reglas estándar de Django: no comunes, no solo números, no parecidas al usuario).
+- **Registro de seguridad en archivo:** `logs/seguridad.log` (o `ARQUEO_LOGS`), con rotación de 10 archivos de 10 MB: ingresos, cierres de sesión, fallos y bloqueos.
+
 ## 3. Puesta en marcha
 
 1. Respaldar `db.sqlite3` (copia del archivo con la aplicación detenida) y la carpeta de archivos cargados/exportaciones.
@@ -96,9 +104,13 @@ En Linux (cron): `30 22 * * * cd /ruta/proyecto && .venv/bin/python manage.py re
 
 Con PostgreSQL el respaldo de la base es `pg_dump` (el comando `respaldar` es solo para SQLite).
 
+## 5b. Dependencias
+
+`requirements.lock.txt` fija las versiones exactas con las que se probó todo (instalar con `pip install -r requirements.lock.txt`). El 26-09-2026 se auditaron con `pip-audit` (base de vulnerabilidades de PyPI/OSV): **ninguna vulnerabilidad conocida**. Conviene repetirlo cada mes.
+
 ## 6. Lo que este trabajo NO resuelve (declarado)
 
-- Doble factor de autenticación: no implementado.
+- Doble factor: el secreto TOTP se guarda en la base tal cual (hace falta para calcular el código); por eso los respaldos deben protegerse como la propia base. Un atacante que ya tenga la contraseña de una cuenta que aún NO activó el segundo paso podría activarlo con su propio teléfono: por eso cada cuenta debe activarlo en su primer ingreso, apenas se le entrega la contraseña.
 - Protección contra fórmulas maliciosas en archivos Excel cargados y validación profunda de xlsx: no verificada.
 - Que el respaldo se ejecute solo cada noche y se copie fuera del equipo: el comando existe y está probado, pero programarlo y elegir el destino externo se hace en el servidor real (ver sección 7).
 - La protección de la bitácora por triggers está implementada solo para SQLite; con otro motor hay que replicarla.

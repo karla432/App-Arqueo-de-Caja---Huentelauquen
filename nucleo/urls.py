@@ -2,7 +2,7 @@ from django.urls import path
 
 from nucleo import (
     views, views_auditoria as va, views_exportaciones as vex, views_consolidado as vco, views_configuracion as vc, views_depositos as vd,
-    views_regularizacion as vr, views_reintegros as vri,
+    views_regularizacion as vr, views_reintegros as vri, views_dos_pasos as vdp,
 )
 
 urlpatterns = [
@@ -21,6 +21,8 @@ urlpatterns = [
     path("arqueo/gasto/<int:arqueo_id>/", views.registrar_gasto_caja_view, name="registrar_gasto_caja"),
     path("exportaciones/", vex.exportaciones_odoo, name="exportaciones_odoo"),
     path("sin-perfil/", views.sin_perfil, name="sin_perfil"),
+    path("verificacion/", vdp.verificacion, name="verificacion_dos_pasos"),
+    path("verificacion/activar/", vdp.activar_dos_pasos, name="activar_dos_pasos"),
     path("cierre/<str:fecha>/", views.cierre_y_exportacion, name="cierre_y_exportacion"),
     path("cierre/<str:fecha>/aprobar/", views.aprobar_dia_view, name="aprobar_dia"),
     path("cierre/<str:fecha>/reabrir/", views.reabrir_dia_view, name="reabrir_dia"),

@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
 
-from nucleo import contexto_solicitud
+from nucleo import contexto_solicitud, dos_pasos
 from nucleo.permisos import PERFILES_DE_LECTURA, Perfil, perfil_de
 
 MENSAJE_LECTURA = "Tu perfil es de solo lectura: no puedes modificar datos en la app."
@@ -30,7 +30,20 @@ class PerfilesMiddleware:
 
         perfil = perfil_de(usuario)
         ruta = request.path
-        libres = {reverse("login"), reverse("logout"), reverse("sin_perfil")}
+        libres = {
+            reverse("login"), reverse("logout"), reverse("sin_perfil"),
+            reverse("verificacion_dos_pasos"), reverse("activar_dos_pasos"),
+        }
+
+        # Segundo paso pendiente (Gerente, Jefe y Administrador técnico en producción): nada, ni /admin/, hasta verificar.
+        if (
+            dos_pasos.requiere_verificacion(usuario) and not request.session.get(dos_pasos.CLAVE_DE_SESION)
+            and ruta not in libres and not ruta.startswith("/static/")
+        ):
+            if request.method in METODOS_DE_LECTURA:
+                request.session["despues_de_verificar"] = request.get_full_path()
+                return HttpResponseRedirect(reverse("verificacion_dos_pasos"))
+            return HttpResponseForbidden("Falta la verificación en dos pasos.", content_type="text/plain; charset=utf-8")
 
         if ruta.startswith("/admin/"):
             if perfil != Perfil.ADMIN_TECNICO:
