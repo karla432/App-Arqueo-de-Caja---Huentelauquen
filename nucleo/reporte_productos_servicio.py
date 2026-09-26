@@ -10,6 +10,7 @@ from pathlib import Path
 import openpyxl
 from django.conf import settings
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.models import LineaVenta
 from nucleo.ventas_dashboard_servicio import ESTADOS_INCLUIDOS, _dias_del_rango
 
@@ -61,5 +62,5 @@ def generar_excel(desde: date, hasta: date, carpeta: Path | None = None) -> Path
             f["producto"], float(f["cantidad"]), float(f["venta"]),
             round(float(f["precio_promedio"])), round(f["pct_del_total"], 1),
         ])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
     return ruta

@@ -14,6 +14,7 @@ import openpyxl
 from django.conf import settings
 from django.db import transaction
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.models import DiaArqueo, EventoAuditoria, Excepcion, Exportacion, PagoDeclarado, Venta
 from nucleo.pagos_divididos_servicio import ETIQUETA_TIPO_PAGO_ODOO, plan_de_pago_dividido, planes_del_dia
 
@@ -288,7 +289,7 @@ def generar_exportacion(dia: DiaArqueo, usuario, *, automatica: bool = False) ->
     ws.append(COLUMNAS)
     for fila in filas:
         ws.append([fila[c] for c in COLUMNAS])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
 
     ruta_arqueo, filas_arqueo = generar_archivo_arqueo_caja(dia, version, CARPETA_EXPORTACIONES, filas_arqueo)
 

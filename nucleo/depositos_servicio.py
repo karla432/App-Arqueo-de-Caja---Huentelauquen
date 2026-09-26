@@ -21,7 +21,9 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.utils import timezone
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.permisos import Permiso, exigir
+from nucleo.archivos_seguros import nombre_seguro
 from nucleo.comprobantes import ComprobanteInvalido, validar_comprobante
 from nucleo.documentos_servicio import GRUPO_JEFE_CONTABILIDAD, nivel_usuario
 from nucleo.models import (
@@ -100,7 +102,7 @@ def _guardar_comprobante(archivo: UploadedFile, deposito: DepositoBancario) -> P
     carpeta = CARPETA_COMPROBANTES / deposito.dia.fecha.isoformat()
     carpeta.mkdir(parents=True, exist_ok=True)
     marca = datetime.now().strftime("%Y%m%d%H%M%S")
-    ruta = carpeta / f"{marca}_{Path(archivo.name).name}"
+    ruta = carpeta / f"{marca}_{nombre_seguro(archivo.name)}"
     with open(ruta, "wb") as destino:
         for parte in archivo.chunks():
             destino.write(parte)
@@ -292,7 +294,7 @@ def generar_captura_deposito(deposito: DepositoBancario, usuario, carpeta: Path 
     ws.append(COLUMNAS_CAPTURA_DEPOSITO)
     for fila in filas:
         ws.append([fila[c] for c in COLUMNAS_CAPTURA_DEPOSITO])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
 
     deposito.captura_exportada_en = timezone.now()
     deposito.captura_archivo = str(ruta)
@@ -371,5 +373,5 @@ def generar_reporte_mensual(anio: int, mes: int, carpeta: Path | None = None) ->
             sum(d.monto_esperado or 0 for d in depositos), sum(d.monto_depositado or 0 for d in depositos),
             sum(d.diferencia or 0 for d in depositos), f"{resumen['con_diferencia']} con diferencia · {resumen['sin_validar']} sin validar",
         ])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
     return ruta

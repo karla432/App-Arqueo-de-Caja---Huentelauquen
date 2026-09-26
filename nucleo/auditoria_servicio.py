@@ -7,6 +7,7 @@ from pathlib import Path
 import openpyxl
 from django.conf import settings
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.models import ArqueoEfectivo, DiaArqueo, PagoDeclarado, Reclasificacion
 from nucleo.reclasificacion_servicio import NOMBRE_DE_REGLA
 
@@ -94,5 +95,5 @@ def generar_archivo_auditoria(dia: DiaArqueo, ruta_carpeta: Path | None = None) 
             f["nota_de_venta"], f["comprobante"], f["caja"], f["cajera"], f["medio_original"], f["medio_corregido"],
             f["monto"], f["motivo"], f["quien"], f["cuando"].strftime("%d-%m-%Y %H:%M"), f["evidencia"],
         ])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
     return ruta

@@ -13,6 +13,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 
+from nucleo.archivos_seguros import ExcelInvalido, nombre_seguro as nombre_de_archivo_seguro, validar_xlsx_subido
 from nucleo.permisos import Permiso, exigir
 from nucleo.carga import calcular_huella, cargar_mercado_pago, cargar_pos, cargar_pos_con_libro_contable, cargar_transbank
 from nucleo.models import DiaArqueo, EventoAuditoria, LoteCarga
@@ -46,13 +47,17 @@ def _validar_archivo(archivo: UploadedFile) -> None:
         raise ArchivoInvalido(f"El archivo pesa más de {TAMANO_MAXIMO_MB} MB.")
     if archivo.size == 0:
         raise ArchivoInvalido("El archivo está vacío.")
+    try:
+        validar_xlsx_subido(archivo)  # contenido real, sin macros, sin bombas de compresión
+    except ExcelInvalido as exc:
+        raise ArchivoInvalido(str(exc))
 
 
 def _guardar(archivo: UploadedFile, dia: DiaArqueo, fuente: str) -> Path:
     carpeta = CARPETA_CARGAS / dia.fecha.isoformat()
     carpeta.mkdir(parents=True, exist_ok=True)
     marca = datetime.now().strftime("%Y%m%d%H%M%S")
-    nombre_seguro = f"{fuente}_{marca}_{Path(archivo.name).name}"
+    nombre_seguro = f"{fuente}_{marca}_{nombre_de_archivo_seguro(archivo.name)}"
     ruta = carpeta / nombre_seguro
     with open(ruta, "wb") as destino:
         for parte in archivo.chunks():

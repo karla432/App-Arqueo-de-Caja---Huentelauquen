@@ -9,18 +9,27 @@ import pytest
 from nucleo.comprobantes import ComprobanteInvalido, TAMANO_MAXIMO_MB, validar_comprobante
 
 
+def _imagen(formato: str) -> bytes:
+    """Una imagen de verdad (desde 2026-09-26 no basta con los primeros bytes: la imagen se abre y se verifica)."""
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), "white").save(buf, formato)
+    return buf.getvalue()
+
+
 def test_un_pdf_real_pasa():
     archivo = SimpleUploadedFile("x.pdf", b"%PDF-1.4 resto del archivo", content_type="application/pdf")
     validar_comprobante(archivo)  # no lanza
 
 
 def test_un_jpg_real_pasa():
-    archivo = SimpleUploadedFile("x.jpg", b"\xff\xd8\xff\xe0resto", content_type="image/jpeg")
+    archivo = SimpleUploadedFile("x.jpg", _imagen("JPEG"), content_type="image/jpeg")
     validar_comprobante(archivo)
 
 
 def test_un_png_real_pasa():
-    archivo = SimpleUploadedFile("x.png", b"\x89PNG\r\n\x1a\nresto", content_type="image/png")
+    archivo = SimpleUploadedFile("x.png", _imagen("PNG"), content_type="image/png")
     validar_comprobante(archivo)
 
 

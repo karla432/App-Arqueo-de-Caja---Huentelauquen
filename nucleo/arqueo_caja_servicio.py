@@ -20,6 +20,7 @@ from pathlib import Path
 import openpyxl
 from django.conf import settings
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.models import (
     ArqueoEfectivo, ConfiguracionArqueoCaja, CUENTA_GANANCIA_CODIGO, CUENTA_PERDIDA_CODIGO, DiaArqueo,
     Excepcion, PagoDeclarado, Reclasificacion,
@@ -283,5 +284,5 @@ def generar_archivo_arqueo_caja(
     ws.append(COLUMNAS)
     for fila in filas:
         ws.append([fila[c] for c in COLUMNAS])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
     return ruta, filas

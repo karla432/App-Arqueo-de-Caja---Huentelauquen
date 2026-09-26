@@ -19,6 +19,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 
 from nucleo.permisos import Permiso, exigir
+from nucleo.archivos_seguros import nombre_seguro
 from nucleo.comprobantes import ComprobanteInvalido, validar_comprobante
 from nucleo.templatetags.formato import folio_corto
 from nucleo.models import DiaArqueo, EventoAuditoria, PagoDeclarado, RegularizacionDocumento
@@ -293,7 +294,7 @@ def _guardar_comprobante(archivo: UploadedFile, documento: RegularizacionDocumen
     carpeta = Path(settings.BASE_DIR) / "archivos_cargados" / "comprobantes_regularizacion" / documento.dia.fecha.isoformat()
     carpeta.mkdir(parents=True, exist_ok=True)
     marca = datetime.now().strftime("%Y%m%d%H%M%S")
-    ruta = carpeta / f"{marca}_{Path(archivo.name).name}"
+    ruta = carpeta / f"{marca}_{nombre_seguro(archivo.name)}"
     with open(ruta, "wb") as destino:
         for parte in archivo.chunks():
             destino.write(parte)

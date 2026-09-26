@@ -21,6 +21,7 @@ from pathlib import Path
 import openpyxl
 from django.conf import settings
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.dashboard_servicio import cuadre_por_medio
 from nucleo.models import (
     ArqueoEfectivo, DepositoBancario, DiaArqueo, Excepcion, PagoDeclarado, Reclasificacion, RegularizacionDocumento, ReintegroCaja, Venta,
@@ -184,7 +185,7 @@ def generar_excel_consolidado(desde: date, hasta: date, carpeta: Path | None = N
         ws.append(["TOTAL", f"{t['dias']} días"] + [t.get(k) for _, k in COLUMNAS_CONSOLIDADO[2:]])
     else:
         ws.append([f"Sin días cargados entre {desde:%d/%m/%Y} y {hasta:%d/%m/%Y}"])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
     return ruta
 
 
@@ -289,5 +290,5 @@ def generar_excel_seguimiento(desde: date, hasta: date, carpeta: Path | None = N
         ws2.append(["RESUMEN POR CAJERA"])
         for r in resumen_por_cajera(reintegros):
             ws2.append([None, r["cajera"], f"{r['pendientes']} pendientes", r["original"], r["reintegrado"], r["saldo"]])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
     return ruta

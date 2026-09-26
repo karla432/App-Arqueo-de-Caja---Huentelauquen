@@ -25,7 +25,9 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.utils import timezone
 
+from nucleo.archivos_seguros import guardar_libro
 from nucleo.permisos import Permiso, exigir
+from nucleo.archivos_seguros import nombre_seguro
 from nucleo.comprobantes import ComprobanteInvalido, validar_comprobante
 from nucleo.documentos_servicio import GRUPO_JEFE_CONTABILIDAD, nivel_usuario
 from nucleo.umbrales import umbral
@@ -179,7 +181,7 @@ def _guardar_comprobante(archivo: UploadedFile, reintegro: ReintegroCaja) -> Pat
     carpeta = CARPETA_COMPROBANTES / reintegro.dia.fecha.isoformat()
     carpeta.mkdir(parents=True, exist_ok=True)
     marca = datetime.now().strftime("%Y%m%d%H%M%S")
-    ruta = carpeta / f"{marca}_{Path(archivo.name).name}"
+    ruta = carpeta / f"{marca}_{nombre_seguro(archivo.name)}"
     with open(ruta, "wb") as destino:
         for parte in archivo.chunks():
             destino.write(parte)
@@ -346,7 +348,7 @@ def _generar_asiento_reintegro(reintegro: ReintegroCaja) -> Path:
     ws.append(COLUMNAS_ASIENTO)
     for fila in filas:
         ws.append([fila[c] for c in COLUMNAS_ASIENTO])
-    wb.save(ruta)
+    guardar_libro(wb, ruta)
 
     reintegro.exportado_en = timezone.now()
     reintegro.archivo_asiento = str(ruta)
