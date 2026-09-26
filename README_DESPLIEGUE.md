@@ -81,7 +81,9 @@ python manage.py respaldar --destino D:\Respaldos\Arqueo
 **Programarlo cada noche en Windows** (Programador de tareas; ejecutar desde la carpeta del proyecto, ajusta las rutas):
 
 ```bash
-schtasks /Create /SC DAILY /ST 22:30 /TN "Respaldo Arqueo Diario" /TR "C:uta\proyecto\.venv\Scripts\python.exe C:uta\proyecto\manage.py respaldar --destino D:\Respaldos\Arqueo"
+schtasks /Create /SC DAILY /ST 22:30 /TN "Respaldo Arqueo Diario" /TR "C:\ruta\proyecto\.venv\Scripts\python.exe C:\ruta\proyecto\manage.py respaldar --destino D:\Respaldos\Arqueo"
+uta\proyecto\.venv\Scripts\python.exe C:
+uta\proyecto\manage.py respaldar --destino D:\Respaldos\Arqueo"
 ```
 
 En Linux (cron): `30 22 * * * cd /ruta/proyecto && .venv/bin/python manage.py respaldar --destino /var/respaldos/arqueo`.
