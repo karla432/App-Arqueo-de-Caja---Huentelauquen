@@ -90,8 +90,6 @@ python manage.py respaldar --destino D:\Respaldos\Arqueo
 
 ```bash
 schtasks /Create /SC DAILY /ST 22:30 /TN "Respaldo Arqueo Diario" /TR "C:\ruta\proyecto\.venv\Scripts\python.exe C:\ruta\proyecto\manage.py respaldar --destino D:\Respaldos\Arqueo"
-uta\proyecto\.venv\Scripts\python.exe C:
-uta\proyecto\manage.py respaldar --destino D:\Respaldos\Arqueo"
 ```
 
 En Linux (cron): `30 22 * * * cd /ruta/proyecto && .venv/bin/python manage.py respaldar --destino /var/respaldos/arqueo`.
@@ -115,3 +113,127 @@ Con PostgreSQL el respaldo de la base es `pg_dump` (el comando `respaldar` es so
 - Que el respaldo se ejecute solo cada noche y se copie fuera del equipo: el comando existe y está probado, pero programarlo y elegir el destino externo se hace en el servidor real (ver sección 7).
 - La protección de la bitácora por triggers está implementada solo para SQLite; con otro motor hay que replicarla.
 - La configuración real de HTTPS del servidor no se puede verificar desde el desarrollo.
+
+## 8. Servidor en opencloud.cl — arqueo.finanzashuentelauquen.cl (paso a paso)
+
+Supone un servidor **Ubuntu 24.04** (Python 3.12; Django 6.1 no funciona con Python 3.10 o anterior) con acceso SSH y
+`sudo`. Los archivos de apoyo están en `despliegue/`. Disposición en el servidor:
+
+| Qué | Dónde |
+|---|---|
+| Código, base `db.sqlite3`, `archivos_cargados/`, `exportaciones/`, `logs/` | `/srv/arqueo/app` (dueño: usuario `arqueo`) |
+| Variables secretas | `/etc/arqueo/arqueo.env` (root:arqueo, permisos 640) |
+| Respaldos | `/srv/arqueo/respaldos` (+ copia fuera del servidor) |
+
+**Base limpia:** no se sube ninguna base local. En el servidor `migrate` crea una base nueva que ya trae motivos de
+resolución, cuentas contables y grupos de perfil. Cajeras, responsables de traslado, parámetros propios y usuarios se
+ingresan una vez en Configuración. Ninguna carga de prueba llega a producción.
+
+### 8.1 DNS
+`arqueo.finanzashuentelauquen.cl` → registro **A** con la IP pública del servidor. Comprobar desde cualquier equipo:
+`nslookup arqueo.finanzashuentelauquen.cl` debe devolver esa IP. Sin esto el certificado HTTPS (8.6) falla.
+
+### 8.2 Paquetes, hora y cortafuegos
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3 python3-venv python3-dev build-essential git nginx certbot python3-certbot-nginx sqlite3
+sudo timedatectl set-timezone America/Santiago
+sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
+```
+Revisar también en el panel de opencloud.cl que el firewall de la red permita 22, 80 y 443.
+
+### 8.3 Usuario y código
+```bash
+sudo adduser --system --group --home /srv/arqueo arqueo
+sudo mkdir -p /srv/arqueo/respaldos && sudo chown arqueo:arqueo /srv/arqueo/respaldos
+sudo -u arqueo git clone https://github.com/karla432/App-Arqueo-de-Caja---Huentelauquen.git /srv/arqueo/app
+cd /srv/arqueo/app
+sudo -u arqueo python3 -m venv .venv
+sudo -u arqueo .venv/bin/pip install -r requirements.lock.txt
+```
+Si el repositorio es privado, `git clone` pedirá credenciales: usar un *token* de GitHub de solo lectura o una *deploy key*.
+**No** crear el archivo `.entorno_desarrollo` en el servidor.
+
+### 8.4 Variables de producción
+```bash
+sudo mkdir -p /etc/arqueo
+python3 -c "import secrets; print(secrets.token_urlsafe(64))"   # copiar el resultado como DJANGO_SECRET_KEY
+sudo nano /etc/arqueo/arqueo.env
+```
+Contenido (sin comillas):
+```
+ARQUEO_ENTORNO=produccion
+DJANGO_SECRET_KEY=<la clave generada>
+DJANGO_ALLOWED_HOSTS=arqueo.finanzashuentelauquen.cl
+DJANGO_CSRF_TRUSTED_ORIGINS=https://arqueo.finanzashuentelauquen.cl
+DJANGO_PROXY_SSL=1
+ARQUEO_RESPALDOS=/srv/arqueo/respaldos
+```
+```bash
+sudo chown root:arqueo /etc/arqueo/arqueo.env && sudo chmod 640 /etc/arqueo/arqueo.env
+sudo chmod +x /srv/arqueo/app/despliegue/manage.sh
+```
+Guardar la clave también en el gestor de claves: no va en los respaldos.
+
+### 8.5 Base, estáticos y verificación
+```bash
+sudo /srv/arqueo/app/despliegue/manage.sh migrate
+sudo /srv/arqueo/app/despliegue/manage.sh verificar_bitacora      # «Bitácora íntegra»
+sudo /srv/arqueo/app/despliegue/manage.sh collectstatic --noinput
+sudo /srv/arqueo/app/despliegue/manage.sh check --deploy
+```
+
+### 8.6 Servicio, nginx y HTTPS
+```bash
+sudo cp /srv/arqueo/app/despliegue/arqueo.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now arqueo
+sudo systemctl status arqueo                                     # debe decir active (running)
+
+sudo cp /srv/arqueo/app/despliegue/nginx-arqueo.conf /etc/nginx/sites-available/arqueo
+sudo ln -s /etc/nginx/sites-available/arqueo /etc/nginx/sites-enabled/arqueo
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+
+sudo certbot --nginx -d arqueo.finanzashuentelauquen.cl --redirect   # pide un correo; se renueva solo
+```
+Abrir `https://arqueo.finanzashuentelauquen.cl`: debe mostrar el login con candado.
+
+### 8.7 Primeras cuentas
+```bash
+sudo /srv/arqueo/app/despliegue/manage.sh crear_admin_tecnico NOMBRE_ADMIN
+sudo /srv/arqueo/app/despliegue/manage.sh changepassword NOMBRE_ADMIN   # mínimo 12 caracteres
+```
+1. Entrar a `/admin/` con esa cuenta y activar el doble factor (QR + guardar los 8 códigos).
+2. En `/admin/` crear la cuenta de la Gerente y agregarla al grupo «Gerente de Administración y Finanzas». Al primer
+   ingreso activa su doble factor.
+3. La Gerente completa Configuración (cajeras, responsables, parámetros) y asigna perfiles al resto del equipo.
+
+### 8.8 Respaldo nocturno
+```bash
+sudo crontab -u arqueo -e
+```
+Agregar:
+```
+30 22 * * * set -a; . /etc/arqueo/arqueo.env; set +a; cd /srv/arqueo/app && .venv/bin/python manage.py respaldar >> /srv/arqueo/respaldos/cron.log 2>&1
+```
+Y llevar una copia fuera del servidor (ej. `rsync`/`rclone` a otro equipo o nube, o el servicio de snapshots de
+opencloud.cl). Probar una vez: `sudo /srv/arqueo/app/despliegue/manage.sh respaldar` y luego `restaurar ... --ensayo`.
+
+### 8.9 Actualizar a una versión nueva
+```bash
+sudo /srv/arqueo/app/despliegue/manage.sh respaldar
+cd /srv/arqueo/app && sudo -u arqueo git pull
+sudo -u arqueo .venv/bin/pip install -r requirements.lock.txt
+sudo /srv/arqueo/app/despliegue/manage.sh migrate
+sudo /srv/arqueo/app/despliegue/manage.sh collectstatic --noinput
+sudo systemctl restart arqueo
+```
+
+### 8.10 Si algo falla
+- Logs de la aplicación: `sudo journalctl -u arqueo -n 100` · nginx: `/var/log/nginx/error.log` · seguridad: `/srv/arqueo/app/logs/seguridad.log`.
+- **502 Bad Gateway**: el servicio no está arriba → `systemctl status arqueo`.
+- **Redirecciones infinitas**: falta `DJANGO_PROXY_SSL=1` o el `proxy_set_header X-Forwarded-Proto`.
+- **400 Bad Request**: el nombre no está en `DJANGO_ALLOWED_HOSTS`.
+- **403 CSRF al iniciar sesión**: revisar `DJANGO_CSRF_TRUSTED_ORIGINS` (con `https://`).
+- **413 al subir un Excel**: subir `client_max_body_size` en nginx.
+- `/admin/` sin estilos: faltó `collectstatic`.

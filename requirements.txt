@@ -8,3 +8,4 @@ defusedxml
 Pillow
 pyotp
 qrcode
+gunicorn

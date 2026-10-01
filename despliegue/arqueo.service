@@ -1,0 +1,21 @@
+# Servicio systemd de la aplicación (gunicorn). Copiar a /etc/systemd/system/arqueo.service
+# Las variables (clave secreta, servidores permitidos, etc.) se leen de /etc/arqueo/arqueo.env: nunca en el repositorio.
+[Unit]
+Description=Arqueo Diario de Caja (gunicorn)
+After=network.target
+
+[Service]
+User=arqueo
+Group=arqueo
+WorkingDirectory=/srv/arqueo/app
+EnvironmentFile=/etc/arqueo/arqueo.env
+# Solo escucha en la propia máquina: nginx es el único que habla con internet.
+# timeout amplio: la carga y conciliación de un Excel grande puede tardar.
+ExecStart=/srv/arqueo/app/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8001 --workers 3 --timeout 180 --access-logfile - --error-logfile -
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

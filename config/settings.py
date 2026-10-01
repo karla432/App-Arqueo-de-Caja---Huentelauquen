@@ -208,6 +208,8 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+# Destino de `collectstatic` en el servidor (lo sirve nginx; con DEBUG apagado Django no sirve estáticos, ej. /admin/).
+STATIC_ROOT = Path(os.environ.get('ARQUEO_STATIC_ROOT') or (BASE_DIR / 'staticfiles'))
 
 
 # Email

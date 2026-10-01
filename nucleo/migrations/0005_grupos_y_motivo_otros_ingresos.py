@@ -6,7 +6,6 @@
 Nivel 1 = Jefe de Contabilidad (hasta 10 casos pendientes en el día).
 Nivel 2 = Gerente de Administración y Finanzas (más de 10 casos).
 """
-from django.contrib.auth.hashers import make_password
 from django.db import migrations
 
 GRUPO_JEFE_CONTABILIDAD = "Jefe de Contabilidad"
@@ -33,15 +32,8 @@ def crear_grupos_y_motivo(apps, schema_editor):
     if karla:
         karla.groups.add(grupo_gerente, grupo_jefe)
 
-    # Cuenta de prueba para poder probar el nivel 1 esta semana, tal como
-    # Karla pidió — se reemplaza por la cuenta real cuando exista el
-    # Mantenedor de usuarios.
-    if not Usuario.objects.filter(username="jefe_contabilidad").exists():
-        jefe = Usuario.objects.create(
-            username="jefe_contabilidad", is_staff=True, is_superuser=True,
-            password=make_password("Huentelauquen2026"),
-        )
-        jefe.groups.add(grupo_jefe)
+    # Aquí se creaba una cuenta de prueba «jefe_contabilidad» con contraseña fija. Se retiró (2026-10-01, antes de
+    # publicar): una base nueva —la de producción incluida— no debe traer ninguna cuenta. Ver 0035.
 
 
 def quitar_grupos_y_motivo(apps, schema_editor):
