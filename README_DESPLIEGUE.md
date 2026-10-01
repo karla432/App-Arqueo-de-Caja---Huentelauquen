@@ -142,6 +142,13 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 ```
 Revisar también en el panel de opencloud.cl que el firewall de la red permita 22, 80 y 443.
 
+**Ubuntu 22.04** (trae Python 3.10, y Django 6.1 exige 3.12 o superior): instalar Python 3.12 desde deadsnakes y usar
+`python3.12` en vez de `python3` al crear el `.venv` (8.3). El resto no cambia.
+```bash
+sudo apt install -y software-properties-common && sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update && sudo apt install -y python3.12 python3.12-venv python3.12-dev
+```
+
 ### 8.3 Usuario y código
 ```bash
 sudo adduser --system --group --home /srv/arqueo arqueo
@@ -150,6 +157,14 @@ sudo -u arqueo git clone https://github.com/karla432/App-Arqueo-de-Caja---Huente
 cd /srv/arqueo/app
 sudo -u arqueo python3 -m venv .venv
 sudo -u arqueo .venv/bin/pip install -r requirements.lock.txt
+```
+`/srv/arqueo` queda cerrada a otros usuarios (750), y así debe seguir: protege la base y los archivos cargados. Por eso
+nginx (`www-data`) recibe solo permiso de paso y de lectura sobre `staticfiles/` (sin esto `/admin/` se ve sin estilos y
+el log de nginx muestra `Permission denied`). Se hace después de `collectstatic` (8.5):
+```bash
+sudo apt install -y acl
+sudo setfacl -m u:www-data:x /srv/arqueo /srv/arqueo/app
+sudo setfacl -R -m u:www-data:rX /srv/arqueo/app/staticfiles && sudo setfacl -d -m u:www-data:rX /srv/arqueo/app/staticfiles
 ```
 Si el repositorio es privado, `git clone` pedirá credenciales: usar un *token* de GitHub de solo lectura o una *deploy key*.
 **No** crear el archivo `.entorno_desarrollo` en el servidor.
@@ -179,7 +194,7 @@ Guardar la clave también en el gestor de claves: no va en los respaldos.
 ```bash
 sudo /srv/arqueo/app/despliegue/manage.sh migrate
 sudo /srv/arqueo/app/despliegue/manage.sh verificar_bitacora      # «Bitácora íntegra»
-sudo /srv/arqueo/app/despliegue/manage.sh collectstatic --noinput
+sudo /srv/arqueo/app/despliegue/manage.sh collectstatic --noinput     # luego los permisos de nginx (ver 8.3)
 sudo /srv/arqueo/app/despliegue/manage.sh check --deploy
 ```
 
@@ -236,4 +251,4 @@ sudo systemctl restart arqueo
 - **400 Bad Request**: el nombre no está en `DJANGO_ALLOWED_HOSTS`.
 - **403 CSRF al iniciar sesión**: revisar `DJANGO_CSRF_TRUSTED_ORIGINS` (con `https://`).
 - **413 al subir un Excel**: subir `client_max_body_size` en nginx.
-- `/admin/` sin estilos: faltó `collectstatic`.
+- `/admin/` sin estilos: faltó `collectstatic` o los permisos de nginx sobre `staticfiles/` (8.3).
