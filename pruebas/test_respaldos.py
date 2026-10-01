@@ -212,6 +212,15 @@ def test_conservacion_deja_30_diarios_y_el_ultimo_de_cada_mes(tmp_path):
     assert "202409" not in meses
 
 
+def test_conservacion_solo_los_ultimos_3(tmp_path):
+    carpeta = tmp_path / "r"
+    hoy = datetime(2026, 10, 1, 22, 30, 0)
+    _falsos(carpeta, [hoy - timedelta(days=i) for i in range(0, 60)])
+    aplicar_conservacion(carpeta, diarios=3, mensuales=0)
+    quedan = sorted(p.name for p in carpeta.glob("respaldo_2*.zip"))
+    assert quedan == ["respaldo_20260929_223000.zip", "respaldo_20260930_223000.zip", "respaldo_20261001_223000.zip"]
+
+
 # ---------------------------------------------------------------------- comandos
 
 def test_comando_respaldar_y_restaurar_de_punta_a_punta(tmp_path, instalacion, settings):

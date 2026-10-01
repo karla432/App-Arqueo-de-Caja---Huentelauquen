@@ -83,7 +83,7 @@ python manage.py respaldar --destino D:\Respaldos\Arqueo
 - Sin `--destino` usa la variable `ARQUEO_RESPALDOS` o, por defecto, la carpeta `respaldos/` del proyecto (no se versiona).
 - Al terminar comprueba las huellas de cada archivo, la integridad de la base y la cadena de sellos de la bitácora. Si algo falla, termina con error para que el programador de tareas lo detecte.
 - **No incluye secretos** (clave secreta, `.env`, contraseñas). Esos se guardan aparte, en tu gestor de claves.
-- Conservación automática: los últimos 30 respaldos + el último de cada uno de los últimos 12 meses. Solo toca archivos `respaldo_AAAAmmdd_HHMMSS.zip` de esa carpeta.
+- Conservación automática: por defecto los últimos 30 respaldos + el último de cada uno de los últimos 12 meses; se ajusta con `--diarios N` y `--mensuales N` (el servidor usa `--diarios 7 --mensuales 3`, decisión del 01-10-2026). Solo toca archivos `respaldo_AAAAmmdd_HHMMSS.zip` de esa carpeta.
 - **Guarda también una copia fuera de este equipo** (otro disco, otra oficina o la nube). Un respaldo en el mismo computador no protege si ese computador falla o se pierde.
 
 **Programarlo cada noche en Windows** (Programador de tareas; ejecutar desde la carpeta del proyecto, ajusta las rutas):
@@ -229,7 +229,7 @@ sudo crontab -u arqueo -e
 ```
 Agregar:
 ```
-30 22 * * * set -a; . /etc/arqueo/arqueo.env; set +a; cd /srv/arqueo/app && .venv/bin/python manage.py respaldar >> /srv/arqueo/respaldos/cron.log 2>&1
+30 22 * * * set -a; . /etc/arqueo/arqueo.env; set +a; cd /srv/arqueo/app && .venv/bin/python manage.py respaldar --diarios 7 --mensuales 3 >> /srv/arqueo/respaldos/cron.log 2>&1
 ```
 Y llevar una copia fuera del servidor (ej. `rsync`/`rclone` a otro equipo o nube, o el servicio de snapshots de
 opencloud.cl). Probar una vez: `sudo /srv/arqueo/app/despliegue/manage.sh respaldar` y luego `restaurar ... --ensayo`.

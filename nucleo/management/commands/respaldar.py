@@ -1,10 +1,11 @@
 """Hace un respaldo completo (base + archivos cargados + exportaciones) en UN archivo zip.
 
-    python manage.py respaldar [--destino CARPETA]
+    python manage.py respaldar [--destino CARPETA] [--diarios N] [--mensuales N]
 
 La carpeta sale de --destino, de la variable de entorno ARQUEO_RESPALDOS o, por defecto, de `respaldos/` junto al
 proyecto. Verifica el respaldo recién hecho (huellas, integridad de la base y cadena de sellos de la bitácora) y aplica
-la conservación: últimos 30 respaldos + el último de cada uno de los últimos 12 meses. Sale con código 1 si algo falla,
+la conservación: por defecto, últimos 30 respaldos + el último de cada uno de los últimos 12 meses (se ajusta con
+--diarios y --mensuales). Sale con código 1 si algo falla,
 para que el programador de tareas lo detecte.
 
 IMPORTANTE: guarda también una copia FUERA de este equipo (otro disco, otra oficina o la nube). Un respaldo en el mismo
@@ -24,8 +25,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--destino", help="Carpeta donde guardar los respaldos.")
         parser.add_argument("--sin-conservacion", action="store_true", help="No borrar respaldos antiguos.")
+        parser.add_argument("--diarios", type=int, default=respaldos.DIARIOS_A_CONSERVAR,
+                            help=f"Cuántos respaldos recientes conservar (por defecto {respaldos.DIARIOS_A_CONSERVAR}).")
+        parser.add_argument("--mensuales", type=int, default=respaldos.MENSUALES_A_CONSERVAR,
+                            help=f"De cuántos meses conservar el último respaldo (por defecto {respaldos.MENSUALES_A_CONSERVAR}; 0 = ninguno).")
 
-    def handle(self, *args, destino, sin_conservacion, **opciones):
+    def handle(self, *args, destino, sin_conservacion, diarios, mensuales, **opciones):
+        if diarios < 1 or mensuales < 0:
+            raise CommandError("--diarios debe ser 1 o más y --mensuales 0 o más.")
         carpeta = Path(destino or os.environ.get("ARQUEO_RESPALDOS") or Path(settings.BASE_DIR) / "respaldos")
         base_de_datos = settings.DATABASES["default"]
         if base_de_datos["ENGINE"] != "django.db.backends.sqlite3":
@@ -40,7 +47,7 @@ class Command(BaseCommand):
             f"{resumen['archivos']} archivos; {resumen['eventos_bitacora']} eventos de bitácora íntegros)."
         ))
         if not sin_conservacion:
-            borrados = respaldos.aplicar_conservacion(carpeta)
+            borrados = respaldos.aplicar_conservacion(carpeta, diarios=diarios, mensuales=mensuales)
             if borrados:
                 self.stdout.write(f"Conservación: se eliminaron {len(borrados)} respaldo(s) antiguo(s).")
         self.stdout.write("Recuerda guardar una copia de este archivo FUERA de este equipo.")
