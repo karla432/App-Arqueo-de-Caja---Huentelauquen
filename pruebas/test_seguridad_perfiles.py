@@ -41,10 +41,14 @@ PERFILES = {
 C, D = Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS
 MATRIZ_ESPERADA = {
     "encargada": {C, D, Permiso.OPERAR},
-    "jefe": {C, D, Permiso.VALIDAR, Permiso.VISAR, Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION},
+    "jefe": {
+        C, D, Permiso.VALIDAR, Permiso.VISAR, Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION,
+        Permiso.REABRIR_EXCEPCION,
+    },
     "gerente": {
         C, D, Permiso.OPERAR, Permiso.VALIDAR, Permiso.VISAR, Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION,
-        Permiso.AUTORIZAR_EXCEPCION, Permiso.REABRIR_DIA, Permiso.CONFIGURAR, Permiso.ASIGNAR_PERFILES,
+        Permiso.AUTORIZAR_EXCEPCION, Permiso.REABRIR_DIA, Permiso.REABRIR_EXCEPCION, Permiso.CONFIGURAR,
+        Permiso.ASIGNAR_PERFILES,
     },
     "admin_tecnico": {Permiso.ADMIN_TECNICA},
     "solo_lectura": {C, D},
@@ -114,6 +118,7 @@ POSTS = [
     ("segunda_firma_nc", [999], Permiso.AUTORIZAR_EXCEPCION),
     ("aprobar_dia", [FECHA.isoformat()], Permiso.APROBAR_CIERRE),
     ("reabrir_dia", [FECHA.isoformat()], Permiso.REABRIR_DIA),
+    ("reabrir_excepcion", [999], Permiso.REABRIR_EXCEPCION),
     ("generar_exportacion", [FECHA.isoformat()], Permiso.GENERAR_EXPORTACION),
     ("guardar_umbrales", [], Permiso.CONFIGURAR),
     ("crear_cajera", [], Permiso.CONFIGURAR),

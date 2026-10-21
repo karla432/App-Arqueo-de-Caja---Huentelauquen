@@ -16,28 +16,30 @@
 
 <div style="display:flex;gap:10px;padding:14px 30px;border-bottom:1px solid var(--hu-card-line);font-size:13px;align-items:center;background:#fff">
   <span style="color:var(--hu-gray)">Filtrar:</span>
-  <a class="pill {% if not tipo_filtro %}p-red{% else %}p-grey{% endif %}" href="?">Todos · {{ total_abiertas }}</a>
+  <a class="pill {% if not tipo_filtro and not ver_resueltas %}p-red{% else %}p-grey{% endif %}" href="?">Todos · {{ total_abiertas }}</a>
   {% for valor, etiqueta, conteo in tipos_con_conteo %}
-    <a class="pill {% if tipo_filtro == valor %}p-red{% else %}p-grey{% endif %}" href="?tipo={{ valor }}">{{ etiqueta }} · {{ conteo }}</a>
+    <a class="pill {% if tipo_filtro == valor and not ver_resueltas %}p-red{% else %}p-grey{% endif %}" href="?tipo={{ valor }}">{{ etiqueta }} · {{ conteo }}</a>
   {% endfor %}
+  <a class="pill {% if ver_resueltas %}p-ok{% else %}p-grey{% endif %}" href="?estado=resueltas" style="margin-left:auto">Resueltas · {{ total_resueltas }}</a>
 </div>
 
 <div style="display:flex;min-height:600px;background:#fff">
   <div style="width:410px;border-right:1px solid var(--hu-card-line);flex-shrink:0;overflow-y:auto">
-    {% for e in excepciones %}
-    <a href="?{% if tipo_filtro %}tipo={{ tipo_filtro }}&{% endif %}ver={{ e.pk }}"
+    {% for e in lista %}
+    <a href="?{% if ver_resueltas %}estado=resueltas&{% elif tipo_filtro %}tipo={{ tipo_filtro }}&{% endif %}ver={{ e.pk }}"
        style="display:block;padding:14px 20px;border-bottom:1px solid var(--hu-card-line);color:inherit;text-decoration:none;{% if excepcion_actual.pk == e.pk %}background:var(--hu-pink-2);border-left:3px solid var(--hu-red);{% endif %}">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <span class="pill p-red">{{ e.get_tipo_display }}</span>
+        <span class="pill {% if e.abierta %}p-red{% else %}p-grey{% endif %}">{{ e.get_tipo_display }}</span>
         <strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">${{ e.monto_en_juego|floatformat:0 }}</strong>
       </div>
       <div style="font-size:13px;margin-top:7px;line-height:1.5">
         {% if e.pago %}Comanda <strong>{{ e.pago.venta.n_interno }}</strong> · {{ e.pago.venta.caja }}{% endif %}
         {% if e.movimiento %}{% if e.pago %} ↔ {% endif %}Movimiento {{ e.movimiento.fecha_hora|date:"H:i" }}{% endif %}
       </div>
+      {% if not e.abierta %}<div style="font-size:12px;color:var(--hu-gray);margin-top:4px">✓ {{ e.get_resolucion_display }}{% if e.motivo %} · {{ e.motivo.texto }}{% endif %}</div>{% endif %}
     </a>
     {% empty %}
-    <div style="padding:30px;color:var(--hu-gray);text-align:center">Sin excepciones abiertas para este filtro.</div>
+    <div style="padding:30px;color:var(--hu-gray);text-align:center">{% if ver_resueltas %}Todavía no hay excepciones resueltas este día.{% else %}Sin excepciones abiertas para este filtro.{% endif %}</div>
     {% endfor %}
   </div>
 
@@ -87,6 +89,33 @@
     </div>
     {% endif %}
 
+    {% if not excepcion_actual.abierta %}
+    {# ---------------- Excepción resuelta: qué se decidió y, si estuvo mal, volver a abrirla ---------------- #}
+    <div class="card" style="padding:16px 18px;border-left:4px solid var(--hu-ok);margin-bottom:18px">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin-bottom:8px">Resolución registrada</div>
+      <div style="font-size:13.5px;line-height:1.8">
+        <div><strong>{{ excepcion_actual.get_resolucion_display }}</strong>{% if excepcion_actual.motivo %} · {{ excepcion_actual.motivo.texto }}{% endif %}</div>
+        {% if excepcion_actual.comentario %}<div style="color:var(--hu-gray)">«{{ excepcion_actual.comentario }}»</div>{% endif %}
+        {% if excepcion_actual.factura_asociada %}<div>Boleta asignada: <strong>{{ excepcion_actual.factura_asociada }}</strong></div>{% endif %}
+        {% if excepcion_actual.monto_perdida_ganancia %}<div>{{ excepcion_actual.cuenta_contable.nombre }} · ${{ excepcion_actual.monto_perdida_ganancia|floatformat:0 }}{% if excepcion_actual.cajera_responsable %} · {{ excepcion_actual.cajera_responsable.nombre }}{% endif %}</div>{% endif %}
+        {% for l in excepcion_actual.lineas_conciliacion.all %}<div>{{ l.get_medio_conciliado_display }} · ${{ l.monto_conciliado|floatformat:0 }}{% if l.movimiento %} · cobro {{ l.movimiento.fecha_hora|date:"H:i" }}{% endif %}</div>{% endfor %}
+        <div style="font-size:12px;color:var(--hu-gray)">{{ excepcion_actual.resuelta_por.get_full_name|default:excepcion_actual.resuelta_por.username }} · {{ excepcion_actual.resuelta_en|date:"d-m-Y H:i" }}</div>
+      </div>
+    </div>
+    {% if puede_reabrir_excepcion %}
+      {% if motivo_no_reabrir %}
+      <div style="font-size:13px;color:var(--hu-gray);padding:12px 14px;background:#fff;border:1px solid var(--hu-card-line)">No se puede volver a abrir: {{ motivo_no_reabrir }}</div>
+      {% else %}
+      <form method="post" action="{% url 'reabrir_excepcion' excepcion_id=excepcion_actual.pk %}" style="background:#FDF3E3;border-left:4px solid var(--hu-warn);padding:14px 16px">
+        {% csrf_token %}
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-warn);margin-bottom:6px">¿Se resolvió mal? Volver a abrir</div>
+        <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Se deshace la resolución completa (vínculos, líneas, reclasificaciones y pérdida/ganancia) y la excepción queda como recién conciliada, para resolverla de la forma correcta. Lo deshecho queda guardado en la bitácora.</div>
+        <textarea name="motivo_reapertura" required placeholder="Motivo · obligatorio (queda en la bitácora)…" style="width:100%;padding:10px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans);min-height:60px"></textarea>
+        <button type="submit" class="btn btn-2" style="margin-top:8px">Volver a abrir la excepción</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    {% else %}
     <form method="post" action="{% url 'resolver_excepcion' excepcion_id=excepcion_actual.pk %}">
       {% csrf_token %}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
@@ -164,6 +193,7 @@
         </div>
       </div>
     </form>
+    {% endif %}
     {% else %}
     <div style="color:var(--hu-gray);text-align:center;padding:60px 0">Selecciona una excepción de la lista, o no queda ninguna abierta con este filtro.</div>
     {% endif %}

@@ -32,6 +32,23 @@ class ResolucionInvalida(Exception):
     pass
 
 
+def sincronizar_estado_del_dia(dia) -> None:
+    """El estado del día sigue a sus excepciones (Karla, 2026-10-21): al
+    resolver la última bloqueante pasa a "Excepciones resueltas", y si se
+    vuelve a abrir una, regresa a "Conciliado con excepciones". Antes solo lo
+    fijaba la conciliación, y el calendario mostraba días con cero abiertas
+    como "Conciliado con excepciones". Un día aprobado, cerrado o exportado
+    nunca se toca desde aquí."""
+    from nucleo.models import DiaArqueo
+    if dia.estado not in (DiaArqueo.Estado.CONCILIADO_CON_EXCEPCIONES, DiaArqueo.Estado.EXCEPCIONES_RESUELTAS):
+        return
+    quedan = dia.excepciones.filter(abierta=True).exclude(tipo=Excepcion.Tipo.CALIDAD_REGISTRO).exists()
+    nuevo = DiaArqueo.Estado.CONCILIADO_CON_EXCEPCIONES if quedan else DiaArqueo.Estado.EXCEPCIONES_RESUELTAS
+    if dia.estado != nuevo:
+        dia.estado = nuevo
+        dia.save(update_fields=["estado"])
+
+
 @transaction.atomic
 def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
                         comentario: str, usuario, movimiento_id_alternativo: int | None = None,
@@ -291,4 +308,5 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
         usuario=usuario,
     )
 
+    sincronizar_estado_del_dia(excepcion.dia)
     return excepcion

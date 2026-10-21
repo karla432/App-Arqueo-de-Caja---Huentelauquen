@@ -77,6 +77,7 @@ class Permiso(str, Enum):
     APROBAR_CIERRE = "aprobar_cierre"            # aprobar el cierre ordinario de un día
     AUTORIZAR_EXCEPCION = "autorizar_excepcion"  # diferencias sobre el umbral, segunda firma, autoaprobación con motivo
     REABRIR_DIA = "reabrir_dia"
+    REABRIR_EXCEPCION = "reabrir_excepcion"      # volver a abrir una excepción ya resuelta (día no cerrado), con motivo
     GENERAR_EXPORTACION = "generar_exportacion"  # generar a mano los archivos finales de un día
     CONFIGURAR = "configurar"                    # parámetros funcionales
     ASIGNAR_PERFILES = "asignar_perfiles"        # perfiles funcionales de las personas
@@ -87,12 +88,12 @@ PERMISOS_POR_PERFIL: dict[Perfil, frozenset[Permiso]] = {
     Perfil.ENCARGADO: frozenset({Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS, Permiso.OPERAR}),
     Perfil.JEFE: frozenset({
         Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS, Permiso.VALIDAR, Permiso.VISAR,
-        Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION,
+        Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION, Permiso.REABRIR_EXCEPCION,
     }),
     Perfil.GERENTE: frozenset({
         Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS, Permiso.OPERAR, Permiso.VALIDAR, Permiso.VISAR,
-        Permiso.APROBAR_CIERRE, Permiso.AUTORIZAR_EXCEPCION, Permiso.REABRIR_DIA, Permiso.GENERAR_EXPORTACION,
-        Permiso.CONFIGURAR, Permiso.ASIGNAR_PERFILES,
+        Permiso.APROBAR_CIERRE, Permiso.AUTORIZAR_EXCEPCION, Permiso.REABRIR_DIA, Permiso.REABRIR_EXCEPCION,
+        Permiso.GENERAR_EXPORTACION, Permiso.CONFIGURAR, Permiso.ASIGNAR_PERFILES,
     }),
     Perfil.ADMIN_TECNICO: frozenset({Permiso.ADMIN_TECNICA}),
     Perfil.SOLO_LECTURA: frozenset({Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS}),

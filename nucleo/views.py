@@ -61,9 +61,18 @@ def bandeja_excepciones(request, fecha):
         return _sin_dia(request, fecha)
 
     tipo_filtro = request.GET.get("tipo", "")
+    ver_resueltas = request.GET.get("estado") == "resueltas"
     excepciones_abiertas = dia.excepciones.filter(abierta=True).select_related("pago__venta", "movimiento")
     if tipo_filtro:
         excepciones_abiertas = excepciones_abiertas.filter(tipo=tipo_filtro)
+    # Resueltas (Karla, 2026-10-21): para revisar lo decidido y, si estuvo mal,
+    # volver a abrirlo. Los ajustes de sencillo los recalcula el motor solo.
+    excepciones_resueltas = (
+        dia.excepciones.filter(abierta=False)
+        .exclude(resolucion=Excepcion.Resolucion.AJUSTE_SENCILLO)
+        .select_related("pago__venta", "movimiento", "motivo", "resuelta_por")
+        .order_by("-resuelta_en", "-pk")
+    )
     # Excepcion.Meta.ordering ya es "-monto_en_juego" (§15: por monto en
     # juego, no por orden de aparición).
 
@@ -79,7 +88,10 @@ def bandeja_excepciones(request, fecha):
     if excepcion_id_ver:
         excepcion_actual = get_object_or_404(Excepcion, pk=excepcion_id_ver, dia=dia)
     else:
-        excepcion_actual = excepciones_abiertas.first()
+        excepcion_actual = (excepciones_resueltas if ver_resueltas else excepciones_abiertas).first()
+
+    from nucleo.reapertura_excepciones_servicio import motivo_para_no_reabrir
+    no_reabrir = motivo_para_no_reabrir(excepcion_actual) if excepcion_actual and not excepcion_actual.abierta else ""
 
     movimientos_libres = []
     if excepcion_actual and excepcion_actual.tipo == "pago_sin_movimiento":
@@ -96,6 +108,11 @@ def bandeja_excepciones(request, fecha):
     contexto = {
         "dia": dia,
         "excepciones": excepciones_abiertas,
+        "lista": excepciones_resueltas if ver_resueltas else excepciones_abiertas,
+        "ver_resueltas": ver_resueltas,
+        "total_resueltas": excepciones_resueltas.count(),
+        "puede_reabrir_excepcion": tiene_permiso(request.user, Permiso.REABRIR_EXCEPCION),
+        "motivo_no_reabrir": no_reabrir,
         "excepcion_actual": excepcion_actual,
         "tipos_con_conteo": tipos_con_conteo,
         "total_abiertas": total_abiertas,
@@ -157,6 +174,21 @@ def resolver_excepcion_view(request, excepcion_id):
         messages.error(request, str(exc))
 
     return redirect(f"/excepciones/{fecha}/")
+
+
+@requiere(Permiso.REABRIR_EXCEPCION)
+@require_POST
+def reabrir_excepcion_view(request, excepcion_id):
+    from nucleo.reapertura_excepciones_servicio import ReaperturaInvalida, reabrir_excepcion
+    excepcion = get_object_or_404(Excepcion, pk=excepcion_id)
+    fecha = excepcion.dia.fecha.isoformat()
+    try:
+        reabrir_excepcion(excepcion, request.user, request.POST.get("motivo_reapertura", ""))
+        messages.success(request, "Excepción abierta de nuevo: quedó como recién conciliada y el cambio está en la bitácora.")
+        return redirect(f"/excepciones/{fecha}/?ver={excepcion.pk}")
+    except ReaperturaInvalida as exc:
+        messages.error(request, str(exc))
+    return redirect(f"/excepciones/{fecha}/?estado=resueltas&ver={excepcion.pk}")
 
 
 @requiere(Permiso.VISAR)

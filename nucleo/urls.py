@@ -12,6 +12,7 @@ urlpatterns = [
     path("excepciones/<str:fecha>/", views.bandeja_excepciones, name="bandeja_excepciones"),
     path("excepciones/<str:fecha>/reconciliar/", views.reconciliar_dia, name="reconciliar_dia"),
     path("excepciones/resolver/<int:excepcion_id>/", views.resolver_excepcion_view, name="resolver_excepcion"),
+    path("excepciones/reabrir/<int:excepcion_id>/", views.reabrir_excepcion_view, name="reabrir_excepcion"),
     path("excepciones/visar-perdida/<int:excepcion_id>/", views.visar_perdida_view, name="visar_perdida"),
     path("arqueo/<str:fecha>/", views.arqueo_efectivo, name="arqueo_efectivo"),
     path("arqueo/conteo/<int:arqueo_id>/", views.registrar_conteo_view, name="registrar_conteo"),
