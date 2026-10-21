@@ -32,7 +32,7 @@ from nucleo.models import Exportacion
 from nucleo.historico_servicio import buscar_transversal, calendario_mes, resumen_dias
 from nucleo.calidad_servicio import resumen_calidad
 from nucleo.models import (
-    ArqueoEfectivo, Cajera, CuentaContable, DiaArqueo, Excepcion, LoteCarga, MotivoResolucion, MovimientoProveedor,
+    ArqueoEfectivo, Cajera, CuentaContable, DiaArqueo, Excepcion, LoteCarga, MotivoResolucion, MovimientoProveedor, PagoDeclarado,
 )
 from nucleo.perdidas_servicio import (
     VisadoInvalido, diferencias_de_caja_pendientes_de_visado, perdidas_pendientes_de_visado,
@@ -100,6 +100,27 @@ def bandeja_excepciones(request, fecha):
         )
         movimientos_libres = list(dia.movimientos.exclude(id__in=ids_usados).order_by("fecha_hora"))
 
+    # Desde un cobro sin boleta (Karla, 2026-10-21, casos de la Encargada):
+    # boletas en efectivo del mismo monto (venta cobrada con tarjeta pero
+    # registrada en efectivo) y boletas con «pago sin movimiento» que podría
+    # haber pagado este mismo cobro.
+    boletas_efectivo_mismo_monto, boletas_sin_cobro = [], []
+    if excepcion_actual and excepcion_actual.abierta and excepcion_actual.tipo in ("movimiento_sin_pago", "pago_duplicado") \
+            and excepcion_actual.movimiento_id:
+        monto = excepcion_actual.movimiento.monto_venta_valido_abono
+        boletas_efectivo_mismo_monto = [
+            p for p in PagoDeclarado.objects.filter(
+                venta__dia=dia, medio=PagoDeclarado.Medio.EFECTIVO, medio_aprobado="",
+                monto__gte=monto - 1, monto__lte=monto + 1, coincidencias=None,
+            ).select_related("venta").order_by("venta__hora_cierre")
+            if "anul" not in p.venta.estado.lower()
+        ]
+        if excepcion_actual.tipo == "movimiento_sin_pago":
+            boletas_sin_cobro = list(
+                dia.excepciones.filter(abierta=True, tipo="pago_sin_movimiento", pago__monto__lt=monto + 1)
+                .select_related("pago__venta").order_by("pago__venta__hora_cierre")
+            )
+
     cajera_sugerida = None
     if excepcion_actual and excepcion_actual.pago_id:
         arqueo_caja = dia.arqueos_caja.filter(caja=excepcion_actual.pago.venta.caja).first()
@@ -122,6 +143,8 @@ def bandeja_excepciones(request, fecha):
             aplica_a=MotivoResolucion.AplicaA.EXCEPCION, activo=True,
         ),
         "movimientos_libres": movimientos_libres,
+        "boletas_efectivo_mismo_monto": boletas_efectivo_mismo_monto,
+        "boletas_sin_cobro": boletas_sin_cobro,
         "cuentas_contables": CuentaContable.objects.filter(activo=True),
         "cajeras": Cajera.objects.filter(activo=True),
         "cajera_sugerida": cajera_sugerida,
@@ -168,6 +191,9 @@ def resolver_excepcion_view(request, excepcion_id):
             cuenta_contable_id=request.POST.get("cuenta_contable_id") or None,
             cajera_id=request.POST.get("cajera_id") or None,
             lineas=lineas,
+            pago_objetivo_id=request.POST.get("pago_objetivo") or None,
+            medio_destino=request.POST.get("medio_destino") or None,
+            pagos_agrupados=request.POST.getlist("pagos_agrupados"),
         )
         messages.success(request, "Excepción resuelta y registrada en la bitácora.")
     except ResolucionInvalida as exc:

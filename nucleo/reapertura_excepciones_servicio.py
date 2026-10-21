@@ -88,6 +88,10 @@ def _limpiar_resolucion(excepcion: Excepcion) -> None:
         # El motor crea el "pago sin movimiento" sin movimiento; si tiene uno
         # es porque lo puso la resolución (vincular / pérdida-ganancia).
         excepcion.movimiento = None
+    if excepcion.tipo in (Excepcion.Tipo.MOVIMIENTO_SIN_PAGO, Excepcion.Tipo.PAGO_DUPLICADO):
+        # Y al revés: el cobro sin boleta nace sin pago; si tiene uno es
+        # porque lo puso «corregir el medio de la boleta».
+        excepcion.pago = None
     excepcion.abierta = True
     excepcion.resolucion = ""
     excepcion.motivo = None
@@ -135,11 +139,19 @@ def reabrir_excepcion(excepcion: Excepcion, usuario, motivo: str) -> Excepcion:
     valor_anterior = _foto(excepcion)
 
     # Vínculos manuales que creó la resolución (solo existen cuando hay un pago del POS).
-    coincidencias = []
+    coincidencias = set()
     if excepcion.pago_id:
-        coincidencias = list(
-            Coincidencia.objects.filter(dia=dia, origen=Coincidencia.Origen.MANUAL, pagos=excepcion.pago_id).distinct()
+        coincidencias |= set(
+            Coincidencia.objects.filter(dia=dia, origen=Coincidencia.Origen.MANUAL, pagos=excepcion.pago_id)
         )
+    if excepcion.movimiento_id and excepcion.resolucion in (
+        Excepcion.Resolucion.AGRUPAR, Excepcion.Resolucion.CORREGIR_MEDIO,
+    ):
+        # Resuelta desde el cobro: el vínculo cuelga del movimiento.
+        coincidencias |= set(
+            Coincidencia.objects.filter(dia=dia, origen=Coincidencia.Origen.MANUAL, movimientos=excepcion.movimiento_id)
+        )
+    coincidencias = sorted(coincidencias, key=lambda c: c.pk)
     valor_anterior["vinculos"] = [
         {"pagos": list(c.pagos.values_list("id", flat=True)), "movimientos": list(c.movimientos.values_list("id", flat=True))}
         for c in coincidencias

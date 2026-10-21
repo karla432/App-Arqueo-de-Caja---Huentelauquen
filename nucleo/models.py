@@ -374,6 +374,8 @@ class Excepcion(models.Model):
         PERDIDA_GANANCIA = "perdida_ganancia", "Registrar pérdida/ganancia de caja"
         MEZCLA_MEDIOS = "mezcla_medios", "Registrar mezcla de medios"
         AJUSTE_SENCILLO = "ajuste_sencillo", "Ajuste de sencillo"
+        CORREGIR_MEDIO = "corregir_medio", "Corregir el medio de la boleta"
+        AGRUPAR = "agrupar", "Un cobro que paga varias boletas"
 
     dia = models.ForeignKey(DiaArqueo, related_name="excepciones", on_delete=models.PROTECT)
     tipo = models.CharField(max_length=30, choices=Tipo.choices)

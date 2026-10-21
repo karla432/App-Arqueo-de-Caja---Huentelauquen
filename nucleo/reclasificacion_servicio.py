@@ -32,12 +32,14 @@ REGLA_TARJETA_A_EFECTIVO = "tarjeta_a_efectivo_por_sobrante"
 REGLA_EFECTIVO_A_TARJETA = "efectivo_a_tarjeta_por_faltante"
 REGLA_MEDIO_CONTRADICTORIO = "medio_contradictorio_aceptado"
 REGLA_MEZCLA_DE_MEDIOS = "mezcla_de_medios"
+REGLA_CORRECCION_MANUAL_DE_MEDIO = "correccion_manual_de_medio"
 
 NOMBRE_DE_REGLA = {
     REGLA_TARJETA_A_EFECTIVO: "Declarada como tarjeta, no aparece en el proveedor y sobra efectivo",
     REGLA_EFECTIVO_A_TARJETA: "Declarada como efectivo, hay un cobro del proveedor sin venta y falta efectivo",
     REGLA_MEDIO_CONTRADICTORIO: "Medio contradictorio aceptado por una persona",
     REGLA_MEZCLA_DE_MEDIOS: "Mezcla de medios resuelta por una persona",
+    REGLA_CORRECCION_MANUAL_DE_MEDIO: "Boleta registrada con un medio y cobrada con otro (corregida por una persona)",
 }
 
 MAX_PAGOS_POR_COMBINACION = 3

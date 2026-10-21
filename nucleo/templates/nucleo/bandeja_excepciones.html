@@ -126,9 +126,37 @@
             {% for m in motivos %}<option value="{{ m.pk }}">{{ m.texto }}</option>{% endfor %}
           </select>
           <textarea name="comentario" placeholder="Comentario opcional para la bitácora…" style="width:100%;margin-top:10px;padding:10px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans);min-height:70px"></textarea>
+          {% if excepcion_actual.tipo == "movimiento_sin_pago" or excepcion_actual.tipo == "pago_duplicado" %}
+          {# ---- Casos de la Encargada de Ingresos (2026-10-21) ---- #}
+          <div style="margin-top:14px;padding:12px 14px;background:#fff;border:1px solid var(--hu-card-line)">
+            <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:6px">¿Es una venta que la cajera registró en efectivo?</div>
+            {% if boletas_efectivo_mismo_monto %}
+            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Boletas en efectivo de ${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }} de este día. Al elegirla, la boleta pasa a tarjeta y el efectivo esperado de su caja baja en ese monto.</div>
+            <select name="pago_objetivo" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans)">
+              <option value="">Elige la boleta…</option>
+              {% for p in boletas_efectivo_mismo_monto %}<option value="{{ p.pk }}">Comanda {{ p.venta.n_interno }} · {{ p.venta.caja }} · {{ p.venta.hora_cierre|default:p.venta.hora_apertura|time:"H:i" }} · ${{ p.monto|floatformat:0 }}</option>{% endfor %}
+            </select>
+            <button type="submit" name="resolucion" value="corregir_medio" class="btn btn-2" style="margin-top:8px;justify-content:center;width:100%">Corregir medio: era tarjeta</button>
+            {% else %}
+            <div style="font-size:12.5px;color:var(--hu-gray)">No hay boletas en efectivo de ${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }} este día.</div>
+            {% endif %}
+          </div>
+          {% endif %}
           {% if excepcion_actual.tipo == "movimiento_sin_pago" %}
-          <div style="margin-top:12px;padding:10px 12px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);font-size:12.5px;line-height:1.5">
-            <strong>¿La cajera cobró de menos en el POS de Transbank?</strong> No se resuelve desde aquí: abre la excepción <em>«Pago sin movimiento»</em> de esa comanda, elige este movimiento en <em>«Vincular con otro movimiento»</em> y usa <em>«Registrar pérdida/ganancia de caja»</em>. Las dos excepciones se cierran juntas.
+          <div style="margin-top:10px;padding:12px 14px;background:#fff;border:1px solid var(--hu-card-line)">
+            <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:6px">¿Este cobro pagó varias boletas?</div>
+            {% if boletas_sin_cobro %}
+            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Marca las boletas sin cobro que se pagaron juntas con este cobro. Deben sumar exactamente ${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }}.</div>
+            {% for e in boletas_sin_cobro %}
+            <label style="display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0"><input type="checkbox" name="pagos_agrupados" value="{{ e.pago_id }}"> Comanda {{ e.pago.venta.n_interno }} · {{ e.pago.venta.caja }} · {{ e.pago.venta.hora_cierre|time:"H:i" }} · <strong>${{ e.pago.monto|floatformat:0 }}</strong></label>
+            {% endfor %}
+            <button type="submit" name="resolucion" value="agrupar" class="btn btn-2" style="margin-top:8px;justify-content:center;width:100%">Vincular estas boletas a este cobro</button>
+            {% else %}
+            <div style="font-size:12.5px;color:var(--hu-gray)">No hay boletas sin cobro que puedan sumar este monto.</div>
+            {% endif %}
+          </div>
+          <div style="margin-top:10px;padding:10px 12px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);font-size:12.5px;line-height:1.5">
+            <strong>¿Una boleta se pagó con este y otro cobro?</strong> Se resuelve desde la excepción <em>«Pago sin movimiento»</em> de esa boleta, con <em>«Pagar con varios cobros o medios»</em>: este cobro se cierra solo. Y si la cajera cobró de menos, desde la misma excepción, con <em>«Registrar pérdida/ganancia de caja»</em>.
           </div>
           {% endif %}
           {% if excepcion_actual.tipo == "pago_sin_movimiento" and movimientos_libres %}
@@ -149,8 +177,21 @@
             {% for c in cajeras %}<option value="{{ c.pk }}" {% if cajera_sugerida.pk == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
           </select>
           {% endif %}
+          {% if excepcion_actual.tipo == "pago_sin_movimiento" %}
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">¿Se pagó en efectivo? · corregir medio de la boleta</div>
+          <div style="display:flex;gap:6px">
+            <select name="medio_destino" style="flex:1;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans)">
+              <option value="">Medio real…</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+            <button type="submit" name="resolucion" value="corregir_medio" class="btn btn-2" style="justify-content:center">Corregir medio</button>
+          </div>
+          <div style="font-size:12px;color:var(--hu-gray);margin-top:4px">El efectivo esperado de {{ excepcion_actual.pago.venta.caja }} sube en ${{ excepcion_actual.pago.monto|floatformat:0 }}.</div>
+          {% endif %}
           {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
-          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Mezcla de medios · las líneas deben sumar ${{ excepcion_actual.pago.monto|floatformat:0 }}</div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Pagar con varios cobros o medios · las líneas deben sumar ${{ excepcion_actual.pago.monto|floatformat:0 }}</div>
+          <div style="font-size:12px;color:var(--hu-gray);margin-bottom:6px">Una línea por cada cobro (ej. crédito $25.900 + crédito $2.500) o por cada medio (ej. débito + efectivo). Los cobros elegidos se cierran solos.</div>
           {% for i in "123" %}
           <div style="display:flex;gap:6px;margin-bottom:6px">
             <select name="linea_medio_{{ i }}" style="flex:1;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px;font-family:var(--hu-sans)">
@@ -186,7 +227,7 @@
             {% endif %}
             {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
             <button type="submit" name="resolucion" value="perdida_ganancia" class="btn btn-2" style="justify-content:center">Registrar pérdida/ganancia de caja</button>
-            <button type="submit" name="resolucion" value="mezcla_medios" class="btn btn-2" style="justify-content:center">Registrar mezcla de medios</button>
+            <button type="submit" name="resolucion" value="mezcla_medios" class="btn btn-2" style="justify-content:center">Pagar con varios cobros o medios</button>
             {% endif %}
           </div>
           <div style="font-size:12px;color:var(--hu-gray);margin-top:12px;line-height:1.55">Queda en bitácora: usuario, hora y motivo. El dato original no se modifica.</div>

@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from nucleo.permisos import Permiso, exigir
 from nucleo.reclasificacion_servicio import (
-    REGLA_MEDIO_CONTRADICTORIO, REGLA_MEZCLA_DE_MEDIOS, registrar_manual,
+    REGLA_CORRECCION_MANUAL_DE_MEDIO, REGLA_MEDIO_CONTRADICTORIO, REGLA_MEZCLA_DE_MEDIOS, registrar_manual,
 )
 
 from nucleo.models import (
@@ -53,7 +53,8 @@ def sincronizar_estado_del_dia(dia) -> None:
 def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
                         comentario: str, usuario, movimiento_id_alternativo: int | None = None,
                         cuenta_contable_id: int | None = None, cajera_id: int | None = None,
-                        lineas: list[dict] | None = None) -> Excepcion:
+                        lineas: list[dict] | None = None, pago_objetivo_id: int | None = None,
+                        medio_destino: str | None = None, pagos_agrupados: list | None = None) -> Excepcion:
     exigir(usuario, Permiso.OPERAR, "Tu perfil no puede resolver excepciones.")
     if not excepcion.abierta:
         raise ResolucionInvalida("Esta excepción ya fue resuelta.")
@@ -71,6 +72,11 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
 
     valor_anterior = {"abierta": True, "tipo": excepcion.tipo}
     movimiento_vinculado = None  # el cobro del proveedor que se junta con el pago (si lo hay)
+    # Cobros y pagos que esta resolución deja conciliados: sus propias
+    # excepciones ("movimiento sin pago", "pago duplicado", "pago sin
+    # movimiento") se cierran arrastradas por esta (Karla, 2026-10-21).
+    movimientos_usados: set[int] = set()
+    pagos_usados: set[int] = set()
 
     def _crear_coincidencia_manual(movimiento):
         corrida = excepcion.dia.corridas_motor.latest("ejecutado_en")
@@ -229,6 +235,9 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
             )
 
         from nucleo.models import MovimientoProveedor
+        ids_lineas = [str(l.get("movimiento_id")) for l in lineas_validas if l.get("movimiento_id")]
+        if len(ids_lineas) != len(set(ids_lineas)):
+            raise ResolucionInvalida("El mismo cobro está en dos líneas: cada cobro va en una sola línea.")
         movimientos_referenciados = []
         for linea, monto in zip(lineas_validas, montos):
             movimiento_linea = None
@@ -259,6 +268,16 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
             )
             coincidencia.pagos.set([excepcion.pago_id])
             coincidencia.movimientos.set(movimientos_referenciados)
+            movimientos_usados.update(movimientos_referenciados)
+
+    elif resolucion == Excepcion.Resolucion.CORREGIR_MEDIO:
+        _corregir_medio(excepcion, motivo=motivo, comentario=comentario, usuario=usuario,
+                        pago_objetivo_id=pago_objetivo_id, medio_destino=medio_destino)
+        if excepcion.movimiento_id:
+            movimientos_usados.add(excepcion.movimiento_id)
+
+    elif resolucion == Excepcion.Resolucion.AGRUPAR:
+        pagos_usados.update(_agrupar(excepcion, pagos_agrupados or []))
 
     # RECHAZAR: no crea coincidencia; el caso queda documentado con su
     # motivo, sin conciliar nada.
@@ -272,25 +291,34 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
         # "movimiento sin pago", que ya no tiene nada pendiente.
         if excepcion.movimiento_id is None:
             excepcion.movimiento = movimiento_vinculado
-        hermanas = Excepcion.objects.filter(
-            dia=excepcion.dia, abierta=True, tipo=Excepcion.Tipo.MOVIMIENTO_SIN_PAGO,
-            movimiento=movimiento_vinculado,
-        ).exclude(pk=excepcion.pk)
-        for hermana in hermanas:
-            hermana.abierta = False
-            hermana.resolucion = Excepcion.Resolucion.VINCULAR_OTRO
-            hermana.motivo = motivo
-            hermana.comentario = f"Se juntó con el pago de la excepción #{excepcion.pk} ({Excepcion.Resolucion(resolucion).label})."
-            hermana.resuelta_por = usuario
-            hermana.resuelta_en = timezone.now()
-            hermana.save()
-            EventoAuditoria.objects.create(
-                dia=hermana.dia, entidad="Excepcion", entidad_id=str(hermana.pk),
-                accion="resolver_excepcion:vinculada_con_pago",
-                valor_anterior={"abierta": True, "tipo": hermana.tipo},
-                valor_posterior={"resolucion": hermana.resolucion, "junto_con": excepcion.pk},
-                usuario=usuario,
-            )
+        movimientos_usados.add(movimiento_vinculado.pk)
+
+    arrastradas = Excepcion.objects.none()
+    if movimientos_usados:
+        arrastradas = arrastradas | Excepcion.objects.filter(
+            dia=excepcion.dia, abierta=True,
+            tipo__in=[Excepcion.Tipo.MOVIMIENTO_SIN_PAGO, Excepcion.Tipo.PAGO_DUPLICADO],
+            movimiento_id__in=movimientos_usados,
+        )
+    if pagos_usados:
+        arrastradas = arrastradas | Excepcion.objects.filter(
+            dia=excepcion.dia, abierta=True, tipo=Excepcion.Tipo.PAGO_SIN_MOVIMIENTO, pago_id__in=pagos_usados,
+        )
+    for hermana in arrastradas.exclude(pk=excepcion.pk).distinct():
+        hermana.abierta = False
+        hermana.resolucion = Excepcion.Resolucion.VINCULAR_OTRO
+        hermana.motivo = motivo
+        hermana.comentario = f"Se juntó con la excepción #{excepcion.pk} ({Excepcion.Resolucion(resolucion).label})."
+        hermana.resuelta_por = usuario
+        hermana.resuelta_en = timezone.now()
+        hermana.save()
+        EventoAuditoria.objects.create(
+            dia=hermana.dia, entidad="Excepcion", entidad_id=str(hermana.pk),
+            accion="resolver_excepcion:vinculada_con_pago",
+            valor_anterior={"abierta": True, "tipo": hermana.tipo},
+            valor_posterior={"resolucion": hermana.resolucion, "junto_con": excepcion.pk},
+            usuario=usuario,
+        )
 
     excepcion.abierta = False
     excepcion.resolucion = resolucion
@@ -310,3 +338,124 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
 
     sincronizar_estado_del_dia(excepcion.dia)
     return excepcion
+
+
+# --------------------------------------------------------------------------
+# Casos levantados por la Encargada de Ingresos (correo del 15-10-2026)
+# --------------------------------------------------------------------------
+
+def _tolerancia_monto() -> float:
+    return 1.0  # pesos: los montos de boleta y cobro deben coincidir (redondeo)
+
+
+def _medio_tarjeta_del(movimiento) -> str:
+    return PagoDeclarado.Medio.DEBITO if movimiento.medio == "prepago" else movimiento.medio
+
+
+def _corregir_medio(excepcion: Excepcion, *, motivo, comentario, usuario, pago_objetivo_id, medio_destino) -> None:
+    """Caso 3: la cajera registró un medio y cobró con otro.
+
+    * Desde un «movimiento sin pago»: el cobro de tarjeta corresponde a una
+      boleta que Resto registró en EFECTIVO. Se elige esa boleta; queda
+      reclasificada a tarjeta, conciliada con el cobro, y el efectivo esperado
+      de su caja baja en ese monto (la cajera deja de aparecer con faltante).
+    * Desde un «pago sin movimiento»: la boleta se registró con tarjeta pero
+      se pagó en efectivo (o transferencia). Se corrige el medio; el efectivo
+      esperado de su caja sube en ese monto.
+    El pago declarado nunca se modifica: la corrección vive en
+    `medio_aprobado` y en la tabla de reclasificaciones (auditable)."""
+    if excepcion.tipo in (Excepcion.Tipo.MOVIMIENTO_SIN_PAGO, Excepcion.Tipo.PAGO_DUPLICADO):
+        if not excepcion.movimiento_id:
+            raise ResolucionInvalida("Esta excepción no tiene cobro del proveedor asociado.")
+        if not pago_objetivo_id:
+            raise ResolucionInvalida("Elige la boleta registrada en efectivo que corresponde a este cobro.")
+        try:
+            pago = PagoDeclarado.objects.select_related("venta").get(pk=pago_objetivo_id, venta__dia=excepcion.dia)
+        except (PagoDeclarado.DoesNotExist, ValueError):
+            raise ResolucionInvalida("La boleta elegida no es de este día.")
+        if pago.medio != PagoDeclarado.Medio.EFECTIVO:
+            raise ResolucionInvalida("La boleta elegida no está registrada en efectivo.")
+        if pago.medio_aprobado or pago.reclasificaciones.exists() or pago.coincidencias.exists():
+            raise ResolucionInvalida("Esa boleta ya tiene una corrección o un cobro asociado.")
+        movimiento = excepcion.movimiento
+        if abs(float(pago.monto) - float(movimiento.monto_venta_valido_abono)) > _tolerancia_monto():
+            raise ResolucionInvalida(
+                f"La boleta es por ${pago.monto:,.0f} y el cobro por ${movimiento.monto_venta_valido_abono:,.0f}: "
+                "deben ser del mismo monto."
+            )
+        medio_nuevo = _medio_tarjeta_del(movimiento)
+        pago.medio_aprobado = medio_nuevo
+        pago.save(update_fields=["medio_aprobado"])
+        registrar_manual(
+            pago=pago, medio_corregido=medio_nuevo, monto=pago.monto, regla=REGLA_CORRECCION_MANUAL_DE_MEDIO,
+            motivo=motivo.texto, usuario=usuario, excepcion=excepcion,
+            evidencia={
+                "proveedor": movimiento.proveedor, "movimiento_id": movimiento.pk,
+                "autorizacion": movimiento.autorizacion, "terminal": movimiento.terminal,
+                "monto_movimiento": float(movimiento.monto_venta_valido_abono),
+                "hora_movimiento": movimiento.fecha_hora.strftime("%H:%M"),
+                "nota_de_venta": pago.venta.n_interno, "caja": pago.venta.caja, "comentario": comentario,
+            },
+        )
+        corrida = excepcion.dia.corridas_motor.latest("ejecutado_en")
+        coincidencia = Coincidencia.objects.create(
+            dia=excepcion.dia, corrida=corrida, nivel=4, score=100, diferencia_monto=0,
+            diferencia_hora_segundos=0, origen=Coincidencia.Origen.MANUAL,
+        )
+        coincidencia.pagos.set([pago.pk])
+        coincidencia.movimientos.set([movimiento.pk])
+        excepcion.pago = pago  # trazabilidad: qué boleta explicó el cobro
+        return
+
+    if excepcion.tipo == Excepcion.Tipo.PAGO_SIN_MOVIMIENTO:
+        if not excepcion.pago_id:
+            raise ResolucionInvalida("Esta excepción no tiene un pago del POS asociado.")
+        if medio_destino not in (PagoDeclarado.Medio.EFECTIVO, PagoDeclarado.Medio.TRANSFERENCIA):
+            raise ResolucionInvalida("Indica con qué medio se pagó en realidad (efectivo o transferencia).")
+        pago = excepcion.pago
+        if medio_destino == pago.medio:
+            raise ResolucionInvalida("Ese es el mismo medio que ya tiene la boleta.")
+        pago.medio_aprobado = medio_destino
+        pago.save(update_fields=["medio_aprobado"])
+        registrar_manual(
+            pago=pago, medio_corregido=medio_destino, monto=pago.monto, regla=REGLA_CORRECCION_MANUAL_DE_MEDIO,
+            motivo=motivo.texto, usuario=usuario, excepcion=excepcion,
+            evidencia={"nota_de_venta": pago.venta.n_interno, "caja": pago.venta.caja, "comentario": comentario,
+                       "busqueda_proveedor": "Sin cobro del proveedor por esta boleta"},
+        )
+        return
+
+    raise ResolucionInvalida("Esta excepción no admite corregir el medio de la boleta.")
+
+
+def _agrupar(excepcion: Excepcion, pagos_ids: list) -> set[int]:
+    """Caso 1: un solo cobro de tarjeta pagó varias boletas (ej. $17.664 +
+    $1.500 = $19.164). Desde el «movimiento sin pago» se eligen las boletas
+    con «pago sin movimiento» que suman exactamente el cobro; quedan
+    conciliadas juntas y sus excepciones se cierran con esta."""
+    if excepcion.tipo != Excepcion.Tipo.MOVIMIENTO_SIN_PAGO or not excepcion.movimiento_id:
+        raise ResolucionInvalida("Solo un cobro sin boleta (movimiento sin pago) puede pagar varias boletas.")
+    ids = sorted({int(i) for i in pagos_ids if str(i).strip().isdigit()})
+    if len(ids) < 2:
+        raise ResolucionInvalida("Marca al menos dos boletas que se pagaron con este cobro.")
+    abiertas = {
+        e.pago_id: e for e in Excepcion.objects.filter(
+            dia=excepcion.dia, abierta=True, tipo=Excepcion.Tipo.PAGO_SIN_MOVIMIENTO, pago_id__in=ids,
+        ).select_related("pago")
+    }
+    if set(abiertas) != set(ids):
+        raise ResolucionInvalida("Solo se pueden juntar boletas de este día que estén como «pago sin movimiento».")
+    suma = sum(float(e.pago.monto) for e in abiertas.values())
+    cobro = float(excepcion.movimiento.monto_venta_valido_abono)
+    if abs(suma - cobro) > _tolerancia_monto():
+        raise ResolucionInvalida(
+            f"Las boletas marcadas suman ${suma:,.0f} y el cobro es de ${cobro:,.0f}: deben sumar exactamente lo mismo."
+        )
+    corrida = excepcion.dia.corridas_motor.latest("ejecutado_en")
+    coincidencia = Coincidencia.objects.create(
+        dia=excepcion.dia, corrida=corrida, nivel=6, score=100, diferencia_monto=0,
+        diferencia_hora_segundos=0, origen=Coincidencia.Origen.MANUAL,
+    )
+    coincidencia.pagos.set(ids)
+    coincidencia.movimientos.set([excepcion.movimiento_id])
+    return set(ids)
