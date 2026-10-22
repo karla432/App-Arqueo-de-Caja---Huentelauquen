@@ -172,6 +172,15 @@
             <option value="">Cuenta contable…</option>
             {% for c in cuentas_contables %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}
           </select>
+          {% if excepcion_actual.tipo == "pago_sin_movimiento" and movimientos_libres %}
+          <div style="font-size:12px;color:var(--hu-gray);margin-bottom:6px">¿Se cobró en más de una pasada? Elige el primer cobro arriba, en «Vincular con otro movimiento», y los demás aquí. La diferencia se calcula contra la suma.</div>
+          {% for i in "12" %}
+          <select name="movimiento_adicional" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans);margin-bottom:8px">
+            <option value="">Cobro adicional (opcional)…</option>
+            {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
+          </select>
+          {% endfor %}
+          {% endif %}
           <select name="cajera_id" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans)">
             <option value="">Cajera responsable…</option>
             {% for c in cajeras %}<option value="{{ c.pk }}" {% if cajera_sugerida.pk == c.pk %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}

@@ -194,6 +194,7 @@ def resolver_excepcion_view(request, excepcion_id):
             pago_objetivo_id=request.POST.get("pago_objetivo") or None,
             medio_destino=request.POST.get("medio_destino") or None,
             pagos_agrupados=request.POST.getlist("pagos_agrupados"),
+            movimientos_adicionales=[m for m in request.POST.getlist("movimiento_adicional") if m],
         )
         messages.success(request, "Excepción resuelta y registrada en la bitácora.")
     except ResolucionInvalida as exc:

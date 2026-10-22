@@ -288,3 +288,42 @@ def test_la_bandeja_ofrece_las_nuevas_salidas_y_resuelve_por_la_ruta(client, dia
         "resolucion": "agrupar", "motivo_id": motivo().pk, "pagos_agrupados": [p1.pk, p2.pk],
     })
     assert not abiertas(dia).exists()
+
+
+# ======================================================================= pérdida/ganancia con varios cobros
+
+def test_ganancia_con_dos_cobros_cajera_cobro_de_mas(dia, lotes, nathaly, ricardo):
+    """Día 12, comanda 677493: boleta $29.700 cobrada con débito $24.900 + $5.000 → $200 de ganancia."""
+    from nucleo.arqueo_caja_servicio import generar_lineas_arqueo_caja
+    from nucleo.models import Cajera, CuentaContable
+    pos, tbk = lotes
+    pago = boleta(dia, pos, 677493, 29700, "debito", caja="CAJA 5", hora=time(14, 11))
+    m1 = cobro(dia, tbk, (14, 12), 24900, "444444")
+    m2 = cobro(dia, tbk, (14, 13), 5000, "000842")
+    ejecutar_conciliacion(dia, nathaly)
+    exc = Excepcion.objects.get(dia=dia, abierta=True, pago=pago)
+    cajera = Cajera.objects.create(nombre="Cajera Cinco")
+    ganancia = CuentaContable.objects.get(codigo="6501003")
+    perdida = CuentaContable.objects.get(codigo="6501004")
+
+    with pytest.raises(ResolucionInvalida, match="ganancia"):
+        resolver_excepcion(exc, resolucion="perdida_ganancia", motivo_id=motivo().pk, comentario="", usuario=nathaly,
+                           movimiento_id_alternativo=m1.pk, movimientos_adicionales=[m2.pk],
+                           cuenta_contable_id=perdida.pk, cajera_id=cajera.pk)
+
+    resolver_excepcion(exc, resolucion="perdida_ganancia", motivo_id=motivo().pk, comentario="Cobró $200 de más",
+                       usuario=nathaly, movimiento_id_alternativo=m1.pk, movimientos_adicionales=[str(m2.pk), ""],
+                       cuenta_contable_id=ganancia.pk, cajera_id=cajera.pk)
+
+    exc.refresh_from_db()
+    assert exc.monto_perdida_ganancia == Decimal(200) and exc.cuenta_contable == ganancia
+    assert not abiertas(dia).exists()  # boleta y los dos cobros
+    c = Coincidencia.objects.get(dia=dia, origen="manual", pagos=pago)
+    assert set(c.movimientos.values_list("id", flat=True)) == {m1.pk, m2.pk}
+    filas = generar_lineas_arqueo_caja(dia)
+    assert any("6501003" in str(f) and "Cajera Cinco" in str(f) for f in filas)
+
+    ejecutar_conciliacion(dia, nathaly)
+    assert not abiertas(dia).exists()
+    reabrir_excepcion(exc, ricardo, "Revisar")
+    assert abiertas(dia).count() == 3

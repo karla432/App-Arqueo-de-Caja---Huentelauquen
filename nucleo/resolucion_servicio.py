@@ -54,7 +54,8 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
                         comentario: str, usuario, movimiento_id_alternativo: int | None = None,
                         cuenta_contable_id: int | None = None, cajera_id: int | None = None,
                         lineas: list[dict] | None = None, pago_objetivo_id: int | None = None,
-                        medio_destino: str | None = None, pagos_agrupados: list | None = None) -> Excepcion:
+                        medio_destino: str | None = None, pagos_agrupados: list | None = None,
+                        movimientos_adicionales: list | None = None) -> Excepcion:
     exigir(usuario, Permiso.OPERAR, "Tu perfil no puede resolver excepciones.")
     if not excepcion.abierta:
         raise ResolucionInvalida("Esta excepción ya fue resuelta.")
@@ -178,8 +179,26 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
             from nucleo.models import MovimientoProveedor
             movimiento = MovimientoProveedor.objects.get(pk=movimiento_id_alternativo, dia=excepcion.dia)
 
+        # Karla, 2026-10-22 (día 12, comanda 677493): la boleta de $29.700
+        # se cobró en dos pasadas de débito ($24.900 + $5.000) y la cajera
+        # cobró $200 de más. Se puede sumar más de un cobro; la diferencia
+        # es contra la suma de todos.
+        adicionales = []
+        ids_adicionales = sorted({int(i) for i in (movimientos_adicionales or []) if str(i).strip().isdigit()})
+        if ids_adicionales:
+            if not movimiento:
+                raise ResolucionInvalida("Elige primero el cobro principal en «Vincular con otro movimiento».")
+            from nucleo.models import MovimientoProveedor
+            adicionales = list(MovimientoProveedor.objects.filter(pk__in=ids_adicionales, dia=excepcion.dia))
+            if len(adicionales) != len(ids_adicionales) or movimiento.pk in ids_adicionales:
+                raise ResolucionInvalida("Los cobros adicionales deben ser de este día y distintos del principal.")
+            if any(m.coincidencias.exists() for m in adicionales):
+                raise ResolucionInvalida("Uno de los cobros adicionales ya está conciliado con otra boleta.")
+
         if movimiento:
-            diferencia = excepcion.pago.monto - movimiento.monto_venta_valido_abono
+            diferencia = excepcion.pago.monto - movimiento.monto_venta_valido_abono - sum(
+                m.monto_venta_valido_abono for m in adicionales
+            )
         else:
             # Sin ningún movimiento del proveedor que lo respalde: todo
             # el monto declarado en el POS es pérdida.
@@ -197,7 +216,12 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
             )
 
         if movimiento:
-            _crear_coincidencia_manual(movimiento)
+            coincidencia = _crear_coincidencia_manual(movimiento)
+            if adicionales:
+                coincidencia.movimientos.add(*[m.pk for m in adicionales])
+                coincidencia.diferencia_monto = abs(diferencia)
+                coincidencia.save(update_fields=["diferencia_monto"])
+                movimientos_usados.update(m.pk for m in adicionales)
             movimiento_vinculado = movimiento
         excepcion.cuenta_contable = cuenta
         excepcion.cajera_responsable = cajera
