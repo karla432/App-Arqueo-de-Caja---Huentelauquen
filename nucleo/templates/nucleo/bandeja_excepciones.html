@@ -200,7 +200,7 @@
           {% endif %}
           {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
           <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Pagar con varios cobros o medios · las líneas deben sumar ${{ excepcion_actual.pago.monto|floatformat:0 }}</div>
-          <div style="font-size:12px;color:var(--hu-gray);margin-bottom:6px">Una línea por cada cobro (ej. crédito $25.900 + crédito $2.500) o por cada medio (ej. débito + efectivo). Los cobros elegidos se cierran solos.</div>
+          <div style="font-size:12px;color:var(--hu-gray);margin-bottom:6px">Una línea por cada cobro (ej. crédito $25.900 + crédito $2.500) o por cada medio (ej. débito + efectivo). Los cobros elegidos se cierran solos. Si la cajera cobró de más con tarjeta y devolvió la diferencia desde la caja, agrega una línea <strong>Efectivo en negativo</strong> (ej. débito $20.000 con su cobro + efectivo −18000).</div>
           {% for i in "123" %}
           <div style="display:flex;gap:6px;margin-bottom:6px">
             <select name="linea_medio_{{ i }}" style="flex:1;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px;font-family:var(--hu-sans)">

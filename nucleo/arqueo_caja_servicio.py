@@ -199,15 +199,20 @@ def _lineas_mezcla_de_medios(dia: DiaArqueo, config: ConfiguracionArqueoCaja) ->
                 "no se puede armar el traspaso."
             )
         empresa = f"Comanda {r.pago.venta.n_interno}"
+        # Monto negativo = vuelto en efectivo entregado desde la caja por un
+        # cobro de tarjeta mayor a la venta: el traspaso va al revés (Debe
+        # la tarjeta / Haber el efectivo), siempre con montos positivos.
+        debe, haber = (cuenta_corregida, cuenta_original) if r.monto > 0 else (cuenta_original, cuenta_corregida)
+        monto = abs(r.monto)
         lineas.append({
-            "Apuntes contables/Cuenta": cuenta_corregida, "Apuntes contables/Etiqueta": etiqueta,
+            "Apuntes contables/Cuenta": debe, "Apuntes contables/Etiqueta": etiqueta,
             "Apuntes contables/Empresa": empresa, "Apuntes contables/Distribución analítica": None,
-            "Apuntes contables/Débito": r.monto, "Apuntes contables/Crédito": None,
+            "Apuntes contables/Débito": monto, "Apuntes contables/Crédito": None,
         })
         lineas.append({
-            "Apuntes contables/Cuenta": cuenta_original, "Apuntes contables/Etiqueta": etiqueta,
+            "Apuntes contables/Cuenta": haber, "Apuntes contables/Etiqueta": etiqueta,
             "Apuntes contables/Empresa": empresa, "Apuntes contables/Distribución analítica": None,
-            "Apuntes contables/Débito": None, "Apuntes contables/Crédito": r.monto,
+            "Apuntes contables/Débito": None, "Apuntes contables/Crédito": monto,
         })
     return lineas
 

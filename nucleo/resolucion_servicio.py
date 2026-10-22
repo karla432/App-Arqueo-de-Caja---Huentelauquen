@@ -250,8 +250,20 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
             montos = [Decimal(str(l["monto"])) for l in lineas_validas]
         except InvalidOperation:
             raise ResolucionInvalida("Uno de los montos ingresados no es válido.")
-        if any(m <= 0 for m in montos):
-            raise ResolucionInvalida("Cada línea debe tener un monto mayor a cero.")
+        # Vuelto en efectivo (Karla, 2026-10-22, día 19, comanda 682089): la
+        # cajera cobró $20.000 con débito por una venta de $2.000 y le
+        # devolvió $18.000 al cliente desde la caja. Se registra como una
+        # línea de EFECTIVO NEGATIVA: es un traspaso entre la caja y
+        # Transbank, sin pérdida ni ganancia. Solo el efectivo puede ser
+        # negativo, y solo si hay un cobro que lo explique.
+        for linea, m in zip(lineas_validas, montos):
+            if m == 0 or (m < 0 and linea["medio"] != PagoDeclarado.Medio.EFECTIVO):
+                raise ResolucionInvalida(
+                    "Cada línea debe tener un monto mayor a cero (solo el efectivo puede ir en negativo, "
+                    "como vuelto entregado desde la caja)."
+                )
+        if any(m < 0 for m in montos) and not any(l.get("movimiento_id") for l in lineas_validas):
+            raise ResolucionInvalida("Un vuelto en efectivo tiene que ir junto al cobro de tarjeta que lo originó.")
         suma = sum(montos)
         if suma != excepcion.pago.monto:
             raise ResolucionInvalida(
@@ -263,6 +275,12 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
         if len(ids_lineas) != len(set(ids_lineas)):
             raise ResolucionInvalida("El mismo cobro está en dos líneas: cada cobro va en una sola línea.")
         movimientos_referenciados = []
+        # Proveedor de referencia para las líneas sin cobro propio (efectivo):
+        # el del primer cobro elegido, para que el traspaso vaya a su cuenta.
+        proveedor_de_referencia = next((
+            MovimientoProveedor.objects.get(pk=l["movimiento_id"], dia=excepcion.dia).proveedor
+            for l in lineas_validas if l.get("movimiento_id")
+        ), "")
         for linea, monto in zip(lineas_validas, montos):
             movimiento_linea = None
             movimiento_id = linea.get("movimiento_id")
@@ -279,7 +297,7 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
                 evidencia={
                     "movimiento_id": movimiento_linea.pk if movimiento_linea else None,
                     "autorizacion": movimiento_linea.autorizacion if movimiento_linea else "",
-                    "proveedor": movimiento_linea.proveedor if movimiento_linea else "",
+                    "proveedor": movimiento_linea.proveedor if movimiento_linea else proveedor_de_referencia,
                     "fuente": linea.get("fuente_evidencia", "") or ("Cartola del proveedor" if movimiento_linea else ""),
                     "comentario": comentario,
                 },

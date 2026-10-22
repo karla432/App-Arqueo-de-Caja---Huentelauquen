@@ -327,3 +327,44 @@ def test_ganancia_con_dos_cobros_cajera_cobro_de_mas(dia, lotes, nathaly, ricard
     assert not abiertas(dia).exists()
     reabrir_excepcion(exc, ricardo, "Revisar")
     assert abiertas(dia).count() == 3
+
+
+# ======================================================================= vuelto en efectivo
+
+def test_vuelto_en_efectivo_por_cobro_de_mas_con_tarjeta(dia, lotes, nathaly, ricardo):
+    """Día 19, comanda 682089: venta $2.000, débito $20.000, vuelto $18.000 desde la CAJA 1."""
+    from nucleo.arqueo_caja_servicio import generar_lineas_arqueo_caja
+    pos, tbk = lotes
+    boleta(dia, pos, 682000, 201412, "efectivo", caja="CAJA 1", hora=time(11, 0))
+    pago = boleta(dia, pos, 682089, 2000, "debito", caja="CAJA 1", hora=time(14, 26))
+    mov = cobro(dia, tbk, (14, 26), 20000, "008386")
+    ejecutar_conciliacion(dia, nathaly)
+    exc = Excepcion.objects.get(dia=dia, abierta=True, pago=pago)
+    assert esperado(dia, "CAJA 1").esperado == Decimal(201412)
+
+    with pytest.raises(ResolucionInvalida, match="negativo"):
+        resolver_excepcion(exc, resolucion="mezcla_medios", motivo_id=motivo().pk, comentario="", usuario=nathaly,
+                           lineas=[{"medio": "debito", "monto": "-18000"}, {"medio": "efectivo", "monto": "20000"}])
+    with pytest.raises(ResolucionInvalida, match="cobro"):
+        resolver_excepcion(exc, resolucion="mezcla_medios", motivo_id=motivo().pk, comentario="", usuario=nathaly,
+                           lineas=[{"medio": "debito", "monto": "20000"}, {"medio": "efectivo", "monto": "-18000"}])
+
+    resolver_excepcion(exc, resolucion="mezcla_medios", motivo_id=motivo().pk, comentario="Vuelto en efectivo",
+                       usuario=nathaly, lineas=[
+                           {"medio": "debito", "monto": "20000", "movimiento_id": mov.pk},
+                           {"medio": "efectivo", "monto": "-18000"},
+                       ])
+    assert not abiertas(dia).exists()  # boleta y cobro
+    arqueo = esperado(dia, "CAJA 1")
+    assert arqueo.ajustes == Decimal(-18000) and arqueo.esperado == Decimal(183412)
+
+    filas = [f for f in generar_lineas_arqueo_caja(dia) if "Comanda 682089" in str(f.get("Apuntes contables/Empresa"))]
+    assert len(filas) == 2
+    debe = next(f for f in filas if f["Apuntes contables/Débito"])
+    haber = next(f for f in filas if f["Apuntes contables/Crédito"])
+    assert debe["Apuntes contables/Débito"] == Decimal(18000) and haber["Apuntes contables/Crédito"] == Decimal(18000)
+    assert debe["Apuntes contables/Cuenta"] != haber["Apuntes contables/Cuenta"]
+
+    reabrir_excepcion(exc, ricardo, "Revisar")
+    assert abiertas(dia).count() == 2
+    assert esperado(dia, "CAJA 1").esperado == Decimal(201412)
