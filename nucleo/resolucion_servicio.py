@@ -153,9 +153,16 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
         # UMBRAL_VISADO_PERDIDA exige el visto bueno del Jefe de
         # Contabilidad antes de poder cerrar el día — ver
         # nucleo.perdidas_servicio.
-        if excepcion.tipo not in (Excepcion.Tipo.PAGO_SIN_MOVIMIENTO, Excepcion.Tipo.DIFERENCIA_MONTO):
+        # Karla, 2026-10-23 (día 13, cobro de $4.500 a las 15:29): un cobro
+        # sin boleta que no es venta (no se emite boleta) se registra como
+        # GANANCIA de caja, a nombre de la cajera, en vez de «otros ingresos».
+        cobro_sin_venta = excepcion.tipo in (Excepcion.Tipo.MOVIMIENTO_SIN_PAGO, Excepcion.Tipo.PAGO_DUPLICADO)
+        if excepcion.tipo not in (Excepcion.Tipo.PAGO_SIN_MOVIMIENTO, Excepcion.Tipo.DIFERENCIA_MONTO) \
+                and not cobro_sin_venta:
             raise ResolucionInvalida("Esta excepción no admite registrarse como pérdida o ganancia de caja.")
-        if not excepcion.pago_id:
+        if cobro_sin_venta and not excepcion.movimiento_id:
+            raise ResolucionInvalida("Esta excepción no tiene cobro del proveedor asociado.")
+        if not cobro_sin_venta and not excepcion.pago_id:
             raise ResolucionInvalida("Esta excepción no tiene un pago del POS asociado.")
         if not cuenta_contable_id:
             raise ResolucionInvalida("Selecciona la cuenta contable de pérdida o ganancia.")
@@ -195,7 +202,9 @@ def resolver_excepcion(excepcion: Excepcion, *, resolucion: str, motivo_id: int,
             if any(m.coincidencias.exists() for m in adicionales):
                 raise ResolucionInvalida("Uno de los cobros adicionales ya está conciliado con otra boleta.")
 
-        if movimiento:
+        if cobro_sin_venta:
+            diferencia = -movimiento.monto_venta_valido_abono  # todo el cobro es ganancia
+        elif movimiento:
             diferencia = excepcion.pago.monto - movimiento.monto_venta_valido_abono - sum(
                 m.monto_venta_valido_abono for m in adicionales
             )

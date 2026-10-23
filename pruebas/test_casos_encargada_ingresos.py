@@ -368,3 +368,44 @@ def test_vuelto_en_efectivo_por_cobro_de_mas_con_tarjeta(dia, lotes, nathaly, ri
     reabrir_excepcion(exc, ricardo, "Revisar")
     assert abiertas(dia).count() == 2
     assert esperado(dia, "CAJA 1").esperado == Decimal(201412)
+
+
+# ======================================================================= cobro sin venta como ganancia
+
+def test_cobro_sin_venta_como_ganancia_de_caja(client, dia, lotes, nathaly, ricardo):
+    """Día 13: cobro de débito de $4.500 sin boleta; no es venta → ganancia de caja, sin emitir boleta."""
+    from django.urls import reverse
+    from nucleo.arqueo_caja_servicio import generar_lineas_arqueo_caja
+    from nucleo.documentos_servicio import otros_ingresos_pendientes
+    from nucleo.models import Cajera, CuentaContable
+    pos, tbk = lotes
+    boleta(dia, pos, 678000, 98000, "efectivo", caja="CAJA 5")
+    mov = cobro(dia, tbk, (15, 29), 4500, "947905")
+    ejecutar_conciliacion(dia, nathaly)
+    exc = _excepcion_del_cobro(dia, mov)
+    cajera = Cajera.objects.create(nombre="Cajera Cinco")
+    ganancia = CuentaContable.objects.get(codigo="6501003")
+    perdida = CuentaContable.objects.get(codigo="6501004")
+
+    client.force_login(nathaly)
+    html = client.get(reverse("bandeja_excepciones", args=[FECHA.isoformat()]) + f"?ver={exc.pk}").content.decode()
+    assert "Registrar como ganancia" in html
+
+    with pytest.raises(ResolucionInvalida, match="ganancia"):
+        resolver_excepcion(exc, resolucion="perdida_ganancia", motivo_id=motivo().pk, comentario="", usuario=nathaly,
+                           cuenta_contable_id=perdida.pk, cajera_id=cajera.pk)
+    client.post(reverse("resolver_excepcion", args=[exc.pk]), {
+        "resolucion": "perdida_ganancia", "motivo_id": motivo().pk, "comentario": "Cobro sin venta",
+        "cuenta_contable_id": ganancia.pk, "cajera_id": cajera.pk,
+    })
+    exc.refresh_from_db()
+    assert not exc.abierta and exc.monto_perdida_ganancia == Decimal(4500) and exc.cuenta_contable == ganancia
+    assert otros_ingresos_pendientes(dia).count() == 0  # no pide boleta
+    filas = [f for f in generar_lineas_arqueo_caja(dia) if f.get("Apuntes contables/Empresa") == "Cajera Cinco"]
+    assert sum(f["Apuntes contables/Crédito"] or 0 for f in filas) == Decimal(4500)
+    ejecutar_conciliacion(dia, nathaly)
+    assert not abiertas(dia).exists()
+    reabrir_excepcion(exc, ricardo, "Revisar")
+    exc.refresh_from_db()
+    assert exc.abierta and exc.monto_perdida_ganancia == 0
+    assert not Coincidencia.objects.filter(dia=dia, origen="manual").exists()

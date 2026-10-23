@@ -145,7 +145,7 @@ def reabrir_excepcion(excepcion: Excepcion, usuario, motivo: str) -> Excepcion:
             Coincidencia.objects.filter(dia=dia, origen=Coincidencia.Origen.MANUAL, pagos=excepcion.pago_id)
         )
     if excepcion.movimiento_id and excepcion.resolucion in (
-        Excepcion.Resolucion.AGRUPAR, Excepcion.Resolucion.CORREGIR_MEDIO,
+        Excepcion.Resolucion.AGRUPAR, Excepcion.Resolucion.CORREGIR_MEDIO, Excepcion.Resolucion.PERDIDA_GANANCIA,
     ):
         # Resuelta desde el cobro: el vínculo cuelga del movimiento.
         coincidencias |= set(
