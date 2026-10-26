@@ -1,5 +1,7 @@
 from django.urls import path
 
+from nucleo import dia_trabajo as vdt
+from nucleo import views_cierre_mes as vcm
 from nucleo import (
     views, views_auditoria as va, views_exportaciones as vex, views_consolidado as vco, views_configuracion as vc, views_depositos as vd,
     views_regularizacion as vr, views_reintegros as vri, views_dos_pasos as vdp,
@@ -7,6 +9,10 @@ from nucleo import (
 
 urlpatterns = [
     path("", views.ventas_dashboard, name="ventas_dashboard"),
+    path("dia/ir/", vdt.ir_a_dia, name="ir_a_dia"),
+    path("cierre-mes/", vcm.cierre_mes, name="cierre_mes"),
+    path("cierre-mes/<str:mes>/cerrar/", vcm.cerrar_mes_view, name="cerrar_mes"),
+    path("cierre-mes/<str:mes>/reabrir/", vcm.reabrir_mes_view, name="reabrir_mes"),
     path("reporte-productos/", views.reporte_ventas_producto, name="reporte_ventas_producto"),
     path("reporte-productos/descargar/", views.descargar_reporte_ventas_producto, name="descargar_reporte_ventas_producto"),
     path("excepciones/<str:fecha>/", views.bandeja_excepciones, name="bandeja_excepciones"),
@@ -55,6 +61,7 @@ urlpatterns = [
     path("regularizacion-documentos/<int:documento_id>/clasificar/", vr.clasificar_documento_view, name="clasificar_documento"),
     path("regularizacion-documentos/<int:documento_id>/evidencia-nc/", vr.registrar_evidencia_nc_view, name="registrar_evidencia_nc"),
     path("regularizacion-documentos/<int:documento_id>/verificar-nc/", vr.verificar_nc_view, name="verificar_nc"),
+    path("regularizacion-documentos/<int:documento_id>/folio-odoo-nc/", vr.folio_odoo_nc_view, name="folio_odoo_nc"),
     path("regularizacion-documentos/<int:documento_id>/segunda-firma-nc/", vr.segunda_firma_nc_view, name="segunda_firma_nc"),
     path("reintegros-caja/", vri.reintegros_caja, name="reintegros_caja"),
     path("reintegros-caja/<str:tipo>/<int:origen_id>/registrar/", vri.registrar_reintegro_view, name="registrar_reintegro"),

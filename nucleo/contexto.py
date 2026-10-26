@@ -8,11 +8,14 @@ from nucleo.umbrales import umbral
 
 
 def fecha_del_menu(request):
-    """Día al que apuntan los enlaces del menú lateral cuando la pantalla
-    actual no es de un día puntual: el último día con datos, o hoy si aún
-    no hay ninguno (antes estaba fijo en una fecha de prueba)."""
-    ultimo = DiaArqueo.objects.order_by("-fecha").values_list("fecha", flat=True).first()
-    return {"fecha_menu": (ultimo or date.today()).isoformat()}
+    """Día de trabajo del menú lateral y su selector (ver nucleo.dia_trabajo):
+    el de la pantalla actual, o el último que la persona abrió, o el último
+    día con datos."""
+    if not getattr(request, "user", None) or not request.user.is_authenticated:
+        ultimo = DiaArqueo.objects.order_by("-fecha").values_list("fecha", flat=True).first()
+        return {"fecha_menu": (ultimo or date.today()).isoformat()}
+    from nucleo.dia_trabajo import contexto_del_selector
+    return contexto_del_selector(request)
 
 
 def configuracion_del_menu(request):
@@ -28,7 +31,13 @@ def configuracion_del_menu(request):
         "umbral_caja": umbral("umbral_diferencia_caja"),
         "umbral_visado": umbral("umbral_visado_perdida"),
         # días aprobados que todavía no tienen sus archivos para Odoo (contador junto a «Archivos para Odoo»)
+        "nc_atrasadas": _nc_atrasadas(),
         "exportaciones_por_generar": DiaArqueo.objects.filter(estado__in=(
             DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO,
         )).exclude(exportaciones__invalidada=False).count(),
     }
+
+
+def _nc_atrasadas() -> int:
+    from nucleo.notas_credito_servicio import notas_atrasadas
+    return len(notas_atrasadas())

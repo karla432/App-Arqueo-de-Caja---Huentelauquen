@@ -120,6 +120,18 @@ def verificar_nc_view(request, documento_id):
     return _volver_a(documento)
 
 
+@requiere(Permiso.VALIDAR)
+@require_POST
+def folio_odoo_nc_view(request, documento_id):
+    documento = get_object_or_404(RegularizacionDocumento, pk=documento_id)
+    try:
+        nc.registrar_folio_odoo(documento, request.POST.get("folio_odoo", ""), request.user)
+        messages.success(request, "Folio de Odoo registrado.")
+    except RegularizacionInvalida as exc:
+        messages.error(request, str(exc))
+    return _volver_a(documento)
+
+
 @requiere(Permiso.AUTORIZAR_EXCEPCION)
 @require_POST
 def segunda_firma_nc_view(request, documento_id):

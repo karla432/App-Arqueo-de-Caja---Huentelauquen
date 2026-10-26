@@ -214,8 +214,8 @@ def avisos_efectivo_guias(dia: DiaArqueo) -> list[str]:
             f"Nota de crédito {folio_corto(doc.folio)} (${doc.monto:,.0f}) sin caja asignada en el libro contable — "
             "no se descontó de ningún arqueo, revísala a mano."
         )
-    from nucleo.notas_credito_servicio import notas_efectivo_sin_verificar
-    for doc in notas_efectivo_sin_verificar(dia).exclude(caja=""):
+    from nucleo.notas_credito_servicio import notas_sin_evidencia
+    for doc in notas_sin_evidencia(dia).exclude(caja=""):
         avisos.append(
             f"Nota de crédito {folio_corto(doc.folio)} (${doc.monto:,.0f}, {doc.caja}): falta el respaldo de la devolución (vale "
             "firmado y boleta original) y bloquea el cierre del día. No se descuenta del efectivo: el cierre de Resto "

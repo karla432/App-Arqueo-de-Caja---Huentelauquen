@@ -39,6 +39,14 @@ h1,h2,h3,h4{font-family:var(--hu-serif);color:var(--hu-maroon);margin:0}
 .p-ok{background:#E9F5EE;color:var(--hu-ok);border:1px solid #BFE0CC}
 .p-warn{background:#FDF3E3;color:var(--hu-warn);border:1px solid #EAD6AE}
 .p-grey{background:var(--hu-label);color:var(--hu-gray);border:1px solid var(--hu-card-line)}
+.dia-sel{margin:4px 14px 10px;padding:10px;background:rgba(0,0,0,.18);border-radius:4px}
+.dia-flecha{color:#fff;text-decoration:none;font-size:20px;line-height:1;padding:2px 6px;border-radius:3px}
+.dia-flecha:hover{background:rgba(255,255,255,.15)}
+.dia-input{width:100%;padding:5px 6px;border:1px solid #B0405A;background:#fff;color:#222;font-size:12.5px;font-family:var(--hu-sans);border-radius:3px}
+.dia-estado{font-size:11.5px;color:#F2D6DB;margin-top:6px;text-transform:capitalize}
+.dia-estado.est-exportado,.dia-estado.est-cerrado,.dia-estado.est-aprobado{color:#A8E0BE}
+.dia-estado.est-conciliado_con_excepciones{color:#FFD9A0}
+.dia-pend{width:100%;padding:5px 6px;border:1px solid #B0405A;background:#7A0021;color:#fff;font-size:12px;font-family:var(--hu-sans);border-radius:3px}
 .nav-i{display:flex;align-items:center;gap:10px;padding:10px 20px 10px 36px;font-size:14px;color:#E8C9CF;text-decoration:none}
 .nav-i:hover{background:#7A0021;color:#fff;text-decoration:none}
 .nav-sec{padding:18px 20px 6px;font-size:13px;letter-spacing:1.6px;text-transform:uppercase;color:#D9A3AD;font-weight:700}
@@ -61,7 +69,7 @@ form.inline{display:inline}
       <div style="font-family:var(--hu-serif);font-size:17px;color:#fff;font-weight:700;line-height:1.25">Hacienda<br>Huentelauquén</div>
       <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#D9A3AD;margin-top:6px">Arqueo diario</div>
     </div>
-    {% with fecha_nav=dia.fecha|date:'Y-m-d'|default:fecha_menu %}
+    {% with fecha_nav=fecha_menu %}
     {% with url=request.resolver_match.url_name %}
     <div class="nav-sec">Informes</div>
     <a class="nav-i{% if url == 'ventas_dashboard' %} nav-on{% endif %}" href="{% url 'ventas_dashboard' %}">Ventas · Mensual y Anual</a>
@@ -69,6 +77,29 @@ form.inline{display:inline}
     <a class="nav-i{% if url == 'dashboard_dia' %} nav-on{% endif %}" href="{% url 'dashboard_dia' fecha=fecha_nav %}">Dashboard Forma de Pago del Día</a>
 
     <div class="nav-sec">Diario</div>
+    {% if dia_trabajo %}
+    {# Selector del día de trabajo (Karla, 2026-10-26): se mantiene al pasar por otras pantallas #}
+    <div class="dia-sel">
+      <div style="display:flex;align-items:center;gap:6px">
+        <a class="dia-flecha" href="{% url 'ir_a_dia' %}?fecha={{ dia_trabajo_anterior }}&destino={{ dia_trabajo_destino }}" title="Día anterior">‹</a>
+        <form method="get" action="{% url 'ir_a_dia' %}" style="flex:1;margin:0">
+          <input type="hidden" name="destino" value="{{ dia_trabajo_destino }}">
+          <input type="date" name="fecha" value="{{ fecha_menu }}" onchange="this.form.submit()" class="dia-input" title="Elegir día">
+        </form>
+        <a class="dia-flecha" href="{% url 'ir_a_dia' %}?fecha={{ dia_trabajo_siguiente }}&destino={{ dia_trabajo_destino }}" title="Día siguiente">›</a>
+      </div>
+      <div class="dia-estado est-{{ dia_trabajo_estado }}">{{ dia_trabajo|date:"D d-m-Y" }} · {{ dia_trabajo_estado_nombre }}</div>
+      {% if dias_pendientes %}
+      <form method="get" action="{% url 'ir_a_dia' %}" style="margin:6px 0 0">
+        <input type="hidden" name="destino" value="{{ dia_trabajo_destino }}">
+        <select name="fecha" onchange="this.form.submit()" class="dia-pend">
+          <option value="">Pendientes · {{ dias_pendientes|length }}</option>
+          {% for d in dias_pendientes %}<option value="{{ d.fecha|date:'Y-m-d' }}">{{ d.fecha|date:"d-m-Y" }} · {{ d.estado }}</option>{% endfor %}
+        </select>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
     <a class="nav-i{% if url == 'carga_de_archivos' %} nav-on{% endif %}" href="{% url 'carga_de_archivos' fecha=fecha_nav %}">Cargar Archivos</a>
     <a class="nav-i{% if url == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha=fecha_nav %}">Excepciones</a>
     <a class="nav-i{% if url == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha=fecha_nav %}">Arqueo de Efectivo</a>
@@ -80,8 +111,9 @@ form.inline{display:inline}
     {% with url=request.resolver_match.url_name %}
     <div class="nav-sec">Controles y Odoo</div>
     <a class="nav-i{% if url == 'control_depositos' %} nav-on{% endif %}" href="{% url 'control_depositos' %}">Depósitos bancarios</a>
-    <a class="nav-i{% if url == 'regularizacion_documentos' %} nav-on{% endif %}" href="{% url 'regularizacion_documentos' %}">Regularización de Documentos (GD-NCR)</a>
+    <a class="nav-i{% if url == 'regularizacion_documentos' %} nav-on{% endif %}" href="{% url 'regularizacion_documentos' %}">Regularización de Documentos (GD-NCR){% if nc_atrasadas %} <span class="pill p-red" style="margin-left:6px;padding:1px 7px" title="Notas de crédito sin verificar fuera de plazo">{{ nc_atrasadas }}</span>{% endif %}</a>
     <a class="nav-i{% if url == 'reintegros_caja' %} nav-on{% endif %}" href="{% url 'reintegros_caja' %}">Reintegros de Cajeras</a>
+    <a class="nav-i{% if url == 'cierre_mes' %} nav-on{% endif %}" href="{% url 'cierre_mes' %}">Cierre de Mes</a>
 
     <div class="nav-sec">Análisis</div>
     <a class="nav-i{% if url == 'historico' %} nav-on{% endif %}" href="{% url 'historico' %}">Calendario · Estado del Proceso</a>

@@ -1,0 +1,97 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Cierre de Mes · {{ clave_mes }}{% endblock %}
+{% block estilos_extra %}
+<style>
+.cz-fila{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--hu-card-line);font-size:13.5px}
+.cz-fila:last-child{border-bottom:0}
+.cz-marca{width:18px;font-weight:700;text-align:center}
+.cz-det{color:var(--hu-gray);font-size:12.5px;margin-top:2px}
+.cz-caja{background:var(--hu-card);border:1px solid var(--hu-card-line);padding:16px 22px;margin-bottom:18px}
+.cm-tabla{width:100%;border-collapse:collapse;font-size:13px}
+.cm-tabla th{background:var(--hu-red);color:#fff;text-align:left;padding:7px 10px;font-weight:600}
+.cm-tabla td{padding:7px 10px;border-bottom:1px solid var(--hu-card-line)}
+</style>
+{% endblock %}
+{% block contenido %}
+
+<div style="padding:20px 32px;background:var(--hu-maroon);display:flex;justify-content:space-between;align-items:center">
+  <div>
+    <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Cierre de Mes · {{ nombre_mes|date:"F Y" }}</div>
+    <div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">
+      {% if cerrado %}Mes cerrado{% elif faltan %}{{ faltan|length }} pendiente{{ faltan|length|pluralize }} para cerrar{% elif not mes_terminado %}Mes en curso{% else %}Listo para cerrar{% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a class="btn btn-2" href="?mes={{ mes_anterior }}">‹ Mes anterior</a>
+    <form method="get" style="margin:0"><input type="month" name="mes" value="{{ clave_mes }}" onchange="this.form.submit()" style="padding:7px 8px;border:1px solid var(--hu-card-line);font-family:var(--hu-sans)"></form>
+    <a class="btn btn-2" href="?mes={{ mes_siguiente }}">Mes siguiente ›</a>
+  </div>
+</div>
+
+<div style="padding:26px 32px 50px;max-width:1000px">
+
+  {% if cierre and cierre.cerrado %}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-ok)">
+    <strong style="color:var(--hu-ok)">Mes cerrado</strong>
+    <div style="font-size:13px;margin-top:4px">Cerró {{ cierre.cerrado_por.get_full_name|default:cierre.cerrado_por.username }} el {{ cierre.cerrado_en|date:"d-m-Y H:i" }}. Con el mes cerrado no se puede reabrir ninguno de sus días.</div>
+    {% if puede_reabrir %}
+    <form method="post" action="{% url 'reabrir_mes' mes=clave_mes %}" style="margin-top:12px;display:flex;gap:8px">
+      {% csrf_token %}
+      <input type="text" name="motivo" required placeholder="Motivo de la reapertura (queda en la bitácora)…" style="flex:1;padding:8px 10px;border:1px solid var(--hu-card-line);font-size:13px">
+      <button type="submit" class="btn btn-2">Reabrir mes</button>
+    </form>
+    {% endif %}
+  </div>
+  {% elif cierre and cierre.reabierto_por %}
+  <div class="cz-caja" style="border-left:4px solid var(--hu-warn);background:#FDF3E3">
+    <strong style="color:var(--hu-warn)">Mes reabierto</strong>
+    <div style="font-size:13px;margin-top:4px">Motivo: {{ cierre.motivo_reapertura }} · {{ cierre.reabierto_por.get_full_name|default:cierre.reabierto_por.username }} el {{ cierre.reabierto_en|date:"d-m-Y H:i" }}.</div>
+  </div>
+  {% endif %}
+
+  <div class="kick" style="margin-bottom:10px">Lista de verificación del mes</div>
+  <div class="cz-caja">
+    {% for c in controles %}
+    <div class="cz-fila">
+      <span class="cz-marca" style="color:{% if c.ok %}var(--hu-ok){% elif c.bloqueante %}var(--hu-red){% else %}var(--hu-warn){% endif %}">{% if c.ok %}✓{% elif c.bloqueante %}✗{% else %}!{% endif %}</span>
+      <div style="flex:1"><strong>{{ c.titulo }}</strong>{% if not c.bloqueante %} <span class="pill p-grey" style="margin-left:4px">aviso</span>{% endif %}<div class="cz-det">{{ c.detalle }}</div></div>
+      {% if not c.ok %}
+        {% if c.clave == "nc_verificadas" or c.clave == "nc_folio" %}<a class="btn btn-2" style="padding:7px 14px;font-size:12.5px" href="{% url 'regularizacion_documentos' %}?estado=">Ir →</a>
+        {% elif c.clave == "depositos" %}<a class="btn btn-2" style="padding:7px 14px;font-size:12.5px" href="{% url 'control_depositos' %}">Ir →</a>
+        {% elif c.clave == "reintegros" %}<a class="btn btn-2" style="padding:7px 14px;font-size:12.5px" href="{% url 'reintegros_caja' %}">Ir →</a>
+        {% elif c.clave == "dias" %}<a class="btn btn-2" style="padding:7px 14px;font-size:12.5px" href="{% url 'historico' %}?anio={{ anio }}&mes={{ mes }}">Ver →</a>{% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if not cerrado %}
+    {% if puede_cerrar %}
+    <form method="post" action="{% url 'cerrar_mes' mes=clave_mes %}">
+      {% csrf_token %}
+      <button type="submit" class="btn" style="width:100%;justify-content:center;padding:12px" {% if faltan or not mes_terminado %}disabled title="{% if not mes_terminado %}El mes todavía no termina{% else %}Quedan pendientes que bloquean el cierre{% endif %}"{% endif %}>Cerrar mes {{ nombre_mes|date:"m/Y" }}</button>
+    </form>
+    {% else %}
+    <div style="font-size:12.5px;color:var(--hu-gray)">El cierre de mes lo hace el Jefe de Contabilidad.</div>
+    {% endif %}
+  {% endif %}
+
+  {% if notas %}
+  <div class="kick" style="margin:26px 0 10px">Notas de crédito del mes · {{ notas|length }}</div>
+  <table class="cm-tabla">
+    <tr><th>Día</th><th>Nota</th><th>Caja</th><th>Monto</th><th>Respaldo</th><th>Folio Odoo</th></tr>
+    {% for n in notas %}
+    <tr>
+      <td>{{ n.dia.fecha|date:"d-m" }}</td>
+      <td><a href="{% url 'regularizacion_documentos' %}?estado=&documento={{ n.pk }}">{{ n.folio|slice:"-4:" }}</a></td>
+      <td>{{ n.caja|default:"—" }}</td>
+      <td>${{ n.monto|miles }}</td>
+      <td>{% if n.verificacion_estado == "verificada" %}<span class="pill p-ok">Verificada</span>{% elif n in atrasadas %}<span class="pill p-red">{{ n.get_verificacion_estado_display }} · fuera de plazo</span>{% else %}<span class="pill p-warn">{{ n.get_verificacion_estado_display }}</span>{% endif %}</td>
+      <td>{{ n.folio_odoo|default:"—" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

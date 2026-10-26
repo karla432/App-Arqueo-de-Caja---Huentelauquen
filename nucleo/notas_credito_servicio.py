@@ -62,6 +62,63 @@ def notas_efectivo_sin_verificar(dia=None):
     return qs.filter(dia=dia) if dia is not None else qs
 
 
+ESTADOS_SIN_EVIDENCIA = (V.SIN_VERIFICAR, V.RECHAZADA)
+
+
+def notas_sin_evidencia(dia=None):
+    """Lo que bloquea el CIERRE DEL DÍA (Karla, 2026-10-26): notas sin el respaldo
+    cargado (vale firmado y boleta original) o con la evidencia rechazada. La
+    verificación del Jefe de Contabilidad y el folio de la nota en Odoo se exigen
+    en el cierre de mes: la nota en Odoo necesita la boleta original, que recién
+    llega con la Captura de Ventas del día ya cerrado."""
+    qs = RegularizacionDocumento.objects.filter(
+        tipo=RegularizacionDocumento.Tipo.NOTA_CREDITO, verificacion_estado__in=ESTADOS_SIN_EVIDENCIA,
+    )
+    return qs.filter(dia=dia) if dia is not None else qs
+
+
+def dias_habiles_entre(desde, hasta) -> int:
+    """Días hábiles (lunes a viernes) transcurridos después de `desde` hasta `hasta`."""
+    if hasta <= desde:
+        return 0
+    dias, actual = 0, desde
+    while actual < hasta:
+        actual += timedelta(days=1)
+        if actual.weekday() < 5:
+            dias += 1
+    return dias
+
+
+def notas_atrasadas(hoy=None):
+    """Notas de crédito todavía sin verificar después del plazo configurado
+    (`dias_alerta_nc`, por defecto 5 días hábiles desde el día de la nota)."""
+    from datetime import date
+    hoy = hoy or date.today()
+    plazo = int(umbral("dias_alerta_nc"))
+    return [n for n in notas_efectivo_sin_verificar().select_related("dia") if dias_habiles_entre(n.dia.fecha, hoy) > plazo]
+
+
+@transaction.atomic
+def registrar_folio_odoo(doc: RegularizacionDocumento, folio: str, usuario) -> RegularizacionDocumento:
+    """Folio de la nota de crédito creada en Odoo (Karla, 2026-10-26): lo exige el
+    cierre de mes. Lo registra contabilidad (Jefe de Contabilidad o Gerente)."""
+    exigir(usuario, Permiso.VALIDAR, "Solo el Jefe de Contabilidad o la Gerente registran el folio de Odoo.")
+    _es_nota(doc)
+    folio = (folio or "").strip()
+    if not folio:
+        raise RegularizacionInvalida("Escribe el folio de la nota de crédito en Odoo.")
+    anterior = doc.folio_odoo
+    doc.folio_odoo = folio[:50]
+    doc.folio_odoo_por = usuario
+    doc.folio_odoo_en = timezone.now()
+    doc.save(update_fields=["folio_odoo", "folio_odoo_por", "folio_odoo_en"])
+    EventoAuditoria.objects.create(
+        dia=doc.dia, entidad="RegularizacionDocumento", entidad_id=str(doc.pk), accion="registrar_folio_odoo_nc",
+        valor_anterior={"folio_odoo": anterior}, valor_posterior={"folio_odoo": doc.folio_odoo}, usuario=usuario,
+    )
+    return doc
+
+
 def boletas_candidatas(doc: RegularizacionDocumento) -> list[dict]:
     """Boletas que podrían ser la original de la nota: mismo monto y misma
     caja, del mismo día o hasta 30 días antes. Solo SUGERENCIAS — Resto no

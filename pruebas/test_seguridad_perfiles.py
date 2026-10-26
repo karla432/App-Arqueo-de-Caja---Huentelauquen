@@ -43,7 +43,7 @@ MATRIZ_ESPERADA = {
     "encargada": {C, D, Permiso.OPERAR},
     "jefe": {
         C, D, Permiso.VALIDAR, Permiso.VISAR, Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION,
-        Permiso.REABRIR_EXCEPCION,
+        Permiso.REABRIR_EXCEPCION, Permiso.CERRAR_MES,
     },
     "gerente": {
         C, D, Permiso.OPERAR, Permiso.VALIDAR, Permiso.VISAR, Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION,
@@ -119,6 +119,9 @@ POSTS = [
     ("aprobar_dia", [FECHA.isoformat()], Permiso.APROBAR_CIERRE),
     ("reabrir_dia", [FECHA.isoformat()], Permiso.REABRIR_DIA),
     ("reabrir_excepcion", [999], Permiso.REABRIR_EXCEPCION),
+    ("cerrar_mes", ["2026-09"], Permiso.CERRAR_MES),
+    ("reabrir_mes", ["2026-09"], Permiso.REABRIR_DIA),
+    ("folio_odoo_nc", [999], Permiso.VALIDAR),
     ("generar_exportacion", [FECHA.isoformat()], Permiso.GENERAR_EXPORTACION),
     ("guardar_umbrales", [], Permiso.CONFIGURAR),
     ("crear_cajera", [], Permiso.CONFIGURAR),

@@ -83,7 +83,7 @@
         <div style="font-size:13px;line-height:1.55;margin-bottom:10px">
           Resto la anotó como <strong>{{ d.get_forma_pago_display|lower }}</strong> en su detalle, pero eso <strong>no dice cómo se devolvió el dinero</strong> (por norma se devuelve en efectivo).
           {% if d.verificacion_estado == "verificada" %}Respaldo verificado. La nota no cambia el efectivo de {{ d.caja|default:"la caja" }}: Resto ya la descontó.
-          {% else %}<strong>No se descuenta del efectivo de {{ d.caja|default:"la caja" }}</strong>: el cierre de Resto ya trae la nota descontada. Falta el respaldo (vale firmado y boleta original) y, mientras no esté verificado, <strong>bloquea el cierre del día</strong>.{% endif %}
+          {% else %}<strong>No se descuenta del efectivo de {{ d.caja|default:"la caja" }}</strong>: el cierre de Resto ya trae la nota descontada. {% if d.verificacion_estado == "sin_verificar" or d.verificacion_estado == "rechazada" %}Falta el respaldo (vale firmado y boleta original) y, mientras no esté cargado, <strong>bloquea el cierre del día</strong>.{% else %}El respaldo ya está cargado: el día se puede cerrar. La verificación y el folio de la nota en Odoo se exigen en el <strong>cierre de mes</strong>.{% endif %}{% endif %}
         </div>
 
         {% if d.verificacion_estado == "sin_verificar" or d.verificacion_estado == "rechazada" %}
@@ -126,9 +126,21 @@
         {% endif %}
 
         {% else %}
-        <div style="font-size:13px"><strong>Verificada:</strong> medio real <strong>{{ d.get_medio_verificado_display }}</strong>{% if d.medio_verificado == "efectivo" %} — descontada del efectivo de {{ d.caja }}{% else %} — <strong>excepción a la norma: no mueve el efectivo</strong>{% endif %}.
+        <div style="font-size:13px"><strong>Verificada:</strong> medio real <strong>{{ d.get_medio_verificado_display }}</strong>{% if d.medio_verificado == "efectivo" %} — no cambia el efectivo de {{ d.caja }}: Resto ya la descontó{% else %} — <strong>excepción a la norma</strong>; tampoco mueve el efectivo{% endif %}.
           Boleta: {{ d.boleta_original|default:"—" }} · Evidencia: {{ d.evidencia_nombre_original }}<br>
           <span style="color:var(--hu-gray)">Verificó {{ d.verificado_por.get_full_name|default:d.verificado_por.username }} el {{ d.verificado_en|date:"d-m-Y H:i" }}{% if d.segunda_firma_por %} · segunda firma {{ d.segunda_firma_por.get_full_name|default:d.segunda_firma_por.username }}{% endif %}</span></div>
+        {# Folio de la NC en Odoo (Karla, 2026-10-26): lo exige el cierre de mes #}
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--hu-card-line)">
+          {% if d.folio_odoo %}<div style="font-size:13px"><strong>Nota de crédito en Odoo:</strong> {{ d.folio_odoo }} <span style="color:var(--hu-gray)">· {{ d.folio_odoo_por.get_full_name|default:d.folio_odoo_por.username }} el {{ d.folio_odoo_en|date:"d-m-Y H:i" }}</span></div>
+          {% else %}<div style="font-size:12.5px;color:var(--hu-warn);margin-bottom:6px"><strong>Falta el folio de la nota en Odoo</strong> — lo exige el cierre de mes.</div>{% endif %}
+          {% if puede_clasificar %}
+          <form method="post" action="{% url 'folio_odoo_nc' documento_id=d.pk %}" style="display:flex;gap:8px;margin-top:6px">
+            {% csrf_token %}
+            <input type="text" name="folio_odoo" value="{{ d.folio_odoo }}" placeholder="Folio de la NC en Odoo" maxlength="50" style="flex:1;padding:7px 10px;border:1px solid var(--hu-card-line);font-size:13px">
+            <button type="submit" class="btn btn-2" style="padding:7px 14px;font-size:12.5px">Guardar folio</button>
+          </form>
+          {% endif %}
+        </div>
         {% endif %}
       </div>
       {% endif %}

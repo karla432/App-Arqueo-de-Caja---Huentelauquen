@@ -53,8 +53,8 @@ def estado_checklist(dia: DiaArqueo) -> dict:
     from nucleo.regularizacion_servicio import documentos_sin_clasificar
     sin_clasificar = list(documentos_sin_clasificar(dia))
 
-    from nucleo.notas_credito_servicio import notas_efectivo_sin_verificar
-    notas_pendientes = list(notas_efectivo_sin_verificar(dia))
+    from nucleo.notas_credito_servicio import notas_sin_evidencia
+    notas_pendientes = list(notas_sin_evidencia(dia))
 
     return {
         "notas_credito_verificadas": {
@@ -62,7 +62,8 @@ def estado_checklist(dia: DiaArqueo) -> dict:
             "detalle": (
                 "Sin notas de crédito pendientes de evidencia" if not notas_pendientes
                 else f"{len(notas_pendientes)} nota(s) de crédito sin evidencia "
-                     f"({', '.join(folio_corto(n.folio) for n in notas_pendientes)}) — carga el vale firmado y la boleta original"
+                     f"({', '.join(folio_corto(n.folio) for n in notas_pendientes)}) — carga el vale firmado y la boleta original "
+                     "(la verificación se exige en el cierre de mes)"
             ),
         },
         "documentos_sin_clasificar": {
@@ -229,6 +230,9 @@ def reabrir_dia(dia: DiaArqueo, usuario, motivo: str) -> DiaArqueo:
         raise CierreInvalido("Solo se puede reabrir un día cerrado o exportado.")
     if not motivo.strip():
         raise CierreInvalido("La reapertura exige un motivo.")
+    from nucleo.cierre_mes_servicio import dia_en_mes_cerrado
+    if dia_en_mes_cerrado(dia):
+        raise CierreInvalido("El mes de este día está cerrado: primero hay que reabrir el mes (Cierre de Mes).")
 
     valor_anterior = {"estado": dia.estado}
     invalidadas = dia.exportaciones.filter(invalidada=False).update(invalidada=True)

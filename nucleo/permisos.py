@@ -77,6 +77,7 @@ class Permiso(str, Enum):
     APROBAR_CIERRE = "aprobar_cierre"            # aprobar el cierre ordinario de un día
     AUTORIZAR_EXCEPCION = "autorizar_excepcion"  # diferencias sobre el umbral, segunda firma, autoaprobación con motivo
     REABRIR_DIA = "reabrir_dia"
+    CERRAR_MES = "cerrar_mes"                    # cierre de mes (solo el Jefe de Contabilidad, Karla 2026-10-26)
     REABRIR_EXCEPCION = "reabrir_excepcion"      # volver a abrir una excepción ya resuelta (día no cerrado), con motivo
     GENERAR_EXPORTACION = "generar_exportacion"  # generar a mano los archivos finales de un día
     CONFIGURAR = "configurar"                    # parámetros funcionales
@@ -88,7 +89,7 @@ PERMISOS_POR_PERFIL: dict[Perfil, frozenset[Permiso]] = {
     Perfil.ENCARGADO: frozenset({Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS, Permiso.OPERAR}),
     Perfil.JEFE: frozenset({
         Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS, Permiso.VALIDAR, Permiso.VISAR,
-        Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION, Permiso.REABRIR_EXCEPCION,
+        Permiso.APROBAR_CIERRE, Permiso.GENERAR_EXPORTACION, Permiso.REABRIR_EXCEPCION, Permiso.CERRAR_MES,
     }),
     Perfil.GERENTE: frozenset({
         Permiso.CONSULTAR, Permiso.DESCARGAR_GENERADOS, Permiso.OPERAR, Permiso.VALIDAR, Permiso.VISAR,

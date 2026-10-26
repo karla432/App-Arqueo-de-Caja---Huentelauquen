@@ -37,6 +37,11 @@ DEFINICIONES = {
         "descripcion": "Un depósito con diferencia mayor a este monto no se puede Aprobar — el Jefe de Contabilidad solo puede dejarlo Observado.",
         "defecto": 5000, "minimo": 0, "maximo": 1_000_000, "unidad": "$",
     },
+    "dias_alerta_nc": {
+        "nombre": "Días hábiles para verificar una nota de crédito",
+        "descripcion": "Una nota de crédito que pasa más de estos días hábiles sin verificar se marca en rojo. El cierre del día solo exige la evidencia cargada; la verificación y el folio de Odoo los exige el cierre de mes.",
+        "defecto": 5, "minimo": 1, "maximo": 30, "unidad": "días hábiles",
+    },
 }
 
 

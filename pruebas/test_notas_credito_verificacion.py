@@ -162,7 +162,8 @@ def test_sobre_50000_exige_la_segunda_firma_de_la_gerente(dia, operador, jefe, g
     verificar(nota, aprobar=True, comentario="", usuario=jefe)
     nota.refresh_from_db()
     assert nota.verificacion_estado == "pendiente_segunda_firma" and nota.estado == "pendiente"
-    assert estado_checklist(dia)["notas_credito_verificadas"]["ok"] is False
+    # Desde 2026-10-26 el día solo exige la evidencia cargada; la verificación completa la exige el cierre de mes.
+    assert estado_checklist(dia)["notas_credito_verificadas"]["ok"] is True
     with pytest.raises(PermisoDenegado):
         segunda_firma(nota, aprobar=True, comentario="", usuario=jefe)
     segunda_firma(nota, aprobar=True, comentario="", usuario=gerente)

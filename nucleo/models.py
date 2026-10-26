@@ -879,6 +879,12 @@ class RegularizacionDocumento(models.Model):
         SIN_DEVOLUCION = "sin_devolucion", "Sin devolución de dinero (cambio o corrección)"
 
     verificacion_estado = models.CharField(max_length=30, choices=Verificacion.choices, default=Verificacion.SIN_VERIFICAR)
+    # Folio de la nota de crédito en Odoo (Karla, 2026-10-26): lo exige el cierre de mes.
+    folio_odoo = models.CharField(max_length=50, blank=True)
+    folio_odoo_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="folios_odoo_nc",
+    )
+    folio_odoo_en = models.DateTimeField(null=True, blank=True)
     medio_verificado = models.CharField(max_length=20, choices=MedioVerificado.choices, blank=True)
     boleta_original = models.CharField(max_length=60, blank=True)
     evidencia_archivo = models.CharField(max_length=500, blank=True)
@@ -1059,3 +1065,31 @@ class CodigoDeRecuperacion(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="codigos_de_recuperacion")
     huella = models.CharField(max_length=64, db_index=True)
     usado_en = models.DateTimeField(null=True, blank=True)
+
+
+class CierreMes(models.Model):
+    """Cierre de mes (Karla, 2026-10-26). Junta lo que no se exige día a día:
+    días exportados, notas de crédito verificadas y con su folio en Odoo,
+    depósitos aprobados. Lo cierra el Jefe de Contabilidad; lo reabre la
+    Gerente con motivo. Con el mes cerrado no se reabre ningún día de ese mes."""
+
+    anio = models.PositiveSmallIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    cerrado = models.BooleanField(default=True)
+    cerrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="meses_cerrados",
+    )
+    cerrado_en = models.DateTimeField(null=True, blank=True)
+    reabierto_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="meses_reabiertos",
+    )
+    reabierto_en = models.DateTimeField(null=True, blank=True)
+    motivo_reapertura = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [("anio", "mes")]
+        ordering = ["-anio", "-mes"]
+
+    def __str__(self) -> str:
+        return f"{self.mes:02d}/{self.anio}"
+

@@ -116,6 +116,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'nucleo.middleware.PerfilesMiddleware',
+    'nucleo.dia_trabajo.DiaDeTrabajoMiddleware',
 ]
 
 # El respaldo de autenticación aplica el bloqueo por intentos fallidos (nucleo/bloqueo_acceso.py).
