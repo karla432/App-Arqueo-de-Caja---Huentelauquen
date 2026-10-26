@@ -120,6 +120,7 @@ form.inline{display:inline}
     <a class="nav-i{% if url == 'consolidado_dias' or url == 'auditoria_reclasificaciones' %} nav-on{% endif %}" href="{% url 'consolidado_dias' %}">Auditoría de Pagos</a>
     <a class="nav-i{% if url == 'seguimiento' %} nav-on{% endif %}" href="{% url 'seguimiento' %}">Regularizaciones y Reintegros</a>
     <a class="nav-i{% if url == 'calidad_registro' %} nav-on{% endif %}" href="{% url 'calidad_registro' %}">Calidad de registro</a>
+    <a class="nav-i{% if url == 'desempeno_cajeras' %} nav-on{% endif %}" href="{% url 'desempeno_cajeras' %}">Desempeño de cajeras</a>
 
     {% if puede_configurar %}
     <div class="nav-sec">Sistema</div>

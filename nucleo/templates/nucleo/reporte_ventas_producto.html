@@ -36,7 +36,7 @@
 <div style="padding:24px 32px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:6px">
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Unidades vendidas</div>
-    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ totales.cantidad|floatformat:0 }}</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ totales.cantidad|miles }}</div>
   </div>
   <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Venta total</div>
@@ -51,8 +51,8 @@
       {% for f in filas %}
       <tr>
         <td>{{ f.producto }}</td>
-        <td class="n">{{ f.cantidad|floatformat:0 }}</td>
-        <td class="n">${{ f.precio_promedio|floatformat:0 }}</td>
+        <td class="n">{{ f.cantidad|miles }}</td>
+        <td class="n">${{ f.precio_promedio|miles }}</td>
         <td class="n">${{ f.venta|miles }}</td>
         <td class="n">{{ f.pct_del_total|floatformat:1 }}%</td>
       </tr>

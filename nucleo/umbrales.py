@@ -42,6 +42,16 @@ DEFINICIONES = {
         "descripcion": "Una nota de crédito que pasa más de estos días hábiles sin verificar se marca en rojo. El cierre del día solo exige la evidencia cargada; la verificación y el folio de Odoo los exige el cierre de mes.",
         "defecto": 5, "minimo": 1, "maximo": 30, "unidad": "días hábiles",
     },
+    "semaforo_cajeras_verde": {
+        "nombre": "Desempeño de cajeras · límite verde",
+        "descripcion": "Una cajera con hasta esta cantidad de errores cada 100 comandas queda en verde en el informe de Desempeño de cajeras.",
+        "defecto": 1, "minimo": 0, "maximo": 100, "unidad": "errores c/100 comandas",
+    },
+    "semaforo_cajeras_amarillo": {
+        "nombre": "Desempeño de cajeras · límite amarillo",
+        "descripcion": "Sobre el límite verde y hasta este valor, la cajera queda en amarillo; sobre este valor, en rojo.",
+        "defecto": 3, "minimo": 0, "maximo": 100, "unidad": "errores c/100 comandas",
+    },
 }
 
 

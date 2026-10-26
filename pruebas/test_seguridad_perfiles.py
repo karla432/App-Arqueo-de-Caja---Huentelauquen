@@ -328,7 +328,7 @@ def dia_exportado(dia_listo, caja_cuadrada, usuario, carpeta_tmp):
 GETS_DE_SOLO_LECTURA = [
     ("ventas_dashboard", []), ("historico", []), ("consolidado_dias", []), ("seguimiento", []), ("calidad_registro", []),
     ("control_depositos", []), ("regularizacion_documentos", []), ("reintegros_caja", []), ("exportaciones_odoo", []),
-    ("reporte_ventas_producto", []), ("dashboard_dia", [FECHA.isoformat()]), ("arqueo_efectivo", [FECHA.isoformat()]),
+    ("reporte_ventas_producto", []), ("desempeno_cajeras", []), ("dashboard_dia", [FECHA.isoformat()]), ("arqueo_efectivo", [FECHA.isoformat()]),
     ("bandeja_excepciones", [FECHA.isoformat()]), ("cierre_y_exportacion", [FECHA.isoformat()]),
     ("auditoria_reclasificaciones", [FECHA.isoformat()]),
 ]

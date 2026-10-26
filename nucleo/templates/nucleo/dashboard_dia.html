@@ -29,22 +29,22 @@
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 32px">
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Venta del día</div>
-    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ venta_total|floatformat:0 }}</div>
+    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ venta_total|miles }}</div>
     <div style="font-size:12px;color:var(--hu-gray)">{{ cantidad_comandas }} comandas</div>
   </div>
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Conciliado automático</div>
     <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ calidad.pct_automatico|floatformat:1 }}%</div>
-    <div style="font-size:12px;color:var(--hu-gray)">score {{ calidad.score_promedio|floatformat:0 }}</div>
+    <div style="font-size:12px;color:var(--hu-gray)">score {{ calidad.score_promedio|miles }}</div>
   </div>
   <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Excepciones abiertas</div>
     <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ calidad.total_excepciones_abiertas }}</div>
-    <div style="font-size:12px;color:var(--hu-maroon)">${{ calidad.monto_en_juego|floatformat:0 }} en juego</div>
+    <div style="font-size:12px;color:var(--hu-maroon)">${{ calidad.monto_en_juego|miles }} en juego</div>
   </div>
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Diferencia de caja</div>
-    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ efectivo.diferencia|floatformat:0 }}</div>
+    <div style="font-family:var(--hu-serif);font-size:31px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ efectivo.diferencia|miles }}</div>
     <div style="font-size:12px;color:var(--hu-gray)">umbral ${{ umbral_caja|miles }}</div>
   </div>
 </div>
@@ -58,20 +58,20 @@
         {% for f in cuadre_por_medio %}
         <tr>
           <td style="text-transform:capitalize">{{ f.medio }}</td>
-          <td class="n">{{ f.declarado_pos|floatformat:0 }}</td>
-          <td class="n">{% if f.guias %}{{ f.guias|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
-          <td class="n">{% if f.proveedor is not None %}{{ f.proveedor|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">sin contraparte</span>{% endif %}</td>
-          <td class="n">{% if f.conciliado is not None %}{{ f.conciliado|floatformat:0 }}{% else %}—{% endif %}</td>
-          <td class="n" {% if f.diferencia %}style="color:var(--hu-red);font-weight:700"{% endif %}>{% if f.diferencia is not None %}{{ f.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
+          <td class="n">{{ f.declarado_pos|miles }}</td>
+          <td class="n">{% if f.guias %}{{ f.guias|miles }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
+          <td class="n">{% if f.proveedor is not None %}{{ f.proveedor|miles }}{% else %}<span style="color:var(--hu-gray)">sin contraparte</span>{% endif %}</td>
+          <td class="n">{% if f.conciliado is not None %}{{ f.conciliado|miles }}{% else %}—{% endif %}</td>
+          <td class="n" {% if f.diferencia %}style="color:var(--hu-red);font-weight:700"{% endif %}>{% if f.diferencia is not None %}{{ f.diferencia|miles }}{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
         <tr>
           <td>Efectivo</td>
-          <td class="n">{{ efectivo.pos_efectivo|floatformat:0 }}</td>
-          <td class="n">{% if efectivo.guias_efectivo %}{{ efectivo.guias_efectivo|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
+          <td class="n">{{ efectivo.pos_efectivo|miles }}</td>
+          <td class="n">{% if efectivo.guias_efectivo %}{{ efectivo.guias_efectivo|miles }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
           <td class="n" style="color:var(--hu-gray)">sin contraparte</td>
-          <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.contado|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
-          <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
+          <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.contado|miles }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
+          <td class="n">{% if efectivo.todas_contadas %}{{ efectivo.diferencia|miles }}{% else %}—{% endif %}</td>
         </tr>
       </tbody>
     </table>
@@ -84,9 +84,9 @@
         {% for a in cajas %}
         <tr>
           <td>{{ a.caja }}</td>
-          <td class="n">{{ a.teorico|floatformat:0 }}</td>
-          <td class="n">{% if a.contado is not None %}{{ a.contado|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
-          <td class="n">{% if a.diferencia is not None %}{{ a.diferencia|floatformat:0 }}{% else %}—{% endif %}</td>
+          <td class="n">{{ a.teorico|miles }}</td>
+          <td class="n">{% if a.contado is not None %}{{ a.contado|miles }}{% else %}<span style="color:var(--hu-gray)">pendiente</span>{% endif %}</td>
+          <td class="n">{% if a.diferencia is not None %}{{ a.diferencia|miles }}{% else %}—{% endif %}</td>
           <td>
             {% if a.estado == "pendiente" %}<span class="pill p-grey">Pendiente</span>
             {% elif a.estado == "cuadrada" %}<span class="pill p-ok">Cuadrada</span>

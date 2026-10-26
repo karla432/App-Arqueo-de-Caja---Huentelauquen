@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Ventas · mensual y anual{% endblock %}
 {% block contenido %}
 
@@ -29,103 +30,141 @@
   </div>
 </div>
 
+<style>
+.vd-graf{position:relative;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid var(--hu-gray)}
+.vd-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative}
+.vd-bar{width:100%;background:var(--hu-red);min-height:0}
+.vd-bar.fds{background:#E07A8F}
+.vd-bar.pend{background:repeating-linear-gradient(45deg,#ddd,#ddd 3px,#fff 3px,#fff 6px);height:6px;border:1px dashed #bbb}
+.vd-col:hover .vd-bar{outline:2px solid var(--hu-maroon)}
+.vd-prom{position:absolute;left:0;right:0;border-top:2px dashed var(--hu-maroon);pointer-events:none;z-index:2}
+.vd-prom span{position:absolute;left:0;top:-19px;border:1px solid var(--hu-maroon);font-size:11px;color:var(--hu-maroon);background:#fff;padding:0 4px;font-weight:700}
+.vd-ejes{display:flex;gap:3px;margin-top:4px;font-size:10.5px;color:var(--hu-gray);text-align:center}
+.vd-ejes span{flex:1;line-height:1.25}
+.vd-ejes .fds{color:#B0304F;font-weight:700}
+.vd-ley{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--hu-gray);margin-top:10px}
+.vd-ley i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px}
+.vd-val{font-size:10px;color:var(--hu-maroon);font-weight:700;margin-bottom:2px;white-space:nowrap}
+.vd-resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.vd-resumen div{border:1px solid var(--hu-line);background:#fff;padding:9px 12px;font-size:12px;color:var(--hu-gray)}
+.vd-resumen strong{display:block;font-size:15px;color:var(--hu-maroon);margin-top:2px}
+</style>
+
 <div style="padding:24px 32px 0;display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
   <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Venta neta del período</div>
-    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.venta_neta.valor|floatformat:0 }}</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.venta_neta.valor|miles }}</div>
     <div style="font-size:12px;color:var(--hu-maroon);margin-top:2px">{% if kpis.venta_neta.variacion_pct is not None %}{{ kpis.venta_neta.variacion_pct|floatformat:1 }}% vs año anterior{% else %}sin datos del año anterior{% endif %}</div>
   </div>
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Comandas</div>
-    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ kpis.comandas.valor }}</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ kpis.comandas.valor|miles }}</div>
     <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.comandas.variacion_pct is not None %}{{ kpis.comandas.variacion_pct|floatformat:1 }}% vs año anterior{% else %}sin datos del año anterior{% endif %}</div>
   </div>
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Ticket promedio</div>
-    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.ticket_promedio.valor|floatformat:0 }}</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.ticket_promedio.valor|miles }}</div>
     <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.ticket_promedio.variacion_pct is not None %}{{ kpis.ticket_promedio.variacion_pct|floatformat:1 }}% vs año anterior{% else %}sin datos del año anterior{% endif %}</div>
   </div>
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Venta diaria promedio</div>
-    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.venta_diaria_promedio.valor|floatformat:0 }}</div>
-    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">sobre días cerrados</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ kpis.venta_diaria_promedio.valor|miles }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">sobre {{ control.dias_operados }} día{{ control.dias_operados|pluralize }} cerrado{{ control.dias_operados|pluralize }}</div>
   </div>
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Unidades vendidas</div>
-    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ kpis.unidades.valor|floatformat:0 }}</div>
-    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.comandas.valor %}{{ kpis.unidades.valor|floatformat:2 }} / comanda{% endif %}</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ kpis.unidades.valor|miles }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{% if kpis.comandas.valor %}{{ unidades_por_comanda|floatformat:1 }} unidades por comanda{% endif %}</div>
   </div>
 </div>
 
+{% if por_mes|length > 1 %}
 <div style="padding:26px 32px 0">
   <div class="kick" style="margin-bottom:14px">Venta por mes en el período</div>
-  {% if por_mes %}
-  <div style="display:flex;gap:10px;align-items:flex-end;height:160px;border-bottom:1px solid var(--hu-line)">
+  <div class="vd-graf" style="height:170px;gap:10px">
     {% for mes, monto in por_mes %}
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-      <div style="width:100%;background:var(--hu-red);height:{% widthratio monto max_mes 100 %}%"></div>
+    <div class="vd-col" title="{{ mes }}: ${{ monto|miles }}">
+      <div class="vd-val">${{ monto|miles }}</div>
+      <div class="vd-bar" style="height:{% widthratio monto max_mes 100 %}%"></div>
     </div>
     {% endfor %}
   </div>
-  <div style="display:flex;gap:10px;margin-top:6px;font-size:11.5px;color:var(--hu-gray);text-align:center">
-    {% for mes, monto in por_mes %}<span style="flex:1">{{ mes }}</span>{% endfor %}
+  <div class="vd-ejes" style="gap:10px">{% for mes, monto in por_mes %}<span>{{ mes }}</span>{% endfor %}</div>
+</div>
+{% endif %}
+
+<div style="padding:28px 32px 0">
+  <div class="kick" style="margin-bottom:6px">Venta por día del período</div>
+  {% if grafico_dia %}
+  <div style="font-size:12.5px;color:var(--hu-gray);margin-bottom:18px">Cada barra es la venta de un día cerrado. Pasa el mouse sobre una barra para ver el monto.</div>
+  <div class="vd-graf" style="height:180px">
+    {% if grafico_dia.promedio %}<div class="vd-prom" style="bottom:{{ grafico_dia.alto_promedio }}%"><span>Promedio ${{ grafico_dia.promedio|miles }}</span></div>{% endif %}
+    {% for b in grafico_dia.barras %}
+    <div class="vd-col" title="{{ b.fecha|date:'l d-m' }}: {% if b.monto %}${{ b.monto|miles }}{% elif b.pendiente %}día sin cerrar (provisorio ${{ b.provisorio|miles }}){% else %}sin venta registrada{% endif %}">
+      {% if b.monto %}<div class="vd-bar{% if b.fin_de_semana %} fds{% endif %}" style="height:{{ b.alto }}%"></div>{% elif b.pendiente %}<div class="vd-bar pend"></div>{% endif %}
+    </div>
+    {% endfor %}
   </div>
+  <div class="vd-ejes">{% for b in grafico_dia.barras %}<span class="{% if b.fin_de_semana %}fds{% endif %}">{{ b.dia }}<br>{{ b.letra }}</span>{% endfor %}</div>
+  <div class="vd-ley">
+    <span><i style="background:var(--hu-red)"></i>Lunes a viernes</span>
+    <span><i style="background:#E07A8F"></i>Sábado y domingo</span>
+    <span><i style="background:repeating-linear-gradient(45deg,#ddd,#ddd 3px,#fff 3px,#fff 6px);border:1px dashed #bbb"></i>Día sin cerrar (no suma)</span>
+    <span><i style="border-top:2px dashed var(--hu-maroon);height:0;width:16px"></i>Promedio diario</span>
+  </div>
+  {% if grafico_dia.mejor %}
+  <div class="vd-resumen">
+    <div>Mejor día<strong>{{ grafico_dia.mejor.fecha|date:"l d-m" }} · ${{ grafico_dia.mejor.monto|miles }}</strong></div>
+    <div>Día más bajo<strong>{{ grafico_dia.peor.fecha|date:"l d-m" }} · ${{ grafico_dia.peor.monto|miles }}</strong></div>
+    <div>Promedio por día cerrado<strong>${{ grafico_dia.promedio|miles }}</strong></div>
+  </div>
+  {% endif %}
+  {% elif por_dia %}
+  <div style="color:var(--hu-gray);font-size:13px">El período tiene más de dos meses: el detalle diario no se lee bien. Elige un rango más corto o mira la venta por mes.</div>
   {% else %}
-  <div style="color:var(--hu-gray);font-size:13px;padding:20px 0">Sin días cerrados en el período — nada que graficar todavía.</div>
+  <div style="color:var(--hu-gray);font-size:13px">Sin días cerrados todavía.</div>
   {% endif %}
 </div>
 
-<div style="padding:28px 32px 0;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:26px">
-  <div>
-    <div class="kick" style="margin-bottom:12px">Venta por día del período</div>
-    {% if por_dia %}
-    <div style="display:flex;gap:2px;align-items:flex-end;height:110px;border-bottom:1px solid var(--hu-line)">
-      {% for fecha, monto in por_dia %}<span style="flex:1;background:var(--hu-red);height:{% widthratio monto max_dia 100 %}%" title="{{ fecha }}: ${{ monto|floatformat:0 }}"></span>{% endfor %}
+<div style="padding:28px 32px 0">
+  <div class="kick" style="margin-bottom:6px">Concentración horaria · a qué hora se vende</div>
+  {% if grafico_hora %}
+  <div style="font-size:12.5px;color:var(--hu-gray);margin-bottom:18px">Venta del período según la hora de cierre de la comanda. El número sobre cada barra es el % de la venta total. Hora peak: <strong style="color:var(--hu-maroon)">{{ grafico_hora.peak.hora }}:00 a {{ grafico_hora.peak.hora|add:1 }}:00</strong> · ${{ grafico_hora.peak.monto|miles }} ({{ grafico_hora.peak.pct|floatformat:1 }}%).</div>
+  <div class="vd-graf" style="height:150px;gap:6px">
+    {% for b in grafico_hora.barras %}
+    <div class="vd-col" title="{{ b.hora }}:00–{{ b.hora|add:1 }}:00 · ${{ b.monto|miles }} · {{ b.comandas|miles }} comanda{{ b.comandas|pluralize }}">
+      <div class="vd-val">{{ b.pct|floatformat:0 }}%</div>
+      <div class="vd-bar" style="height:{{ b.alto }}%;{% if not b.peak %}background:#E9A9B6{% endif %}"></div>
     </div>
-    {% else %}
-    <div style="color:var(--hu-gray);font-size:13px">Sin días cerrados todavía.</div>
-    {% endif %}
-
-    <div class="kick" style="margin:24px 0 10px">Concentración horaria</div>
-    {% if por_hora %}
-    <div style="display:flex;gap:3px;align-items:flex-end;height:70px;border-bottom:1px solid var(--hu-line)">
-      {% for hora, monto in por_hora %}<span style="flex:1;background:var(--hu-pink);height:{% widthratio monto max_hora 100 %}%" title="{{ hora }}h"></span>{% endfor %}
-    </div>
-    {% else %}
-    <div style="color:var(--hu-gray);font-size:13px">Sin datos.</div>
-    {% endif %}
+    {% endfor %}
   </div>
+  <div class="vd-ejes" style="gap:6px">{% for b in grafico_hora.barras %}<span>{{ b.hora }}h</span>{% endfor %}</div>
+  {% else %}
+  <div style="color:var(--hu-gray);font-size:13px">Sin datos.</div>
+  {% endif %}
+</div>
+
+<div style="padding:28px 32px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px">
   <div>
     <div class="kick" style="margin-bottom:12px">Mix de medios de pago</div>
     <table class="tbl">
       <thead><tr><th>Medio</th><th class="n">Monto</th></tr></thead>
       <tbody>
         {% for medio, monto in mix_medios.items %}
-        <tr><td style="text-transform:capitalize">{{ medio }}</td><td class="n">{{ monto|floatformat:0 }}</td></tr>
+        <tr><td style="text-transform:capitalize">{{ medio }}</td><td class="n">${{ monto|miles }}</td></tr>
         {% empty %}
         <tr><td colspan="2" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    <div class="kick" style="margin:24px 0 10px">Venta por caja</div>
+  </div>
+  <div>
+    <div class="kick" style="margin-bottom:12px">Venta por caja</div>
     <table class="tbl">
       <thead><tr><th>Caja</th><th class="n">Venta</th><th class="n">Comandas</th></tr></thead>
       <tbody>
         {% for caja, datos in por_caja %}
-        <tr><td>{{ caja }}</td><td class="n">{{ datos.venta|floatformat:0 }}</td><td class="n">{{ datos.comandas }}</td></tr>
-        {% empty %}
-        <tr><td colspan="3" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div>
-    <div class="kick" style="margin-bottom:12px">Top 8 productos del período</div>
-    <table class="tbl">
-      <thead><tr><th>Producto</th><th class="n">Unid.</th><th class="n">% acum.</th></tr></thead>
-      <tbody>
-        {% for p in top_productos %}
-        <tr><td>{{ p.nombre }}</td><td class="n">{{ p.unidades|floatformat:0 }}</td><td class="n">{{ p.pct_acumulado|floatformat:1 }}</td></tr>
+        <tr><td>{{ caja }}</td><td class="n">${{ datos.venta|miles }}</td><td class="n">{{ datos.comandas|miles }}</td></tr>
         {% empty %}
         <tr><td colspan="3" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
         {% endfor %}
@@ -133,21 +172,36 @@
     </table>
     <div class="kick" style="margin:24px 0 10px">Control del período</div>
     <div class="card" style="padding:14px 16px;font-size:13px">
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Días cerrados sin diferencia</span><strong>{{ control.dias_cerrados_sin_diferencia }} de {{ control.dias_operados }}</strong></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Con diferencia autorizada</span><strong>{{ control.dias_con_diferencia_autorizada }}</strong></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Diferencia de caja acumulada</span><strong>{{ control.diferencia_acumulada|floatformat:0 }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)" title="Todas las cajas del día con diferencia de hasta ${{ control.umbral_diferencia_caja|miles }} (en más o en menos)"><span style="color:var(--hu-gray)">Días dentro de umbral (±${{ control.umbral_diferencia_caja|miles }})</span><strong>{{ control.dias_dentro_de_umbral }} de {{ control.dias_operados }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Días cuadrados exactos ($0)</span><strong>{{ control.dias_cerrados_sin_diferencia }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Sobre umbral, con autorización</span><strong>{{ control.dias_con_diferencia_autorizada }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--hu-card-line)"><span style="color:var(--hu-gray)">Diferencia de caja acumulada</span><strong>{{ control.diferencia_acumulada|pesos }}</strong></div>
       <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--hu-gray)">Días de cierre a aprobación</span><strong>{% if control.dias_cierre_a_aprobacion_promedio %}{{ control.dias_cierre_a_aprobacion_promedio|floatformat:1 }}{% else %}—{% endif %}</strong></div>
     </div>
+    <div style="font-size:12px;margin-top:8px"><a href="{% url 'desempeno_cajeras' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}">Ver desempeño por cajera →</a></div>
+  </div>
+  <div>
+    <div class="kick" style="margin-bottom:12px">Top 8 productos del período</div>
+    <table class="tbl">
+      <thead><tr><th>Producto</th><th class="n">Unid.</th><th class="n">% acum.</th></tr></thead>
+      <tbody>
+        {% for p in top_productos %}
+        <tr><td>{{ p.nombre }}</td><td class="n">{{ p.unidades|miles }}</td><td class="n">{{ p.pct_acumulado|floatformat:1 }}</td></tr>
+        {% empty %}
+        <tr><td colspan="3" style="text-align:center;color:var(--hu-gray)">Sin días cerrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 
 <div style="margin:28px 32px 32px;padding:16px 20px;background:var(--hu-pink-2);border-left:3px solid var(--hu-red);font-size:13.5px;line-height:1.6">
   <strong style="color:var(--hu-maroon)">Regla de la fuente única.</strong> El tablero solo suma días en estado <em>Cerrado</em> o <em>Exportado</em>. Un día con excepciones abiertas no entra en la venta del período.
   {% if dias_excluidos %}
-  Se excluyen {{ dias_excluidos|length }} día(s) por un total provisorio de ${{ total_excluido|floatformat:0 }}:
+  Se excluyen {{ dias_excluidos|length }} día(s) por un total provisorio de ${{ total_excluido|miles }}:
   <ul style="margin:8px 0 0">
     {% for de in dias_excluidos %}
-    <li><a href="{% url 'dashboard_dia' fecha=de.dia.fecha|date:'Y-m-d' %}">{{ de.dia.fecha }}</a> — {{ de.dia.get_estado_display }} · ${{ de.monto_provisorio|floatformat:0 }}</li>
+    <li><a href="{% url 'dashboard_dia' fecha=de.dia.fecha|date:'Y-m-d' %}">{{ de.dia.fecha }}</a> — {{ de.dia.get_estado_display }} · ${{ de.monto_provisorio|miles }}</li>
     {% endfor %}
   </ul>
   {% else %}

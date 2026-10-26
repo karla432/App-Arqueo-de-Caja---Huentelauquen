@@ -1,6 +1,7 @@
 from django.urls import path
 
 from nucleo import dia_trabajo as vdt
+from nucleo import views_cajeras as vcj
 from nucleo import views_cierre_mes as vcm
 from nucleo import (
     views, views_auditoria as va, views_exportaciones as vex, views_consolidado as vco, views_configuracion as vc, views_depositos as vd,
@@ -13,6 +14,8 @@ urlpatterns = [
     path("cierre-mes/", vcm.cierre_mes, name="cierre_mes"),
     path("cierre-mes/<str:mes>/cerrar/", vcm.cerrar_mes_view, name="cerrar_mes"),
     path("cierre-mes/<str:mes>/reabrir/", vcm.reabrir_mes_view, name="reabrir_mes"),
+    path("desempeno-cajeras/", vcj.desempeno_cajeras, name="desempeno_cajeras"),
+    path("desempeno-cajeras/descargar/", vcj.descargar_desempeno_cajeras, name="descargar_desempeno_cajeras"),
     path("reporte-productos/", views.reporte_ventas_producto, name="reporte_ventas_producto"),
     path("reporte-productos/descargar/", views.descargar_reporte_ventas_producto, name="descargar_reporte_ventas_producto"),
     path("excepciones/<str:fecha>/", views.bandeja_excepciones, name="bandeja_excepciones"),

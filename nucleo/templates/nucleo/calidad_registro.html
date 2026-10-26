@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Calidad de registro{% endblock %}
 {% block contenido %}
 <div style="padding:30px 34px 34px">
@@ -18,7 +19,7 @@
 
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px">
     <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Conciliado automático</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ pct_automatico|floatformat:1 }}%</div></div>
-    <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Score promedio</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ score_promedio|floatformat:0 }}</div></div>
+    <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Score promedio</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ score_promedio|miles }}</div></div>
     <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Ventas sin autorización</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ pct_sin_autorizacion|floatformat:1 }}%</div><div style="font-size:12px;color:var(--hu-maroon)">el POS no captura autorización — ver D1</div></div>
     <div class="card" style="padding:16px 18px"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Medios mal declarados</div><div style="font-family:var(--hu-serif);font-size:29px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ medios_mal_declarados }}</div></div>
   </div>

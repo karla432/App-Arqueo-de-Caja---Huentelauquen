@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Histórico{% endblock %}
 {% block contenido %}
 <div style="padding:30px 34px 34px">
@@ -21,7 +22,7 @@
       <thead><tr><th>Día</th><th>Comanda</th><th>Comprobante</th><th class="n">Total</th></tr></thead>
       <tbody>
         {% for v in resultados.ventas %}
-        <tr><td><a href="{% url 'dashboard_dia' fecha=v.dia.fecha|date:'Y-m-d' %}">{{ v.dia.fecha }}</a></td><td>{{ v.n_interno }}</td><td>{{ v.nro_comprobante }}</td><td class="n">{{ v.total_comanda|floatformat:0 }}</td></tr>
+        <tr><td><a href="{% url 'dashboard_dia' fecha=v.dia.fecha|date:'Y-m-d' %}">{{ v.dia.fecha }}</a></td><td>{{ v.n_interno }}</td><td>{{ v.nro_comprobante }}</td><td class="n">{{ v.total_comanda|miles }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -31,7 +32,7 @@
       <thead><tr><th>Día</th><th>Hora</th><th>Autorización</th><th class="n">Monto</th></tr></thead>
       <tbody>
         {% for m in resultados.movimientos %}
-        <tr><td><a href="{% url 'dashboard_dia' fecha=m.dia.fecha|date:'Y-m-d' %}">{{ m.dia.fecha }}</a></td><td>{{ m.fecha_hora|date:"H:i" }}</td><td>{{ m.autorizacion }}</td><td class="n">{{ m.monto_venta_valido_abono|floatformat:0 }}</td></tr>
+        <tr><td><a href="{% url 'dashboard_dia' fecha=m.dia.fecha|date:'Y-m-d' %}">{{ m.dia.fecha }}</a></td><td>{{ m.fecha_hora|date:"H:i" }}</td><td>{{ m.autorizacion }}</td><td class="n">{{ m.monto_venta_valido_abono|miles }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -92,14 +93,14 @@
       {% for f in dias %}
       <tr>
         <td><a href="{% url 'dashboard_dia' fecha=f.dia.fecha|date:'Y-m-d' %}">{{ f.dia.fecha }}</a></td>
-        <td class="n">{{ f.venta_total|floatformat:0 }}</td>
-        <td class="n">{% if f.guias %}{{ f.guias|floatformat:0 }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
-        <td class="n">{{ f.transbank|floatformat:0 }}</td>
-        <td class="n">{{ f.efectivo|floatformat:0 }}</td>
-        <td class="n" style="color:var(--hu-gray)">{{ f.mercado_pago|floatformat:0 }}</td>
+        <td class="n">{{ f.venta_total|miles }}</td>
+        <td class="n">{% if f.guias %}{{ f.guias|miles }}{% else %}<span style="color:var(--hu-gray)">—</span>{% endif %}</td>
+        <td class="n">{{ f.transbank|miles }}</td>
+        <td class="n">{{ f.efectivo|miles }}</td>
+        <td class="n" style="color:var(--hu-gray)">{{ f.mercado_pago|miles }}</td>
         <td class="n">{{ f.pct_automatico|floatformat:1 }}%</td>
         <td class="n">{{ f.excepciones_abiertas }}</td>
-        <td class="n">{{ f.diferencia_caja|floatformat:0 }}</td>
+        <td class="n">{{ f.diferencia_caja|miles }}</td>
         <td>
           {% if f.dia.estado == "exportado" %}<span class="pill p-ok">Exportado</span>
           {% elif f.excepciones_abiertas > 0 %}<span class="pill p-red">Excepciones</span>

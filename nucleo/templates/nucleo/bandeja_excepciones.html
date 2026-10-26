@@ -6,7 +6,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 30px;background:var(--hu-maroon)">
   <div>
     <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Arqueo {{ dia.fecha }} · excepciones</div>
-    <div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">{{ excepciones.count }} abiertas · ${{ monto_total_en_juego|floatformat:0 }} en juego</div>
+    <div style="font-family:var(--hu-serif);font-size:24px;font-weight:700;color:#fff;margin-top:2px">{{ excepciones.count }} abiertas · ${{ monto_total_en_juego|miles }} en juego</div>
   </div>
   <form method="post" action="{% url 'reconciliar_dia' fecha=dia.fecha|date:'Y-m-d' %}">
     {% csrf_token %}
@@ -30,7 +30,7 @@
        style="display:block;padding:14px 20px;border-bottom:1px solid var(--hu-card-line);color:inherit;text-decoration:none;{% if excepcion_actual.pk == e.pk %}background:var(--hu-pink-2);border-left:3px solid var(--hu-red);{% endif %}">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
         <span class="pill {% if e.abierta %}p-red{% else %}p-grey{% endif %}">{{ e.get_tipo_display }}</span>
-        <strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">${{ e.monto_en_juego|floatformat:0 }}</strong>
+        <strong style="font-family:var(--hu-serif);font-size:17px;color:var(--hu-maroon)">${{ e.monto_en_juego|miles }}</strong>
       </div>
       <div style="font-size:13px;margin-top:7px;line-height:1.5">
         {% if e.pago %}Comanda <strong>{{ e.pago.venta.n_interno }}</strong> · {{ e.pago.venta.caja }}{% endif %}
@@ -48,7 +48,7 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
       <div>
         <div class="kick">{{ excepcion_actual.get_tipo_display }}</div>
-        <h3 style="font-size:24px;margin-top:3px">${{ excepcion_actual.monto_en_juego|floatformat:0 }}</h3>
+        <h3 style="font-size:24px;margin-top:3px">${{ excepcion_actual.monto_en_juego|miles }}</h3>
       </div>
     </div>
 
@@ -61,7 +61,7 @@
           <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Caja</span><strong>{{ excepcion_actual.pago.venta.caja }}</strong></div>
           <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Hora de cierre</span><strong>{{ excepcion_actual.pago.venta.hora_cierre|default:excepcion_actual.pago.venta.hora_apertura }}</strong></div>
           <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Medio declarado</span><strong>{{ excepcion_actual.pago.get_medio_display }}</strong></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Monto</span><strong>${{ excepcion_actual.pago.monto|floatformat:0 }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--hu-gray)">Monto</span><strong>${{ excepcion_actual.pago.monto|miles }}</strong></div>
         </div>
         {% else %}
         <div style="color:var(--hu-gray);font-size:13px">Sin comanda del POS que respalde este movimiento.</div>
@@ -73,7 +73,7 @@
         <div style="font-size:13.5px;line-height:2;color:var(--hu-maroon)">
           <div style="display:flex;justify-content:space-between"><span>Hora</span><strong>{{ excepcion_actual.movimiento.fecha_hora|date:"H:i" }}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>Medio</span><strong>{{ excepcion_actual.movimiento.medio }}</strong></div>
-          <div style="display:flex;justify-content:space-between"><span>Monto</span><strong>${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Monto</span><strong>${{ excepcion_actual.movimiento.monto_venta_valido_abono|miles }}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>Terminal</span><strong>{{ excepcion_actual.movimiento.terminal }}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>Autorización</span><strong>{{ excepcion_actual.movimiento.autorizacion|default:"—" }}</strong></div>
         </div>
@@ -97,8 +97,8 @@
         <div><strong>{{ excepcion_actual.get_resolucion_display }}</strong>{% if excepcion_actual.motivo %} · {{ excepcion_actual.motivo.texto }}{% endif %}</div>
         {% if excepcion_actual.comentario %}<div style="color:var(--hu-gray)">«{{ excepcion_actual.comentario }}»</div>{% endif %}
         {% if excepcion_actual.factura_asociada %}<div>Boleta asignada: <strong>{{ excepcion_actual.factura_asociada }}</strong></div>{% endif %}
-        {% if excepcion_actual.monto_perdida_ganancia %}<div>{{ excepcion_actual.cuenta_contable.nombre }} · ${{ excepcion_actual.monto_perdida_ganancia|floatformat:0 }}{% if excepcion_actual.cajera_responsable %} · {{ excepcion_actual.cajera_responsable.nombre }}{% endif %}</div>{% endif %}
-        {% for l in excepcion_actual.lineas_conciliacion.all %}<div>{{ l.get_medio_conciliado_display }} · ${{ l.monto_conciliado|floatformat:0 }}{% if l.movimiento %} · cobro {{ l.movimiento.fecha_hora|date:"H:i" }}{% endif %}</div>{% endfor %}
+        {% if excepcion_actual.monto_perdida_ganancia %}<div>{{ excepcion_actual.cuenta_contable.nombre }} · ${{ excepcion_actual.monto_perdida_ganancia|miles }}{% if excepcion_actual.cajera_responsable %} · {{ excepcion_actual.cajera_responsable.nombre }}{% endif %}</div>{% endif %}
+        {% for l in excepcion_actual.lineas_conciliacion.all %}<div>{{ l.get_medio_conciliado_display }} · ${{ l.monto_conciliado|miles }}{% if l.movimiento %} · cobro {{ l.movimiento.fecha_hora|date:"H:i" }}{% endif %}</div>{% endfor %}
         <div style="font-size:12px;color:var(--hu-gray)">{{ excepcion_actual.resuelta_por.get_full_name|default:excepcion_actual.resuelta_por.username }} · {{ excepcion_actual.resuelta_en|date:"d-m-Y H:i" }}</div>
       </div>
     </div>
@@ -131,14 +131,14 @@
           <div style="margin-top:14px;padding:12px 14px;background:#fff;border:1px solid var(--hu-card-line)">
             <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:6px">¿Es una venta que la cajera registró en efectivo?</div>
             {% if boletas_efectivo_mismo_monto %}
-            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Boletas en efectivo de ${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }} de este día. Al elegirla, la boleta pasa a tarjeta y el efectivo esperado de su caja baja en ese monto.</div>
+            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Boletas en efectivo de ${{ excepcion_actual.movimiento.monto_venta_valido_abono|miles }} de este día. Al elegirla, la boleta pasa a tarjeta y el efectivo esperado de su caja baja en ese monto.</div>
             <select name="pago_objetivo" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans)">
               <option value="">Elige la boleta…</option>
-              {% for p in boletas_efectivo_mismo_monto %}<option value="{{ p.pk }}">Comanda {{ p.venta.n_interno }} · {{ p.venta.caja }} · {{ p.venta.hora_cierre|default:p.venta.hora_apertura|time:"H:i" }} · ${{ p.monto|floatformat:0 }}</option>{% endfor %}
+              {% for p in boletas_efectivo_mismo_monto %}<option value="{{ p.pk }}">Comanda {{ p.venta.n_interno }} · {{ p.venta.caja }} · {{ p.venta.hora_cierre|default:p.venta.hora_apertura|time:"H:i" }} · ${{ p.monto|miles }}</option>{% endfor %}
             </select>
             <button type="submit" name="resolucion" value="corregir_medio" class="btn btn-2" style="margin-top:8px;justify-content:center;width:100%">Corregir medio: era tarjeta</button>
             {% else %}
-            <div style="font-size:12.5px;color:var(--hu-gray)">No hay boletas en efectivo de ${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }} este día.</div>
+            <div style="font-size:12.5px;color:var(--hu-gray)">No hay boletas en efectivo de ${{ excepcion_actual.movimiento.monto_venta_valido_abono|miles }} este día.</div>
             {% endif %}
           </div>
           {% endif %}
@@ -146,9 +146,9 @@
           <div style="margin-top:10px;padding:12px 14px;background:#fff;border:1px solid var(--hu-card-line)">
             <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:6px">¿Este cobro pagó varias boletas?</div>
             {% if boletas_sin_cobro %}
-            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Marca las boletas sin cobro que se pagaron juntas con este cobro. Deben sumar exactamente ${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }}.</div>
+            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Marca las boletas sin cobro que se pagaron juntas con este cobro. Deben sumar exactamente ${{ excepcion_actual.movimiento.monto_venta_valido_abono|miles }}.</div>
             {% for e in boletas_sin_cobro %}
-            <label style="display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0"><input type="checkbox" name="pagos_agrupados" value="{{ e.pago_id }}"> Comanda {{ e.pago.venta.n_interno }} · {{ e.pago.venta.caja }} · {{ e.pago.venta.hora_cierre|time:"H:i" }} · <strong>${{ e.pago.monto|floatformat:0 }}</strong></label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0"><input type="checkbox" name="pagos_agrupados" value="{{ e.pago_id }}"> Comanda {{ e.pago.venta.n_interno }} · {{ e.pago.venta.caja }} · {{ e.pago.venta.hora_cierre|time:"H:i" }} · <strong>${{ e.pago.monto|miles }}</strong></label>
             {% endfor %}
             <button type="submit" name="resolucion" value="agrupar" class="btn btn-2" style="margin-top:8px;justify-content:center;width:100%">Vincular estas boletas a este cobro</button>
             {% else %}
@@ -157,7 +157,7 @@
           </div>
           <div style="margin-top:10px;padding:12px 14px;background:#fff;border:1px solid var(--hu-card-line)">
             <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin-bottom:6px">¿No es una venta? Registrar como ganancia de caja</div>
-            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">El cobro completo (${{ excepcion_actual.movimiento.monto_venta_valido_abono|floatformat:0 }}) va a una cuenta de ganancia, a nombre de la cajera. No se emite boleta.</div>
+            <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">El cobro completo (${{ excepcion_actual.movimiento.monto_venta_valido_abono|miles }}) va a una cuenta de ganancia, a nombre de la cajera. No se emite boleta.</div>
             <select name="cuenta_contable_id" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans);margin-bottom:8px">
               <option value="">Cuenta contable…</option>
               {% for c in cuentas_contables %}{% if c.tipo == "ganancia" %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endif %}{% endfor %}
@@ -176,7 +176,7 @@
           <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray);margin:14px 0 8px">Vincular con otro movimiento</div>
           <select name="movimiento_alternativo" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans)">
             <option value="">— ninguno —</option>
-            {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
+            {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|miles }}</option>{% endfor %}
           </select>
           {% endif %}
           {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
@@ -190,7 +190,7 @@
           {% for i in "12" %}
           <select name="movimiento_adicional" style="width:100%;padding:9px 12px;border:1px solid var(--hu-card-line);font-size:13.5px;font-family:var(--hu-sans);margin-bottom:8px">
             <option value="">Cobro adicional (opcional)…</option>
-            {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
+            {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|miles }}</option>{% endfor %}
           </select>
           {% endfor %}
           {% endif %}
@@ -209,10 +209,10 @@
             </select>
             <button type="submit" name="resolucion" value="corregir_medio" class="btn btn-2" style="justify-content:center">Corregir medio</button>
           </div>
-          <div style="font-size:12px;color:var(--hu-gray);margin-top:4px">El efectivo esperado de {{ excepcion_actual.pago.venta.caja }} sube en ${{ excepcion_actual.pago.monto|floatformat:0 }}.</div>
+          <div style="font-size:12px;color:var(--hu-gray);margin-top:4px">El efectivo esperado de {{ excepcion_actual.pago.venta.caja }} sube en ${{ excepcion_actual.pago.monto|miles }}.</div>
           {% endif %}
           {% if excepcion_actual.tipo == "pago_sin_movimiento" or excepcion_actual.tipo == "diferencia_monto" %}
-          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Pagar con varios cobros o medios · las líneas deben sumar ${{ excepcion_actual.pago.monto|floatformat:0 }}</div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon);margin:14px 0 8px">Pagar con varios cobros o medios · las líneas deben sumar ${{ excepcion_actual.pago.monto|miles }}</div>
           <div style="font-size:12px;color:var(--hu-gray);margin-bottom:6px">Una línea por cada cobro (ej. crédito $25.900 + crédito $2.500) o por cada medio (ej. débito + efectivo). Los cobros elegidos se cierran solos. Si la cajera cobró de más con tarjeta y devolvió la diferencia desde la caja, agrega una línea <strong>Efectivo en negativo</strong> (ej. débito $20.000 con su cobro + efectivo −18000).</div>
           {% for i in "123" %}
           <div style="display:flex;gap:6px;margin-bottom:6px">
@@ -226,7 +226,7 @@
             <input type="number" name="linea_monto_{{ i }}" placeholder="Monto" style="width:110px;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px">
             <select name="linea_movimiento_{{ i }}" style="flex:1;padding:7px 8px;border:1px solid var(--hu-card-line);font-size:12.5px;font-family:var(--hu-sans)">
               <option value="">Sin movimiento (ej. efectivo)</option>
-              {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|floatformat:0 }}</option>{% endfor %}
+              {% for m in movimientos_libres %}<option value="{{ m.pk }}">{{ m.fecha_hora|date:"H:i" }} · {{ m.medio }} · ${{ m.monto_venta_valido_abono|miles }}</option>{% endfor %}
             </select>
           </div>
           {% endfor %}

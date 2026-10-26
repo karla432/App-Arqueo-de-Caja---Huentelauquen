@@ -1,0 +1,157 @@
+{% extends "nucleo/base.html" %}
+{% load formato %}
+{% block titulo %}Desempeño de cajeras{% endblock %}
+{% block estilos_extra %}
+<style>
+.dc-sem{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:6px}
+.dc-verde{background:var(--hu-ok)}.dc-amarillo{background:#E0A100}.dc-rojo{background:var(--hu-red)}.dc-gris{background:#bbb}
+.dc-tasa{font-weight:700}
+.dc-top{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px}
+.dc-top .nom{width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-top .barra{flex:1;background:#F4ECEE;height:16px;position:relative}
+.dc-top .barra div{height:100%}
+.dc-top .val{width:150px;text-align:right;color:var(--hu-gray);font-size:12px}
+.dc-nota{font-size:12.5px;color:var(--hu-gray);line-height:1.55}
+.tbl td.n,.tbl th.n{text-align:right}
+</style>
+{% endblock %}
+{% block contenido %}
+
+<div style="padding:20px 32px;background:var(--hu-maroon)">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#D9A3AD">Análisis · Desempeño de cajeras</div>
+      <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:#fff;margin-top:2px">{{ desde|date:"d-m-Y" }} al {{ hasta|date:"d-m-Y" }}</div>
+      <div style="font-size:12.5px;color:#E8C9CF;margin-top:3px">{{ dias_incluidos }} día{{ dias_incluidos|pluralize }} cerrado{{ dias_incluidos|pluralize }}{% if dias_sin_cerrar %} · {{ dias_sin_cerrar }} día{{ dias_sin_cerrar|pluralize }} sin cerrar no se cuenta{{ dias_sin_cerrar|pluralize:"n" }} todavía{% endif %}</div>
+    </div>
+    <form method="get" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:5px">Desde</div>
+        <input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}" style="padding:9px 14px;border:1px solid var(--hu-line);font-size:13px">
+      </div>
+      <div>
+        <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#D9A3AD;margin-bottom:5px">Hasta</div>
+        <input type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}" style="padding:9px 14px;border:1px solid var(--hu-line);font-size:13px">
+      </div>
+      <button type="submit" class="btn" style="padding:10px 16px">Aplicar</button>
+      {% if puede_descargar %}<a class="btn btn-2" style="padding:10px 16px;background:#fff" href="{% url 'descargar_desempeno_cajeras' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}">Descargar Excel</a>{% endif %}
+    </form>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
+    {% for valor, etiqueta in atajos %}
+    <a href="?atajo={{ valor }}" style="font-size:11.5px;padding:4px 10px;text-decoration:none;background:{% if atajo == valor %}var(--hu-red){% else %}#7A0021{% endif %};color:{% if atajo == valor %}#fff{% else %}#E8C9CF{% endif %};font-weight:700">{{ etiqueta }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div style="padding:24px 32px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+  <div style="background:var(--hu-pink);border:1px solid var(--hu-line);padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Errores cada 100 comandas</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{% if totales.tasa is not None %}{{ totales.tasa|floatformat:2 }}{% else %}—{% endif %}</div>
+    <div style="font-size:12px;color:var(--hu-maroon);margin-top:2px">{{ totales.errores|miles }} error{{ totales.errores|pluralize:"es" }} en {{ totales.comandas|miles }} comandas</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Faltante de efectivo</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ totales.faltante|miles }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">sobrante ${{ totales.sobrante|miles }}</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Errores de medio de pago</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">{{ totales.errores_medio|miles }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px">{{ totales.cobros_de_mas|add:totales.cobros_de_menos }} cobro{{ totales.cobros_de_mas|add:totales.cobros_de_menos|pluralize }} de más o de menos</div>
+  </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Reintegros pendientes</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);line-height:1.15;margin-top:4px">${{ totales.reintegro_pendiente|miles }}</div>
+    <div style="font-size:12px;color:var(--hu-gray);margin-top:2px"><a href="{% url 'reintegros_caja' %}">Ver Reintegros de Cajeras →</a></div>
+  </div>
+</div>
+
+{% if sin_cajera %}
+<div style="margin:18px 32px 0;padding:11px 16px;background:#FDF3E3;border-left:3px solid var(--hu-warn);font-size:13px">
+  <strong style="color:var(--hu-warn)">{{ sin_cajera.comandas|miles }} comanda{{ sin_cajera.comandas|pluralize }} sin cajera asignada.</strong> No se pueden atribuir a nadie: asigna la cajera de cada caja en Arqueo de Efectivo para que el informe sea completo.
+</div>
+{% endif %}
+
+<div style="padding:26px 32px 0">
+  <div class="kick" style="margin-bottom:10px">Top {{ top|length|default:5 }} · más errores cada 100 comandas</div>
+  {% for f in top %}
+  <div class="dc-top">
+    <span class="nom"><span class="dc-sem dc-{{ f.semaforo }}"></span>{{ f.cajera }}</span>
+    <span class="barra"><div class="dc-{{ f.semaforo }}" style="width:{% widthratio f.tasa max_tasa 100 %}%"></div></span>
+    <span class="val"><strong style="color:var(--hu-maroon)">{{ f.tasa|floatformat:2 }}</strong> · {{ f.errores }} de {{ f.comandas|miles }}</span>
+  </div>
+  {% empty %}
+  <div class="dc-nota">Ninguna cajera tiene errores en el período.</div>
+  {% endfor %}
+  <div class="dc-nota" style="margin-top:8px">
+    <span class="dc-sem dc-verde"></span>hasta {{ verde|miles }} &nbsp;
+    <span class="dc-sem dc-amarillo"></span>hasta {{ amarillo|miles }} &nbsp;
+    <span class="dc-sem dc-rojo"></span>más de {{ amarillo|miles }} errores cada 100 comandas{% if puede_configurar %} · <a href="{% url 'configuracion' %}">cambiar límites</a>{% endif %}
+  </div>
+</div>
+
+<div style="padding:26px 32px 0">
+  <div class="kick" style="margin-bottom:10px">Detalle por cajera</div>
+  <div style="overflow-x:auto">
+  <table class="tbl">
+    <thead><tr>
+      <th>Cajera</th><th class="n">Días</th><th class="n">Comandas</th><th class="n">Faltante</th><th class="n">Sobrante</th>
+      <th class="n" title="Cajas cerradas con diferencia sobre ±${{ umbral_caja|miles }}">Días fuera de umbral</th>
+      <th class="n">Errores de medio</th><th class="n">Cobros de más</th><th class="n">Cobros de menos</th>
+      <th class="n">Errores c/100</th><th class="n">NC</th><th class="n">Reintegro pendiente</th>
+    </tr></thead>
+    <tbody>
+      {% for f in filas %}
+      <tr>
+        <td style="white-space:nowrap"><span class="dc-sem dc-{{ f.semaforo }}"></span>{{ f.cajera }}</td>
+        <td class="n">{{ f.dias_trabajados }}</td>
+        <td class="n">{{ f.comandas|miles }}</td>
+        <td class="n">{% if f.faltante %}${{ f.faltante|miles }}{% else %}—{% endif %}</td>
+        <td class="n">{% if f.sobrante %}${{ f.sobrante|miles }}{% else %}—{% endif %}</td>
+        <td class="n">{{ f.dias_fuera_umbral|default:"—" }}</td>
+        <td class="n">{{ f.errores_medio|default:"—" }}</td>
+        <td class="n">{{ f.cobros_de_mas|default:"—" }}</td>
+        <td class="n">{{ f.cobros_de_menos|default:"—" }}</td>
+        <td class="n dc-tasa">{% if f.tasa is not None %}{{ f.tasa|floatformat:2 }}{% else %}—{% endif %}</td>
+        <td class="n">{% if f.notas_credito %}{{ f.notas_credito }} · ${{ f.monto_nc|miles }}{% else %}—{% endif %}</td>
+        <td class="n">{% if f.reintegro_pendiente %}${{ f.reintegro_pendiente|miles }}{% else %}—{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="12" style="text-align:center;color:var(--hu-gray)">Sin días cerrados en el período.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if filas %}
+    <tfoot><tr style="font-weight:700">
+      <td>Total</td><td></td><td class="n">{{ totales.comandas|miles }}</td><td class="n">${{ totales.faltante|miles }}</td><td class="n">${{ totales.sobrante|miles }}</td>
+      <td class="n">{{ totales.dias_fuera_umbral }}</td><td class="n">{{ totales.errores_medio }}</td><td class="n">{{ totales.cobros_de_mas }}</td><td class="n">{{ totales.cobros_de_menos }}</td>
+      <td class="n">{% if totales.tasa is not None %}{{ totales.tasa|floatformat:2 }}{% endif %}</td><td class="n">{{ totales.notas_credito }}</td><td class="n">${{ totales.reintegro_pendiente|miles }}</td>
+    </tr></tfoot>
+    {% endif %}
+  </table>
+  </div>
+  <div class="dc-nota" style="margin-top:10px">
+    <strong>Qué cuenta como error:</strong> un día con la caja fuera de umbral (diferencia de efectivo sobre ±${{ umbral_caja|miles }}), una boleta registrada con un medio de pago y cobrada con otro, y un cobro con tarjeta de más o de menos (resuelto como ganancia o pérdida de caja). Las notas de crédito se muestran, pero no suman errores: una devolución no siempre es un error de la cajera. La cajera de cada comanda es la asignada a su caja en el Arqueo de Efectivo de ese día.
+  </div>
+</div>
+
+<div style="padding:26px 32px 40px">
+  <div class="kick" style="margin-bottom:10px">Incidentes del período · {{ incidentes|length }}</div>
+  {% if incidentes %}
+  <table class="tbl">
+    <thead><tr><th>Fecha</th><th>Cajera</th><th>Caja</th><th>Tipo</th><th>Comanda</th><th class="n">Monto</th><th>Detalle</th></tr></thead>
+    <tbody>
+      {% for i in incidentes %}
+      <tr>
+        <td style="white-space:nowrap"><a href="{% url i.destino fecha=i.fecha|date:'Y-m-d' %}">{{ i.fecha|date:"d-m-Y" }}</a></td>
+        <td>{{ i.cajera }}</td><td>{{ i.caja|default:"—" }}</td><td>{{ i.tipo }}</td><td>{{ i.comanda|default:"—" }}</td>
+        <td class="n">{{ i.monto|pesos }}</td><td style="font-size:12.5px">{{ i.detalle }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="dc-nota">Sin incidentes en el período.</div>
+  {% endif %}
+</div>
+{% endblock %}

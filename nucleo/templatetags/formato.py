@@ -1,4 +1,4 @@
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django import template
 
@@ -15,9 +15,12 @@ def abs_valor(valor):
 
 @register.filter
 def miles(valor):
-    """60000 -> "60.000" (separador de miles chileno, sin decimales)."""
+    """60000 -> "60.000" (separador de miles chileno, sin decimales; redondea como floatformat:0)."""
+    if valor is None or valor == "":
+        return ""
     try:
-        return f"{int(Decimal(valor)):,}".replace(",", ".")
+        entero = int(Decimal(str(valor)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        return f"{entero:,}".replace(",", ".")
     except (InvalidOperation, TypeError, ValueError):
         return valor
 
