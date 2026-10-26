@@ -646,6 +646,8 @@ def ventas_dashboard(request):
     contexto["max_dia"] = max([m for _, m in contexto["por_dia"]], default=0) or 1
     contexto["max_hora"] = max([m for _, m in contexto["por_hora"]], default=0) or 1
     contexto["total_excluido"] = sum(de["monto_provisorio"] for de in contexto["dias_excluidos"])
+    from nucleo.desempeno_cajeras_servicio import venta_por_cajera
+    contexto["ventas_cajeras"] = venta_por_cajera(desde, hasta)
     return render(request, "nucleo/ventas_dashboard.html", contexto)
 
 

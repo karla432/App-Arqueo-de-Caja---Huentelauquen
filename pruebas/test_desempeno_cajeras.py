@@ -148,3 +148,27 @@ def test_excel_trae_resumen_e_incidentes(periodo, tmp_path):
     filas = list(wb["Resumen"].iter_rows(min_row=5, values_only=True))
     assert filas[0][0] == "Ana" and filas[0][12] == "Rojo" and filas[0][11] == 100
     assert wb["Incidentes"].max_row == 4  # encabezado + 3 incidentes
+
+
+# ------------------------------------------------------------------ venta por cajera
+
+def test_venta_por_cajera_ordenada_por_venta_por_dia_trabajado(periodo):
+    from nucleo.desempeno_cajeras_servicio import venta_por_cajera
+    v = venta_por_cajera(date(2026, 10, 1), date(2026, 10, 31))
+    assert [f["cajera"] for f in v["filas"]] == ["Ana", "Bea", "Sin cajera asignada"]
+    ana, bea = v["filas"][0], v["filas"][1]
+    assert (ana["venta"], ana["comandas"], ana["ticket"], ana["venta_por_dia"]) == (3000, 2, 1500, 3000)
+    assert (bea["venta"], bea["dias_trabajados"], bea["ticket"], bea["venta_por_dia"]) == (1200, 2, 600, 600)
+    assert v["ticket_general"] == 1020 and v["lider"]["cajera"] == "Ana"
+    assert round(ana["ticket_vs_general"], 1) == 47.1
+
+
+def test_venta_por_cajera_en_tablero_informe_y_excel(client, periodo, usuario, tmp_path):
+    client.force_login(usuario)
+    for url in (reverse("ventas_dashboard") + "?atajo=personalizado&desde=2026-10-01&hasta=2026-10-31",
+                reverse("desempeno_cajeras") + "?desde=2026-10-01&hasta=2026-10-31"):
+        html = client.get(url).content.decode()
+        assert "Venta por cajera" in html and "Lidera" in html and "$1.500" in html
+    wb = openpyxl.load_workbook(generar_excel(date(2026, 10, 1), date(2026, 10, 31), carpeta=tmp_path))
+    hoja = list(wb["Venta por cajera"].iter_rows(min_row=2, values_only=True))
+    assert hoja[0][0] == "Ana" and hoja[0][5] == 1500 and hoja[0][6] == 3000

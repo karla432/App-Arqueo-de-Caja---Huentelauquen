@@ -60,6 +60,46 @@ def _fila_vacia(nombre: str, cajera_id) -> dict:
     }
 
 
+def venta_por_cajera(desde: date, hasta: date) -> dict:
+    """Quién vende más (Karla, 2026-10-26): venta, comandas, ticket promedio, venta por día trabajado y unidades
+    por comanda de cada cajera. Ordenado por venta por día trabajado: la venta total depende de cuántos días
+    trabajó cada una. La cajera de una comanda es la asignada a su caja en el arqueo de ese día."""
+    from django.db.models import Sum
+
+    dias = DiaArqueo.objects.filter(fecha__range=(desde, hasta), estado__in=ESTADOS_INCLUIDOS)
+    cajera_de_caja = {(a.dia_id, a.caja): a.cajera for a in ArqueoEfectivo.objects.filter(dia__in=dias).select_related("cajera")}
+    filas: dict = {}
+    for v in Venta.objects.filter(dia__in=dias).annotate(unid=Sum("lineas__cantidad")).only("dia_id", "caja", "total_comanda"):
+        cajera = cajera_de_caja.get((v.dia_id, v.caja))
+        clave = cajera.pk if cajera else None
+        f = filas.setdefault(clave, {"cajera": cajera.nombre if cajera else SIN_CAJERA, "cajera_id": clave,
+                                     "dias": set(), "comandas": 0, "venta": Decimal(0), "unidades": Decimal(0)})
+        f["dias"].add(v.dia_id)
+        f["comandas"] += 1
+        f["venta"] += v.total_comanda
+        f["unidades"] += v.unid or 0
+    total_venta = sum(f["venta"] for f in filas.values())
+    total_comandas = sum(f["comandas"] for f in filas.values())
+    resultado = []
+    for f in filas.values():
+        f["dias_trabajados"] = len(f.pop("dias"))
+        f["ticket"] = f["venta"] / f["comandas"]
+        f["venta_por_dia"] = f["venta"] / f["dias_trabajados"]
+        f["unidades_por_comanda"] = float(f["unidades"]) / f["comandas"]
+        f["pct"] = float(f["venta"]) / float(total_venta) * 100 if total_venta else 0
+        resultado.append(f)
+    resultado.sort(key=lambda f: (f["cajera_id"] is None, -f["venta_por_dia"], f["cajera"]))
+    ticket_general = (total_venta / total_comandas) if total_comandas else Decimal(0)
+    for f in resultado:
+        f["ticket_vs_general"] = (float(f["ticket"]) / float(ticket_general) - 1) * 100 if ticket_general else None
+    con_cajera = [f for f in resultado if f["cajera_id"]]
+    maximo = max((f["venta_por_dia"] for f in con_cajera), default=0) or 1
+    for f in resultado:
+        f["alto"] = round(float(f["venta_por_dia"]) / float(maximo) * 100)
+    return {"filas": resultado, "ticket_general": ticket_general, "total_venta": total_venta,
+            "total_comandas": total_comandas, "lider": con_cajera[0] if con_cajera else None}
+
+
 def desempeno(desde: date, hasta: date) -> dict:
     tope = umbral("umbral_diferencia_caja")
     verde, amarillo = limites_semaforo()
@@ -171,6 +211,7 @@ def desempeno(desde: date, hasta: date) -> dict:
     return {
         "desde": desde, "hasta": hasta, "filas": resultado, "top": top, "incidentes": incidentes,
         "totales": totales, "verde": verde, "amarillo": amarillo, "umbral_caja": tope,
+        "ventas": venta_por_cajera(desde, hasta),
         "dias_incluidos": dias.count(), "dias_sin_cerrar": pendientes, "sin_cajera": sin_cajera,
     }
 
@@ -218,6 +259,27 @@ def generar_excel(desde: date, hasta: date, carpeta: Path | None = None) -> Path
     ws.column_dimensions["A"].width = 28
     for letra in "BCDEFGHIJKLMNO":
         ws.column_dimensions[letra].width = 14
+
+    wv = wb.create_sheet("Venta por cajera", 1)
+    wv.append(["Cajera", "Días trabajados", "Comandas", "Venta", "% de la venta", "Ticket promedio",
+               "Venta por día trabajado", "Unidades por comanda"])
+    for celda in wv[1]:
+        celda.font = Font(bold=True, color="FFFFFF")
+        celda.fill = PatternFill("solid", fgColor="ED0035")
+        celda.alignment = Alignment(wrap_text=True, vertical="center")
+    for f in datos["ventas"]["filas"]:
+        wv.append([f["cajera"], f["dias_trabajados"], f["comandas"], int(f["venta"]), round(f["pct"], 1),
+                   round(float(f["ticket"])), round(float(f["venta_por_dia"])), round(f["unidades_por_comanda"], 2)])
+        for col in (4, 6, 7):
+            wv.cell(row=wv.max_row, column=col).number_format = '"$"#,##0'
+    wv.append(["Ticket promedio general", None, datos["ventas"]["total_comandas"], int(datos["ventas"]["total_venta"]),
+               None, round(float(datos["ventas"]["ticket_general"]))])
+    wv.cell(row=wv.max_row, column=1).font = Font(bold=True)
+    for col in (4, 6):
+        wv.cell(row=wv.max_row, column=col).number_format = '"$"#,##0'
+    wv.column_dimensions["A"].width = 28
+    for letra in "BCDEFGH":
+        wv.column_dimensions[letra].width = 15
 
     wi = wb.create_sheet("Incidentes")
     wi.append(["Fecha", "Cajera", "Caja", "Tipo", "Comanda", "Monto", "Detalle"])
