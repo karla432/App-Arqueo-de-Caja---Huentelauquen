@@ -213,6 +213,12 @@ def validaciones_de_carga(dia: DiaArqueo) -> list[dict]:
 
     avisos_pos = lote_pos.avisos if lote_pos else []
     avisos_lineas = [a for a in avisos_pos if "suma de líneas" in a]
+    # Descuento a trabajadores (Karla, 2026-10-27): la comanda de un TRABAJADOR cuyo descuento calza con la
+    # tabla (o fue aceptado) sí cuadra; se informa aparte.
+    from nucleo.descuentos_servicio import del_dia as descuentos_del_dia
+    descuentos = descuentos_del_dia(dia) if lote_pos else []
+    con_descuento_valido = {str(a.venta.n_interno) for a in descuentos if a.valido}
+    avisos_lineas = [a for a in avisos_lineas if a.split(":")[0].replace("Comanda", "").strip() not in con_descuento_valido]
     avisos_medios = [a for a in avisos_pos if "suma de medios" in a]
     # Las guías de despacho no tienen líneas de artículos: no son comandas.
     total_comandas = dia.ventas.exclude(tipo_doc="DES").count()
@@ -222,6 +228,7 @@ def validaciones_de_carga(dia: DiaArqueo) -> list[dict]:
         "ok": not avisos_lineas if lote_pos else None,
         "detalle": (
             f"{total_comandas - len(avisos_lineas)} de {total_comandas} comandas cuadran"
+            + (f" ({len(con_descuento_valido)} con descuento a trabajador)" if con_descuento_valido else "")
             if lote_pos else "Sin archivo POS cargado."
         ),
     })

@@ -319,3 +319,42 @@ def actualizar_config_arqueo_caja(*, diario: str, cuenta_efectivo_codigo: str, c
     config.save()
     _bitacora(usuario, "ConfiguracionArqueoCaja", config.pk, "editar_config_arqueo_caja", anterior, campos)
     return config
+
+
+# ---------------------------------------------------- descuentos a trabajadores (Karla, 2026-10-27)
+
+def _porcentaje(valor) -> Decimal:
+    try:
+        pct = Decimal(str(valor).replace("%", "").replace(",", ".").strip())
+    except InvalidOperation:
+        raise ConfiguracionInvalida("Escribe el descuento como un número, ej. 15 para 15%.")
+    if not (0 < pct <= 100):
+        raise ConfiguracionInvalida("El descuento debe estar entre 0 y 100%.")
+    return pct.quantize(Decimal("0.01"))
+
+
+@transaction.atomic
+def crear_descuento(producto: str, porcentaje, usuario):
+    from nucleo.descuentos_servicio import normalizar
+    from nucleo.models import DescuentoTrabajador
+    producto = " ".join(str(producto or "").upper().split())
+    if not producto:
+        raise ConfiguracionInvalida("Escribe el nombre del producto tal como aparece en Resto.")
+    if any(normalizar(d.producto) == producto for d in DescuentoTrabajador.objects.all()):
+        raise ConfiguracionInvalida(f"{producto} ya está en la tabla de descuentos.")
+    pct = _porcentaje(porcentaje)
+    _bitacora(usuario, "DescuentoTrabajador", producto, "crear_descuento_trabajador", None, {"producto": producto, "porcentaje": str(pct)})
+    return DescuentoTrabajador.objects.create(producto=producto, porcentaje=pct)
+
+
+@transaction.atomic
+def editar_descuento(descuento, *, porcentaje, activo: bool, usuario):
+    pct = _porcentaje(porcentaje)
+    anterior = {"porcentaje": str(descuento.porcentaje), "activo": descuento.activo}
+    posterior = {"porcentaje": str(pct), "activo": activo}
+    if anterior == posterior:
+        return descuento
+    _bitacora(usuario, "DescuentoTrabajador", descuento.pk, "editar_descuento_trabajador", anterior, posterior)
+    descuento.porcentaje, descuento.activo = pct, activo
+    descuento.save(update_fields=["porcentaje", "activo"])
+    return descuento

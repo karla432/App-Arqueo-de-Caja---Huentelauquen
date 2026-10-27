@@ -74,6 +74,9 @@ COLUMNAS = [
 CARPETA_EXPORTACIONES = Path(settings.BASE_DIR) / "exportaciones"
 
 
+from nucleo.descuentos_servicio import PRODUCTO_DESCUENTO, analizar as analizar_descuento, descuento_valido  # noqa: E402
+
+
 class ExportacionInvalida(Exception):
     pass
 
@@ -106,7 +109,14 @@ def validar_venta(venta: Venta) -> list[str]:
     elif venta.tipo_doc not in TIPO_DOC_ODOO:
         avisos.append(f"Comanda {venta.n_interno}: tipo de documento {venta.tipo_doc!r} sin mapeo a Odoo conocido.")
     suma_lineas = sum(l.total_linea for l in venta.lineas.all())
-    if abs(suma_lineas - venta.total_comanda) > 1:
+    descuento = analizar_descuento(venta) if abs(suma_lineas - venta.total_comanda) > 1 else None
+    if descuento is not None and not descuento.valido:
+        # Descuento a trabajadores (Karla, 2026-10-27): no calza con la tabla; lo acepta Contabilidad.
+        avisos.append(
+            f"Comanda {venta.n_interno}: cliente TRABAJADOR con descuento de ${descuento.descuento:,.0f} que no "
+            f"calza con la tabla (${descuento.descuento_tabla:,.0f}) — revísalo en Cierre del Día."
+        )
+    elif descuento is None and abs(suma_lineas - venta.total_comanda) > 1:
         avisos.append(
             f"Comanda {venta.n_interno}: total ${venta.total_comanda:,.0f} no cuadra con "
             f"la suma de líneas ${suma_lineas:,.0f}."
@@ -153,6 +163,19 @@ def _filas_de_venta(venta: Venta) -> list[dict]:
             "Líneas del pedido/Producto": linea.articulo,
             "Líneas del pedido/Cantidad": linea.cantidad,
             "Líneas del pedido/Precio un.": linea.precio_unitario,
+            "Líneas del pedido/Impuestos": IMPUESTO_LINEA,
+        })
+    monto_descuento = descuento_valido(venta)
+    if monto_descuento:
+        # Descuento a trabajadores: una línea negativa por lo que descontó Resto, así el pedido en Odoo
+        # suma exactamente el total cobrado.
+        filas.append({
+            "Cliente": None, "Fecha orden": None, "Vencimiento": None, "Es venta externa": None,
+            "Tipo de pago externo": None, "ID de pago externo": None,
+            "Tipo de documento externo": None, "Número de documento externo": None,
+            "Líneas del pedido/Producto": PRODUCTO_DESCUENTO,
+            "Líneas del pedido/Cantidad": 1,
+            "Líneas del pedido/Precio un.": -monto_descuento,
             "Líneas del pedido/Impuestos": IMPUESTO_LINEA,
         })
     return filas

@@ -33,7 +33,7 @@
   </div>
 </div>
 
-<div style="padding:24px 32px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:6px">
+<div style="padding:24px 32px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:6px">
   <div class="card" style="padding:16px 18px">
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Unidades vendidas</div>
     <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);margin-top:4px">{{ totales.cantidad|miles }}</div>
@@ -42,11 +42,15 @@
     <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-maroon)">Venta total</div>
     <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);margin-top:4px">${{ totales.venta|miles }}</div>
   </div>
+  <div class="card" style="padding:16px 18px">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-gray)">Descuento a trabajadores</div>
+    <div style="font-family:var(--hu-serif);font-size:26px;font-weight:700;color:var(--hu-maroon);margin-top:4px">${{ totales.descuento|miles }}</div>
+  </div>
 </div>
 
 <div style="padding:0 32px 30px">
   <table class="tbl">
-    <thead><tr><th>Producto</th><th class="n">Cantidad</th><th class="n">Precio promedio</th><th class="n">Venta</th><th class="n">% del total</th></tr></thead>
+    <thead><tr><th>Producto</th><th class="n">Cantidad</th><th class="n">Precio promedio</th><th class="n">Venta</th><th class="n">% del total</th><th class="n">Desc. trabajadores</th></tr></thead>
     <tbody>
       {% for f in filas %}
       <tr>
@@ -55,9 +59,10 @@
         <td class="n">${{ f.precio_promedio|miles }}</td>
         <td class="n">${{ f.venta|miles }}</td>
         <td class="n">{{ f.pct_del_total|floatformat:1 }}%</td>
+        <td class="n">{% if f.descuento %}${{ f.descuento|miles }}{% else %}—{% endif %}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="5" style="color:var(--hu-gray);text-align:center;padding:18px">Sin ventas cerradas en este período.</td></tr>
+      <tr><td colspan="6" style="color:var(--hu-gray);text-align:center;padding:18px">Sin ventas cerradas en este período.</td></tr>
       {% endfor %}
     </tbody>
   </table>

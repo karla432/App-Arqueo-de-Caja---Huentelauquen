@@ -114,6 +114,30 @@
     </form>
   </section>
 
+  <section id="descuentos" style="margin-bottom:38px">
+    <div class="kick" style="margin-bottom:10px">Descuentos a trabajadores</div>
+    <div class="card" style="padding:18px 20px">
+      <div class="cfg-nota" style="margin-bottom:8px">% de descuento por producto para los clientes «TRABAJADOR». Con esta tabla la app reconoce el descuento que cobró Resto: si calza, la comanda va a Odoo con una línea «DESCUENTO TRABAJADOR» y no bloquea el día. El nombre del producto debe ser el de Resto. Un producto que deja de tener descuento se desactiva.</div>
+      {% for d in descuentos %}
+      <form method="post" action="{% url 'editar_descuento' descuento_id=d.pk %}" class="cfg-fila" style="grid-template-columns:1fr 110px 100px 90px;{% if not d.activo %}opacity:.6{% endif %}">
+        {% csrf_token %}
+        <span style="font-size:13px">{{ d.producto }}</span>
+        <input class="cfg-in" type="text" name="porcentaje" value="{{ d.porcentaje|floatformat:'-2' }}" aria-label="% de descuento de {{ d.producto }}">
+        <label style="font-size:13px"><input type="checkbox" name="activo" {% if d.activo %}checked{% endif %}> Activo</label>
+        <button type="submit" class="btn btn-sm">Guardar</button>
+      </form>
+      {% empty %}
+      <div class="cfg-nota" style="padding:8px 0">La tabla está vacía.</div>
+      {% endfor %}
+      <form method="post" action="{% url 'crear_descuento' %}" class="cfg-fila" style="grid-template-columns:1fr 110px 190px;border-bottom:0;margin-top:8px">
+        {% csrf_token %}
+        <input class="cfg-in" type="text" name="producto" placeholder="Producto (nombre en Resto)" required aria-label="Producto">
+        <input class="cfg-in" type="text" name="porcentaje" placeholder="%" required aria-label="% de descuento">
+        <button type="submit" class="btn btn-sm">Agregar producto</button>
+      </form>
+    </div>
+  </section>
+
   <section id="cajeras" style="margin-bottom:38px">
     <div class="kick" style="margin-bottom:10px">Cajeras</div>
     <div class="card" style="padding:18px 20px">

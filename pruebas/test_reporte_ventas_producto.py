@@ -92,7 +92,7 @@ def test_generar_excel_del_reporte(dia_cerrado, tmp_path):
     from openpyxl import load_workbook
     ruta = generar_excel(FECHA, FECHA, tmp_path)
     filas = list(load_workbook(ruta).active.iter_rows(values_only=True))
-    assert filas[0] == ("Producto", "Cantidad vendida", "Valor vendido", "Precio promedio", "% del total")
+    assert filas[0] == ("Producto", "Cantidad vendida", "Valor vendido", "Precio promedio", "% del total", "Descuento trabajadores")
     assert filas[1][0] == "EMPANADA"
 
 

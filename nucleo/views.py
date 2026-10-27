@@ -384,6 +384,7 @@ def autorizar_diferencia_view(request, arqueo_id):
 
 @requiere(Permiso.CONSULTAR)
 def cierre_y_exportacion(request, fecha):
+    from nucleo.descuentos_servicio import del_dia as descuentos_del_dia
     dia = DiaArqueo.objects.filter(fecha=date.fromisoformat(fecha)).first()
     if dia is None:
         return _sin_dia(request, fecha)
@@ -406,7 +407,10 @@ def cierre_y_exportacion(request, fecha):
         "puede_visar_perdida": tiene_permiso(request.user, Permiso.VISAR),
         "arqueo_caja": config_arqueo_caja(),
         "pagos_divididos": planes_del_dia(dia),
+        "descuentos": descuentos_del_dia(dia),
+        "puede_aceptar_descuento": tiene_permiso(request.user, Permiso.VALIDAR),
     }
+    contexto["descuentos_no_cuadran"] = [d for d in contexto["descuentos"] if not d.valido]
     contexto.update(_contexto_del_cierre(dia, contexto["checklist"], dia_ya_aprobado))
     contexto["requiere_motivo"] = (not dia_ya_aprobado) and requiere_motivo_de_excepcion(dia, request.user)
     return render(request, "nucleo/cierre_exportacion.html", contexto)
@@ -481,6 +485,22 @@ def asignar_factura_venta_view(request, venta_id):
     except AsignacionInvalida as exc:
         messages.error(request, str(exc))
     return redirect("cierre_y_exportacion", fecha=fecha)
+
+
+@require_POST
+@requiere(Permiso.VALIDAR)
+def aceptar_descuento_view(request, venta_id):
+    """Descuento a trabajador que no calza con la tabla: Contabilidad lo acepta con motivo (Karla, 2026-10-27)."""
+    from nucleo.descuentos_servicio import DescuentoInvalido, aceptar
+    from nucleo.models import Venta
+    venta = get_object_or_404(Venta, pk=venta_id)
+    try:
+        aceptar(venta, request.user, request.POST.get("motivo", ""))
+        messages.success(request, f"Descuento de la comanda {venta.n_interno} aceptado.")
+        _reintentar_exportacion(request, venta.dia)
+    except DescuentoInvalido as exc:
+        messages.error(request, str(exc))
+    return redirect("cierre_y_exportacion", fecha=venta.dia.fecha.isoformat())
 
 
 @requiere(Permiso.OPERAR)

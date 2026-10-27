@@ -42,6 +42,11 @@ DEFINICIONES = {
         "descripcion": "Una nota de crédito que pasa más de estos días hábiles sin verificar se marca en rojo. El cierre del día solo exige la evidencia cargada; la verificación y el folio de Odoo los exige el cierre de mes.",
         "defecto": 5, "minimo": 1, "maximo": 30, "unidad": "días hábiles",
     },
+    "tolerancia_descuento_trabajador": {
+        "nombre": "Tolerancia del descuento a trabajadores",
+        "descripcion": "Diferencia máxima, por redondeo, entre el descuento calculado con la tabla y el que cobró Resto en una comanda de cliente TRABAJADOR. Dentro de la tolerancia, la comanda se exporta sola con su línea de descuento.",
+        "defecto": 10, "minimo": 0, "maximo": 1000, "unidad": "$",
+    },
     "semaforo_cajeras_verde": {
         "nombre": "Desempeño de cajeras · límite verde",
         "descripcion": "Una cajera con hasta esta cantidad de errores cada 100 comandas queda en verde en el informe de Desempeño de cajeras.",

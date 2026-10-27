@@ -114,6 +114,13 @@ class Venta(models.Model):
         help_text="Para ventas con guía de despacho (comprobante 'GO...'): número de la "
                    "factura que el Analista de Ingresos emite al cierre, no el día de la guía.",
     )
+    # Descuento a trabajadores (Karla, 2026-10-27): cuando el descuento que cobró Resto no calza con la
+    # tabla, Contabilidad puede aceptarlo con motivo. Ver nucleo.descuentos_servicio.
+    descuento_aceptado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="descuentos_aceptados",
+    )
+    descuento_aceptado_en = models.DateTimeField(null=True, blank=True)
+    descuento_aceptado_motivo = models.CharField(max_length=300, blank=True)
 
     class Meta:
         constraints = [
@@ -130,6 +137,23 @@ class Venta(models.Model):
         y un cero. Antes (2026-09-06) se reconocía por "GO" (letra O), que
         no coincide con los datos reales; se aceptan ambas grafías."""
         return self.tipo_doc == "DES" or self.nro_comprobante.upper().startswith(("G0", "GO"))
+
+
+class DescuentoTrabajador(models.Model):
+    """Tabla de descuentos a trabajadores (Karla, 2026-10-27): en los días de pago, los clientes
+    «TRABAJADOR» tienen un % de descuento por producto. Resto informa cada producto a precio de lista y
+    el total de la comanda ya descontado; con esta tabla la app reconoce esa diferencia como descuento.
+    La mantiene la Gerente en Configuración; un producto que deja de tener descuento se desactiva."""
+
+    producto = models.CharField(max_length=200, unique=True)
+    porcentaje = models.DecimalField(max_digits=5, decimal_places=2, help_text="Ej. 15 = 15%.")
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["producto"]
+
+    def __str__(self) -> str:
+        return f"{self.producto} · {self.porcentaje}%"
 
 
 class LineaVenta(models.Model):

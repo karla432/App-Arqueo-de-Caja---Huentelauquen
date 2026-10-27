@@ -174,11 +174,13 @@ def resumen_periodo(desde: date, hasta: date) -> dict:
         entrada["venta"] += float(v.total_comanda)
         entrada["comandas"] += 1
 
+    from nucleo.descuentos_servicio import descuento_por_linea
+    descuentos = descuento_por_linea(ventas)  # descuento a trabajadores: la venta es la cobrada
     productos: dict[str, dict] = {}
     for linea in LineaVenta.objects.filter(venta__in=ventas):
         entrada = productos.setdefault(linea.articulo, {"unidades": 0, "venta": 0})
         entrada["unidades"] += float(linea.cantidad)
-        entrada["venta"] += float(linea.total_linea)
+        entrada["venta"] += float(linea.total_linea - descuentos.get(linea.pk, 0))
     top_productos = sorted(productos.items(), key=lambda kv: kv[1]["venta"], reverse=True)[:8]
     venta_total_productos = sum(p["venta"] for p in productos.values()) or 1
     acumulado = 0
@@ -229,6 +231,9 @@ def resumen_periodo(desde: date, hasta: date) -> dict:
             "dias_operados": dias_incluidos.count(),
             "dias_cerrados_sin_diferencia": dias_cerrados_sin_diferencia,
             "dias_dentro_de_umbral": dias_dentro_de_umbral,
+            "descuento_trabajadores": sum(descuentos.values()),
+            "comandas_con_descuento": len({ventas_de_linea for ventas_de_linea in
+                                           LineaVenta.objects.filter(pk__in=list(descuentos)).values_list("venta_id", flat=True)}),
             "umbral_diferencia_caja": tope,
             "dias_con_diferencia_autorizada": dias_con_diferencia_autorizada,
             "diferencia_acumulada": diferencia_acumulada,

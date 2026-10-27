@@ -13,10 +13,10 @@ from nucleo.configuracion_servicio import (
     config_arqueo_caja, crear_cajera, crear_cuenta, crear_responsable_traslado, cuentas_banco, editar_cajera,
     editar_cuenta, editar_responsable_traslado, puede_configurar, usuarios_con_rol, ROLES_ASIGNABLES,
 )
-from nucleo.models import Cajera, CuentaContable, EventoAuditoria, ResponsableTraslado
+from nucleo.models import Cajera, CuentaContable, DescuentoTrabajador, EventoAuditoria, ResponsableTraslado
 from nucleo.umbrales import DEFINICIONES, umbrales_vigentes
 
-ENTIDADES_DE_CONFIGURACION = ["Parametro", "CuentaContable", "Cajera", "ResponsableTraslado", "Usuario"]
+ENTIDADES_DE_CONFIGURACION = ["Parametro", "CuentaContable", "Cajera", "ResponsableTraslado", "Usuario", "DescuentoTrabajador"]
 from nucleo.permisos import Permiso, PermisoDenegado
 
 
@@ -46,6 +46,7 @@ def configuracion(request):
         "cuentas": CuentaContable.objects.order_by("-activo", "codigo"),
         "tipos_cuenta": CuentaContable.Tipo.choices,
         "cajeras": Cajera.objects.order_by("-activo", "nombre"),
+        "descuentos": DescuentoTrabajador.objects.order_by("-activo", "producto"),
         "responsables_traslado": ResponsableTraslado.objects.order_by("-activo", "nombre"),
         "usuarios": usuarios_con_rol(get_user_model()),
         "roles": ROLES_ASIGNABLES.items(),
@@ -192,3 +193,31 @@ def guardar_arqueo_caja_view(request):
     except ConfiguracionInvalida as exc:
         messages.error(request, str(exc))
     return _volver("arqueo-caja")
+
+
+@login_required
+@solo_gerente
+@require_POST
+def crear_descuento_view(request):
+    from nucleo.configuracion_servicio import crear_descuento
+    try:
+        d = crear_descuento(request.POST.get("producto", ""), request.POST.get("porcentaje", ""), request.user)
+        messages.success(request, f"Descuento de {d.producto} agregado.")
+    except ConfiguracionInvalida as exc:
+        messages.error(request, str(exc))
+    return _volver("descuentos")
+
+
+@login_required
+@solo_gerente
+@require_POST
+def editar_descuento_view(request, descuento_id):
+    from nucleo.configuracion_servicio import editar_descuento
+    descuento = get_object_or_404(DescuentoTrabajador, pk=descuento_id)
+    try:
+        editar_descuento(descuento, porcentaje=request.POST.get("porcentaje", ""), activo=request.POST.get("activo") == "on",
+                         usuario=request.user)
+        messages.success(request, f"Descuento de {descuento.producto} actualizado.")
+    except ConfiguracionInvalida as exc:
+        messages.error(request, str(exc))
+    return _volver("descuentos")

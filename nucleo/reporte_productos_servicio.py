@@ -14,22 +14,28 @@ from nucleo.archivos_seguros import guardar_libro
 from nucleo.models import LineaVenta
 from nucleo.ventas_dashboard_servicio import ESTADOS_INCLUIDOS, _dias_del_rango
 
-COLUMNAS = ["Producto", "Cantidad vendida", "Valor vendido", "Precio promedio", "% del total"]
+COLUMNAS = ["Producto", "Cantidad vendida", "Valor vendido", "Precio promedio", "% del total", "Descuento trabajadores"]
 CARPETA_REPORTES = Path(settings.BASE_DIR) / "exportaciones"
 
 
 def resumen_por_producto(desde: date, hasta: date) -> list[dict]:
     dias_incluidos = _dias_del_rango(desde, hasta).filter(estado__in=ESTADOS_INCLUIDOS)
+    # Descuento a trabajadores (Karla, 2026-10-27): el valor vendido es el cobrado, no el precio de lista.
+    from nucleo.descuentos_servicio import descuento_por_linea
+    from nucleo.models import Venta
+    descuentos = descuento_por_linea(Venta.objects.filter(dia__in=dias_incluidos))
     productos: dict[str, dict] = {}
     for linea in LineaVenta.objects.filter(venta__dia__in=dias_incluidos).select_related("venta"):
-        entrada = productos.setdefault(linea.articulo, {"cantidad": 0, "venta": 0})
+        entrada = productos.setdefault(linea.articulo, {"cantidad": 0, "venta": 0, "descuento": 0})
+        descuento = descuentos.get(linea.pk, 0)
         entrada["cantidad"] += linea.cantidad
-        entrada["venta"] += linea.total_linea
+        entrada["venta"] += linea.total_linea - descuento
+        entrada["descuento"] += descuento
 
     total_venta = sum(p["venta"] for p in productos.values()) or 1
     filas = [
         {
-            "producto": nombre, "cantidad": datos["cantidad"], "venta": datos["venta"],
+            "producto": nombre, "cantidad": datos["cantidad"], "venta": datos["venta"], "descuento": datos["descuento"],
             "precio_promedio": (datos["venta"] / datos["cantidad"]) if datos["cantidad"] else 0,
             "pct_del_total": float(datos["venta"]) / float(total_venta) * 100,
         }
@@ -43,6 +49,7 @@ def totales(filas: list[dict]) -> dict:
     return {
         "cantidad": sum(f["cantidad"] for f in filas),
         "venta": sum(f["venta"] for f in filas),
+        "descuento": sum(f["descuento"] for f in filas),
         "productos_distintos": len(filas),
     }
 
@@ -60,7 +67,7 @@ def generar_excel(desde: date, hasta: date, carpeta: Path | None = None) -> Path
     for f in filas:
         ws.append([
             f["producto"], float(f["cantidad"]), float(f["venta"]),
-            round(float(f["precio_promedio"])), round(f["pct_del_total"], 1),
+            round(float(f["precio_promedio"])), round(f["pct_del_total"], 1), round(float(f["descuento"])),
         ])
     guardar_libro(wb, ruta)
     return ruta

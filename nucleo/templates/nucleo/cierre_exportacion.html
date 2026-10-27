@@ -102,6 +102,37 @@
   {% endif %}
   {% endif %}
 
+  {% if descuentos %}
+  <div class="cz-caja" style="border-left:4px solid {% if descuentos_no_cuadran %}var(--hu-red){% else %}var(--hu-ok){% endif %}">
+    <div class="kick" style="margin-bottom:6px;color:{% if descuentos_no_cuadran %}var(--hu-red){% else %}var(--hu-ok){% endif %}">Descuentos a trabajadores · {{ descuentos|length }}</div>
+    <div class="cz-det" style="margin-bottom:8px">Comandas de cliente TRABAJADOR: Resto informa los productos a precio de lista y cobra con descuento. Si el descuento calza con la tabla de Configuración, la comanda va a Odoo con una línea «DESCUENTO TRABAJADOR» negativa y no bloquea nada.</div>
+    <table class="tbl" style="font-size:12.5px">
+      <thead><tr><th>Comanda</th><th>Caja</th><th class="n">Precio lista</th><th class="n">Descuento</th><th class="n">Cobrado</th><th>Estado</th></tr></thead>
+      <tbody>
+      {% for d in descuentos %}
+      <tr>
+        <td>{{ d.venta.n_interno }}</td><td>{{ d.venta.caja }}</td>
+        <td class="n">${{ d.precio_lista|miles }}</td><td class="n">−${{ d.descuento|miles }}</td><td class="n">${{ d.cobrado|miles }}</td>
+        <td>
+          {% if d.estado == "cuadra" %}<span class="pill p-ok">Calza con la tabla</span>
+          {% elif d.estado == "aceptado" %}<span class="pill p-ok">Aceptado</span> <span style="color:var(--hu-gray)">{{ d.venta.descuento_aceptado_por.get_full_name|default:d.venta.descuento_aceptado_por.username }}: {{ d.venta.descuento_aceptado_motivo }}</span>
+          {% else %}<span class="pill p-red">No calza</span> <span style="color:var(--hu-gray)">con la tabla serían −${{ d.descuento_tabla|miles }}{% if d.sin_tabla %} · fuera de la tabla: {{ d.sin_tabla|join:", " }}{% endif %}</span>
+            {% if puede_aceptar_descuento and dia.estado != "exportado" %}
+            <form method="post" action="{% url 'aceptar_descuento' venta_id=d.venta.pk %}" style="display:flex;gap:6px;margin-top:6px">
+              {% csrf_token %}
+              <input type="text" name="motivo" required placeholder="Motivo para aceptar el descuento cobrado" style="flex:1;padding:5px 8px;border:1px solid var(--hu-card-line);font-size:12px">
+              <button type="submit" class="btn btn-2" style="padding:5px 10px;font-size:12px">Aceptar</button>
+            </form>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   {% if pagos_divididos %}
   <div class="cz-caja" style="border-left:4px solid var(--hu-warn)">
     <div class="kick" style="color:var(--hu-warn);margin-bottom:6px">Comandas con pago dividido · {{ pagos_divididos|length }}</div>
