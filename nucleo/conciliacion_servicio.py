@@ -59,7 +59,7 @@ def _registrar_ajuste_guia(dia, usuario, guia, movimiento, tolerancia):
     pérdida o ganancia según el signo — guía − cobro: positivo = el proveedor
     cobró menos → pérdida — igual que el ajuste de sencillo, y sin cajera
     responsable (es automático)."""
-    diferencia = guia.monto - movimiento.monto_venta_valido_abono
+    diferencia = guia.monto_tarjeta - movimiento.monto_venta_valido_abono
     ExcepcionDB.objects.create(
         dia=dia, tipo=ExcepcionDB.Tipo.DIFERENCIA_MONTO, monto_en_juego=abs(diferencia),
         movimiento=movimiento,

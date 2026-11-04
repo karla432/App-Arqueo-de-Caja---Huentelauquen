@@ -64,7 +64,14 @@ def _arrastradas_por(excepcion: Excepcion) -> list[Excepcion]:
     return list(Excepcion.objects.filter(pk__in=ids, abierta=False))
 
 
-def motivo_para_no_reabrir(excepcion: Excepcion) -> str:
+def puede_quitar_boleta(usuario) -> bool:
+    """Un «otros ingresos» con boleta asignada solo lo deshace la Gerente (Karla, 2026-11-04: el cobro de
+    $28.004 del 28-10 era parte de una guía y se aceptó como otros ingresos por error)."""
+    from nucleo.permisos import tiene_permiso
+    return bool(usuario) and tiene_permiso(usuario, Permiso.AUTORIZAR_EXCEPCION)
+
+
+def motivo_para_no_reabrir(excepcion: Excepcion, usuario=None) -> str:
     """Vacío si se puede volver a abrir; si no, la razón en lenguaje de negocio."""
     if excepcion.abierta:
         return "Esta excepción ya está abierta."
@@ -72,10 +79,10 @@ def motivo_para_no_reabrir(excepcion: Excepcion) -> str:
         return "El día está cerrado: para corregir una excepción, primero hay que reabrir el día."
     if excepcion.resolucion == Excepcion.Resolucion.AJUSTE_SENCILLO:
         return "Los ajustes de sencillo los calcula la conciliación; se recalculan solos al reconciliar."
-    if excepcion.factura_asociada:
+    if excepcion.factura_asociada and not puede_quitar_boleta(usuario):
         return (
-            f"Ya tiene asignada la boleta {excepcion.factura_asociada}: la boleta se emitió, "
-            "así que no se puede deshacer desde aquí."
+            f"Ya tiene asignada la boleta {excepcion.factura_asociada}: solo la Gerente puede deshacerla, "
+            "confirmando que la boleta no se emitió o que se anuló."
         )
     origen = _arrastrada_por(excepcion)
     if origen:
@@ -129,7 +136,7 @@ def _foto(excepcion: Excepcion) -> dict:
 def reabrir_excepcion(excepcion: Excepcion, usuario, motivo: str) -> Excepcion:
     exigir(usuario, Permiso.REABRIR_EXCEPCION, "Solo el Jefe de Contabilidad o la Gerente pueden volver a abrir una excepción.")
     excepcion = Excepcion.objects.select_for_update().select_related("dia").get(pk=excepcion.pk)
-    razon = motivo_para_no_reabrir(excepcion)
+    razon = motivo_para_no_reabrir(excepcion, usuario)
     if razon:
         raise ReaperturaInvalida(razon)
     if not (motivo or "").strip():
@@ -187,6 +194,9 @@ def reabrir_excepcion(excepcion: Excepcion, usuario, motivo: str) -> Excepcion:
     for r in reclasificaciones:
         r.delete()
 
+    if excepcion.factura_asociada:
+        valor_anterior["boleta_quitada"] = excepcion.factura_asociada
+        excepcion.factura_asociada = ""
     _limpiar_resolucion(excepcion)
     for hermana in arrastradas:
         _limpiar_resolucion(hermana)

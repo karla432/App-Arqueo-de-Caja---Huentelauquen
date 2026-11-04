@@ -107,11 +107,16 @@
     </div>
   </div>
 
-  {% if sin_forma_de_pago %}
+  {% if sin_forma_de_pago or guias_sin_desglose %}
   <div style="margin-bottom:18px;padding:14px 18px;background:#FDF3E3;border-left:3px solid var(--hu-warn);font-size:13px;line-height:1.55">
+    {% if sin_forma_de_pago %}
     <strong style="color:var(--hu-warn)">{{ sin_forma_de_pago|length }} comanda{{ sin_forma_de_pago|length|pluralize }} sin forma de pago.</strong>
     El archivo de ventas de Resto no informa cómo se pagaron (por ejemplo, Redelcom de la heladería). Sus cobros con tarjeta quedan como «movimiento sin pago».
     <div style="margin:6px 0;color:var(--hu-gray)">{% for v in sin_forma_de_pago|slice:":12" %}{{ v.n_interno }} · {{ v.caja }} · ${{ v.total_comanda|miles }}{% if not forloop.last %} — {% endif %}{% endfor %}{% if sin_forma_de_pago|length > 12 %} …{% endif %}</div>
+    {% endif %}
+    {% if guias_sin_desglose %}
+    <div><strong style="color:var(--hu-warn)">{{ guias_sin_desglose|length }} guía{{ guias_sin_desglose|length|pluralize }} con pago mixto sin desglose</strong> ({% for g in guias_sin_desglose %}{{ g.folio|slice:"-5:" }} · ${{ g.monto|miles }}{% if not forloop.last %}, {% endif %}{% endfor %}): su efectivo no está sumado a la caja ni su parte con tarjeta cotejada.</div>
+    {% endif %}
     {% if puede_completar_medios %}
     <form method="post" action="{% url 'completar_medios' fecha=dia.fecha|date:'Y-m-d' %}" style="margin-top:6px">
       {% csrf_token %}

@@ -105,7 +105,7 @@ def fila_consolidada(dia: DiaArqueo) -> dict:
         "cajas_sin_contar": len(arqueos) - len(contados),
         "diferencia_efectivo": _suma(a.diferencia for a in contados) if contados else None,
         "guias_n": len(guias), "guias_total": _suma(d.monto for d in guias),
-        "guias_efectivo": _suma(d.monto for d in guias if d.forma_pago == PagoDeclarado.Medio.EFECTIVO),
+        "guias_efectivo": _suma(d.monto_efectivo for d in guias),
         "guias_pendientes": sum(1 for d in guias if d.estado == RegularizacionDocumento.Estado.PENDIENTE),
         "notas_n": len(notas), "notas_total": _suma(d.monto for d in notas),
         "notas_sin_respaldo": sum(1 for d in notas if d.verificacion_estado != RegularizacionDocumento.Verificacion.VERIFICADA),

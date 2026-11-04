@@ -14,8 +14,9 @@ import pandas as pd
 from django.db import transaction
 
 from arqueo_diario.importadores.comun import fechas_normalizadas
-from arqueo_diario.importadores.pos import MEDIOS_PAGO, pagos_del_libro
-from nucleo.models import DiaArqueo, EventoAuditoria, LoteCarga, PagoDeclarado, Venta
+from arqueo_diario.importadores.pos import MEDIOS_PAGO, _documentos_del_libro, pagos_del_libro
+from nucleo.models import DiaArqueo, EventoAuditoria, LoteCarga, PagoDeclarado, RegularizacionDocumento, Venta
+from nucleo.regularizacion_servicio import desglose_declarado_por_resto
 from nucleo.permisos import Permiso, exigir
 
 
@@ -26,6 +27,12 @@ class CompletarInvalido(Exception):
 def comandas_sin_forma_de_pago(dia: DiaArqueo) -> list[Venta]:
     ventas = Venta.objects.filter(dia=dia).exclude(estado="ANULADA").exclude(tipo_doc="DES").prefetch_related("pagos")
     return [v for v in ventas if abs(sum((p.monto for p in v.pagos.all()), 0) - v.total_comanda) > 1]
+
+
+def guias_sin_desglose(dia: DiaArqueo) -> list[RegularizacionDocumento]:
+    """Guías con pago mixto cargadas antes del 04-11-2026: sin forma de pago única ni desglose."""
+    return list(RegularizacionDocumento.objects.filter(
+        dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago="", desglose_pagos={}))
 
 
 def _lote_pos(dia):
@@ -62,6 +69,24 @@ def completar_desde_libro(dia: DiaArqueo, usuario) -> dict:
             PagoDeclarado.objects.create(venta=venta, medio=medio, monto=monto)
         completadas.append({"comanda": venta.n_interno, "caja": venta.caja, "medios": faltan})
 
+    guias = []
+    pendientes_guia = {g.n_interno: g for g in guias_sin_desglose(dia)}
+    if pendientes_guia:
+        documentos, _ = _documentos_del_libro(libro)
+        for doc in documentos:
+            guia = pendientes_guia.get(doc.n_interno)
+            desglose = desglose_declarado_por_resto(doc) if guia else {}
+            if guia and desglose and abs(sum(desglose.values()) - float(guia.monto)) <= 1:
+                guia.desglose_pagos = desglose
+                guia.save(update_fields=["desglose_pagos"])
+                guias.append({"guia": guia.folio, "desglose": desglose})
+
+    if guias:
+        EventoAuditoria.objects.create(
+            dia=dia, entidad="RegularizacionDocumento", entidad_id=",".join(g["guia"] for g in guias),
+            accion="completar_desglose_guias_desde_libro", valor_anterior=None, valor_posterior={"guias": guias},
+            usuario=usuario,
+        )
     if completadas:
         listas = {str(c["comanda"]) for c in completadas}
         lote.avisos = [a for a in (lote.avisos or [])
@@ -72,4 +97,4 @@ def completar_desde_libro(dia: DiaArqueo, usuario) -> dict:
             valor_anterior=None,
             valor_posterior={"comandas": completadas, "sin_resolver": sin_resolver}, usuario=usuario,
         )
-    return {"completadas": completadas, "sin_resolver": sin_resolver}
+    return {"completadas": completadas, "sin_resolver": sin_resolver, "guias": guias}

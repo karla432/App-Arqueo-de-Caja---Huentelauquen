@@ -23,8 +23,9 @@ def guias_por_medio(dia: DiaArqueo) -> dict[str, float]:
     tarjeta de una guía SÍ aparece en Transbank y el efectivo de una guía SÍ entra a la caja:
     sin esta columna esa plata parece una diferencia de cuadratura y no lo es (Karla, 2026-09-25)."""
     guias: dict[str, float] = {}
-    for d in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA).exclude(forma_pago=""):
-        guias[d.forma_pago] = guias.get(d.forma_pago, 0) + float(d.monto)
+    for d in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA):
+        for medio, monto in d.montos_por_medio.items():  # pago mixto: cada parte en su medio
+            guias[medio] = guias.get(medio, 0) + float(monto)
     return guias
 
 
@@ -70,8 +71,8 @@ def cuadre_por_medio(dia: DiaArqueo) -> list[dict]:
 def resumen_efectivo(dia: DiaArqueo) -> dict:
     arqueos = preparar_arqueos_del_dia(dia)
     guias_efectivo = sum(
-        (d.monto for d in RegularizacionDocumento.objects.filter(
-            dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago=PagoDeclarado.Medio.EFECTIVO).exclude(caja="")),
+        (d.monto_efectivo for d in RegularizacionDocumento.objects.filter(
+            dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA).exclude(caja="")),
         Decimal(0),
     )
     teorico = sum(a.teorico for a in arqueos)

@@ -47,7 +47,10 @@
           <div><div class="cfg-nota">ID de pago externo</div><div style="font-size:15px">{{ d.n_interno }}</div></div>
           <div><div class="cfg-nota">Estado</div><div style="font-size:15px">{{ d.get_estado_display }}</div></div>
         </div>
-        {% if d.forma_pago == "debito" or d.forma_pago == "credito" %}
+        {% if d.desglose_pagos %}
+        <div style="margin-top:10px;font-size:12.5px;padding-top:10px;border-top:1px solid var(--hu-card-line)"><span class="pill p-warn" style="font-size:10px">Pago mixto</span> {{ d.forma_pago_texto }} — el efectivo suma al arqueo de {{ d.caja|default:"su caja" }} y la parte con tarjeta se coteja con su cobro.</div>
+        {% endif %}
+        {% if d.medio_tarjeta %}
         <div style="margin-top:10px;font-size:12.5px;padding-top:10px;border-top:1px solid var(--hu-card-line)">
           {% if d.movimiento %}
           <span class="pill p-ok" style="font-size:10px">Cobro cotejado</span>
@@ -157,8 +160,8 @@
           <div><label class="cfg-nota">Fecha del documento relacionado</label><input class="cfg-in" style="width:100%" type="date" name="fecha_documento_relacionado" value="{{ hoy|date:'Y-m-d' }}"></div>
           <div>
             <label class="cfg-nota">Forma de pago — la que quedó en el cotejo de Resto, no se puede cambiar acá</label>
-            {% if d.forma_pago %}
-            <input class="cfg-in" style="width:100%" type="text" value="{{ d.get_forma_pago_display }}" disabled>
+            {% if d.tiene_forma_de_pago %}
+            <input class="cfg-in" style="width:100%" type="text" value="{{ d.forma_pago_texto }}" disabled>
             {% else %}
             <input class="cfg-in" style="width:100%;color:var(--hu-warn)" type="text" value="Sin forma de pago única declarada — corrígelo en el libro contable" disabled>
             {% endif %}
@@ -166,12 +169,12 @@
           <div><label class="cfg-nota">Referencia / comentario</label><textarea class="cfg-in" style="width:100%" name="referencia" rows="2"></textarea></div>
           <div style="grid-column:1/-1"><label class="cfg-nota">Comprobante del pago de la factura (PDF o imagen) — obligatorio</label><input class="cfg-in" style="width:100%" type="file" name="comprobante" required></div>
         </div>
-        <button type="submit" class="btn" {% if not d.forma_pago %}disabled title="Corrige la forma de pago en el libro contable antes de regularizar"{% endif %}>Regularizar</button>
+        <button type="submit" class="btn" {% if not d.tiene_forma_de_pago %}disabled title="Corrige la forma de pago en el libro contable antes de regularizar"{% endif %}>Regularizar</button>
       </form>
       {% elif d.estado == "regularizado" %}
       <div class="card" style="padding:18px 20px">
         <div style="font-size:13px;margin-bottom:6px"><strong>Documento relacionado:</strong> {{ d.documento_relacionado }}{% if d.fecha_documento_relacionado %} · {{ d.fecha_documento_relacionado|date:"d-m-Y" }}{% endif %}</div>
-        <div style="font-size:13px;margin-bottom:6px"><strong>Forma de pago:</strong> {{ d.get_forma_pago_display }}</div>
+        <div style="font-size:13px;margin-bottom:6px"><strong>Forma de pago:</strong> {{ d.forma_pago_texto }}</div>
         {% if d.referencia %}<div style="font-size:13px;color:var(--hu-gray);margin-bottom:6px">{{ d.referencia }}</div>{% endif %}
         {% if d.comprobante_nombre_original %}<div style="font-size:13px;color:var(--hu-gray);margin-bottom:6px">Comprobante: {{ d.comprobante_nombre_original }}</div>{% endif %}
         <div class="cfg-nota">Regularizado por {{ d.regularizado_por.get_full_name|default:d.regularizado_por.username }} el {{ d.regularizado_en|date:"d-m-Y H:i" }}</div>

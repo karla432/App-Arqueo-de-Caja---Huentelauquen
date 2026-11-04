@@ -91,7 +91,7 @@ def bandeja_excepciones(request, fecha):
         excepcion_actual = (excepciones_resueltas if ver_resueltas else excepciones_abiertas).first()
 
     from nucleo.reapertura_excepciones_servicio import motivo_para_no_reabrir
-    no_reabrir = motivo_para_no_reabrir(excepcion_actual) if excepcion_actual and not excepcion_actual.abierta else ""
+    no_reabrir = motivo_para_no_reabrir(excepcion_actual, request.user) if excepcion_actual and not excepcion_actual.abierta else ""
 
     movimientos_libres = []
     if excepcion_actual and excepcion_actual.tipo == "pago_sin_movimiento":
@@ -714,8 +714,9 @@ def carga_de_archivos(request, fecha):
         "resumen_mp": {"movimientos": dia.movimientos.filter(proveedor="mercado_pago").count()},
         "validaciones": validaciones_de_carga(dia),
     }
-    from nucleo.medios_libro_servicio import comandas_sin_forma_de_pago
+    from nucleo.medios_libro_servicio import comandas_sin_forma_de_pago, guias_sin_desglose
     contexto["sin_forma_de_pago"] = comandas_sin_forma_de_pago(dia)
+    contexto["guias_sin_desglose"] = guias_sin_desglose(dia)
     contexto["puede_completar_medios"] = tiene_permiso(request.user, Permiso.OPERAR) and dia.estado not in (
         DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO)
     return render(request, "nucleo/carga_archivos.html", contexto)
@@ -729,10 +730,13 @@ def completar_medios_view(request, fecha):
     dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
     try:
         r = completar_desde_libro(dia, request.user)
-        if r["completadas"]:
+        if r["guias"]:
+            messages.success(request, "Pago mixto completado en " + ", ".join(f"la guía {g['guia'][-5:]}" for g in r["guias"])
+                             + " desde el libro contable.")
+        if r["completadas"] or r["guias"]:
             resultado = ejecutar_conciliacion(dia, request.user)
-            messages.success(request, f"Forma de pago completada en {len(r['completadas'])} comanda(s) desde el libro contable. "
-                             f"Conciliación ejecutada: {len(resultado.excepciones)} excepción(es) abiertas.")
+            messages.success(request, (f"Forma de pago completada en {len(r['completadas'])} comanda(s) desde el libro contable. "
+                                       if r["completadas"] else "") + f"Conciliación ejecutada: {len(resultado.excepciones)} excepción(es) abiertas.")
         if r["sin_resolver"]:
             messages.error(request, f"{len(r['sin_resolver'])} comanda(s) siguen sin forma de pago: el libro contable no la resuelve "
                            f"({', '.join(str(n) for n in r['sin_resolver'][:10])}).")

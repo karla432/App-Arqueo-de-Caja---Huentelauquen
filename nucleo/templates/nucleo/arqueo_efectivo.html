@@ -139,7 +139,7 @@
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
           <span>{{ d.get_tipo_display }} {{ d.folio|folio_corto }} <a href="{% url 'regularizacion_documentos' %}?estado=&documento={{ d.pk }}" style="font-size:11.5px">ver</a></span>
           {% if d.tipo == 'CRED' %}<span style="color:var(--hu-gray)">${{ d.monto|miles }} · informativa · Resto ya la descontó{% if d.verificacion_estado != 'verificada' %} · falta respaldo{% endif %}</span>
-          {% else %}<strong style="color:var(--hu-ok)">+${{ d.monto|miles }}</strong>{% endif %}
+          {% else %}<strong style="color:var(--hu-ok)">+${{ d.monto_efectivo|miles }}</strong>{% if d.desglose_pagos %} <span style="color:var(--hu-gray)">(pago mixto: {{ d.forma_pago_texto }})</span>{% endif %}{% endif %}
         </div>
         {% endfor %}
         <div class="cfg-nota" style="font-size:12px;color:var(--hu-gray);margin-top:6px">La guía suma lo cobrado y ya está incluida en el efectivo teórico. La nota de crédito solo resta cuando se sabe que la devolución salió en efectivo de esta caja (ver la regla en Configuración → Umbrales). Si una nota sin descontar sí salió de esta caja, el conteo mostrará un faltante por ese monto.</div>

@@ -110,6 +110,7 @@
         {% csrf_token %}
         <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--hu-warn);margin-bottom:6px">¿Se resolvió mal? Volver a abrir</div>
         <div style="font-size:12.5px;line-height:1.5;margin-bottom:8px">Se deshace la resolución completa (vínculos, líneas, reclasificaciones y pérdida/ganancia) y la excepción queda como recién conciliada, para resolverla de la forma correcta. Lo deshecho queda guardado en la bitácora.</div>
+        {% if excepcion_actual.factura_asociada %}<div style="font-size:12.5px;line-height:1.5;margin-bottom:8px;color:var(--hu-red)"><strong>Se quitará la boleta {{ excepcion_actual.factura_asociada }}.</strong> Confirma antes que esa boleta no se emitió en el SII, o que ya se anuló con una nota de crédito.</div>{% endif %}
         <textarea name="motivo_reapertura" required placeholder="Motivo · obligatorio (queda en la bitácora)…" style="width:100%;padding:10px 12px;border:1px solid var(--hu-card-line);font-size:13px;font-family:var(--hu-sans);min-height:60px"></textarea>
         <button type="submit" class="btn btn-2" style="margin-top:8px">Volver a abrir la excepción</button>
       </form>

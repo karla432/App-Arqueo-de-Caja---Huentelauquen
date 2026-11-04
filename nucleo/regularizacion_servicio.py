@@ -39,6 +39,14 @@ def _forma_pago_declarada_por_resto(doc) -> str:
     return medios.pop() if len(medios) == 1 else ""
 
 
+def desglose_declarado_por_resto(doc) -> dict:
+    """Pago mixto (Karla, 2026-11-04): {medio: monto} cuando Resto declaró más de un medio; vacío si fue uno."""
+    desglose: dict = {}
+    for p in doc.pagos:
+        desglose[p.medio] = desglose.get(p.medio, 0) + float(p.monto)
+    return desglose if len(desglose) > 1 else {}
+
+
 @transaction.atomic
 def crear_desde_libro(dia: DiaArqueo, documentos, usuario) -> list[RegularizacionDocumento]:
     """Recibe `resultado.guias + resultado.notas_credito` (dataclasses
@@ -53,6 +61,7 @@ def crear_desde_libro(dia: DiaArqueo, documentos, usuario) -> list[Regularizacio
             dia=dia, tipo=doc.tipo, n_interno=doc.n_interno, folio=doc.folio,
             codigo_original=getattr(doc, "codigo_original", "") or doc.tipo,
             caja=doc.caja, monto=doc.total, forma_pago=_forma_pago_declarada_por_resto(doc),
+            desglose_pagos=desglose_declarado_por_resto(doc),
         ))
     return creados
 
@@ -102,24 +111,24 @@ def calzar_guias_con_cobros(dia: DiaArqueo, resultado, movimientos_por_id_db, us
     RegularizacionDocumento.objects.filter(dia=dia).exclude(movimiento=None).update(movimiento=None)
     tolerancia = umbral("tolerancia_guias")
 
-    guias = list(RegularizacionDocumento.objects.filter(
-        dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA,
-        forma_pago__in=[PagoDeclarado.Medio.DEBITO, PagoDeclarado.Medio.CREDITO],
-    ))
+    # Con pago mixto se calza solo la parte con tarjeta (Karla, 2026-11-04).
+    guias = [g for g in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA)
+             if g.medio_tarjeta]
     candidatas = [
         e for e in resultado.excepciones
         if e.tipo in ("movimiento_sin_pago", "pago_duplicado") and len(e.movimientos) == 1 and not e.pagos
     ]
 
     def _compatible(guia, mov) -> bool:
-        return mov.medio == guia.forma_pago or (guia.forma_pago == PagoDeclarado.Medio.DEBITO and mov.medio == "prepago")
+        medio = guia.medio_tarjeta
+        return mov.medio == medio or (medio == PagoDeclarado.Medio.DEBITO and mov.medio == "prepago")
 
     elegidas: dict[int, tuple] = {}  # guia.pk -> (excepcion, movimiento, diferencia)
     for guia in guias:
         opciones = []
         for e in candidatas:
             mov = movimientos_por_id_db[e.movimientos[0]]
-            diferencia = abs(guia.monto - mov.monto_venta_valido_abono)
+            diferencia = abs(guia.monto_tarjeta - mov.monto_venta_valido_abono)
             if _compatible(guia, mov) and diferencia <= tolerancia:
                 opciones.append((e, mov, diferencia))
         ventana = ventana_horaria_de_guia(guia) if opciones else None
@@ -165,11 +174,10 @@ def efectivo_documentos_por_caja(dia: DiaArqueo) -> dict[str, Decimal]:
 
     Nunca en silencio: ver `avisos_efectivo_guias`."""
     totales: dict[str, Decimal] = {}
-    guias = RegularizacionDocumento.objects.filter(
-        dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago=PagoDeclarado.Medio.EFECTIVO,
-    ).exclude(caja="")
-    for doc in guias:
-        totales[doc.caja] = totales.get(doc.caja, Decimal(0)) + doc.monto
+    # Con pago mixto solo suma la parte en efectivo (Karla, 2026-11-04).
+    for doc in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA).exclude(caja=""):
+        if doc.monto_efectivo:
+            totales[doc.caja] = totales.get(doc.caja, Decimal(0)) + doc.monto_efectivo
     return totales
 
 
@@ -185,9 +193,10 @@ def notas_que_restan(dia: DiaArqueo):
 def documentos_efectivo_de_caja(dia: DiaArqueo, caja: str):
     """Los documentos que mueven el efectivo de una caja, para mostrarlos
     junto a su arqueo ("dejar estas guías relacionadas con la caja")."""
+    from django.db.models import Q
     return RegularizacionDocumento.objects.filter(
-        dia=dia, caja=caja, forma_pago=PagoDeclarado.Medio.EFECTIVO,
-        tipo__in=[RegularizacionDocumento.Tipo.GUIA, RegularizacionDocumento.Tipo.NOTA_CREDITO],
+        Q(forma_pago=PagoDeclarado.Medio.EFECTIVO) | Q(desglose_pagos__has_key=PagoDeclarado.Medio.EFECTIVO),
+        dia=dia, caja=caja, tipo__in=[RegularizacionDocumento.Tipo.GUIA, RegularizacionDocumento.Tipo.NOTA_CREDITO],
     ).order_by("tipo", "folio")
 
 
@@ -195,14 +204,13 @@ def avisos_efectivo_guias(dia: DiaArqueo) -> list[str]:
     """Casos que no se pueden sumar o restar solos — quedan visibles para que
     alguien los revise a mano, en vez de perderse."""
     avisos = []
-    for doc in RegularizacionDocumento.objects.filter(
-        dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago=PagoDeclarado.Medio.EFECTIVO, caja="",
-    ):
+    for doc in [d for d in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, caja="")
+                if d.monto_efectivo]:
         avisos.append(
             f"Guía {folio_corto(doc.folio)} (${doc.monto:,.0f}, efectivo) sin caja asignada en el libro contable — "
             "no se sumó a ningún arqueo, revísala a mano."
         )
-    for doc in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago=""):
+    for doc in RegularizacionDocumento.objects.filter(dia=dia, tipo=RegularizacionDocumento.Tipo.GUIA, forma_pago="", desglose_pagos={}):
         avisos.append(
             f"Guía {folio_corto(doc.folio)} (${doc.monto:,.0f}): Resto declaró más de un medio de pago — "
             "revisa si parte es efectivo antes de cuadrar la caja."
@@ -319,7 +327,7 @@ def regularizar(
     if not documento_relacionado:
         campo = "N° de factura" if documento.tipo == RegularizacionDocumento.Tipo.GUIA else "documento afectado"
         raise RegularizacionInvalida(f"Indica el {campo} asociado.")
-    if documento.forma_pago not in PagoDeclarado.Medio.values:
+    if documento.forma_pago not in PagoDeclarado.Medio.values and not documento.desglose_pagos:
         raise RegularizacionInvalida(
             "Este documento no trae una forma de pago única declarada por Resto — "
             "corrígelo en el libro contable antes de regularizarlo."

@@ -869,6 +869,9 @@ class RegularizacionDocumento(models.Model):
     # volver a escribirla a mano, solo confirmarla o corregirla al
     # regularizar.
     forma_pago = models.CharField(max_length=20, choices=PagoDeclarado.Medio.choices, blank=True)
+    # Pago mixto (Karla, 2026-11-04, guía 21367 del 28-10: $200.000 en efectivo + $28.004 con débito): cuando
+    # Resto declara más de un medio, forma_pago queda vacío y aquí va el desglose {medio: monto} del libro.
+    desglose_pagos = models.JSONField(default=dict, blank=True)
     referencia = models.TextField(blank=True)
     # Comprobante del pago de la factura que quedó en la contabilidad,
     # asociada a esta guía/nota de crédito (Karla, 2026-09-22) — mismo
@@ -960,8 +963,44 @@ class RegularizacionDocumento(models.Model):
 
     @property
     def diferencia_con_cobro(self):
-        """Guía − cobro del proveedor (positivo: el proveedor cobró menos)."""
-        return self.monto - self.movimiento.monto_venta_valido_abono if self.movimiento_id else None
+        """Parte con tarjeta − cobro del proveedor (positivo: el proveedor cobró menos)."""
+        return self.monto_tarjeta - self.movimiento.monto_venta_valido_abono if self.movimiento_id else None
+
+    @property
+    def montos_por_medio(self) -> dict:
+        """{medio: monto}: el desglose si el pago fue mixto; si no, todo el monto en su forma de pago."""
+        from decimal import Decimal
+        if self.desglose_pagos:
+            return {m: Decimal(str(x)) for m, x in self.desglose_pagos.items()}
+        return {self.forma_pago: self.monto} if self.forma_pago else {}
+
+    @property
+    def monto_efectivo(self):
+        from decimal import Decimal
+        return self.montos_por_medio.get(PagoDeclarado.Medio.EFECTIVO, Decimal(0))
+
+    @property
+    def medio_tarjeta(self) -> str:
+        """El medio con tarjeta del documento (débito o crédito), si tiene uno solo."""
+        medios = [m for m in self.montos_por_medio if m in (PagoDeclarado.Medio.DEBITO, PagoDeclarado.Medio.CREDITO)]
+        return medios[0] if len(medios) == 1 else ""
+
+    @property
+    def monto_tarjeta(self):
+        from decimal import Decimal
+        return sum((x for m, x in self.montos_por_medio.items()
+                    if m in (PagoDeclarado.Medio.DEBITO, PagoDeclarado.Medio.CREDITO)), Decimal(0))
+
+    @property
+    def tiene_forma_de_pago(self) -> bool:
+        return bool(self.forma_pago or self.desglose_pagos)
+
+    @property
+    def forma_pago_texto(self) -> str:
+        if self.desglose_pagos:
+            nombres = dict(PagoDeclarado.Medio.choices)
+            return " + ".join(f"{nombres.get(m, m)} ${int(float(x)):,}".replace(",", ".") for m, x in self.desglose_pagos.items())
+        return self.get_forma_pago_display()
 
     @property
     def dias_pendiente(self) -> int:

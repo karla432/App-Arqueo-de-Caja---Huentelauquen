@@ -151,16 +151,18 @@ def test_regularizar_exige_documento_relacionado(dia, usuario):
 
 
 def test_no_se_puede_regularizar_sin_una_forma_de_pago_unica_declarada(dia, usuario):
-    """Karla, 2026-09-22: la forma de pago no se puede escribir a mano —
-    si Resto declaró más de un medio para el documento (caso raro), hay
-    que corregirlo en el origen, no completar el hueco a mano acá."""
-    guia = crear_desde_libro(dia, [
+    """Karla, 2026-09-22: la forma de pago no se puede escribir a mano. Desde el 2026-11-04 un pago mixto
+    declarado por Resto queda con su desglose y sí se regulariza; sin ningún medio declarado, no."""
+    mixta = crear_desde_libro(dia, [
         _DocumentoLibro("DES", 200, "21184", 117406, pagos=[_Pago("debito", 100000), _Pago("efectivo", 17406)]),
     ], usuario)[0]
-    assert guia.forma_pago == ""
+    assert mixta.forma_pago == "" and mixta.desglose_pagos == {"debito": 100000.0, "efectivo": 17406.0}
+    regularizar(mixta, documento_relacionado="123456", fecha_documento_relacionado=None,
+                referencia="", comprobante=_comprobante(), usuario=usuario)
+    sin_medio = crear_desde_libro(dia, [_DocumentoLibro("DES", 201, "21185", 5000, pagos=[])], usuario)[0]
     with pytest.raises(RegularizacionInvalida, match="forma de pago"):
         regularizar(
-            guia, documento_relacionado="123456", fecha_documento_relacionado=None,
+            sin_medio, documento_relacionado="123457", fecha_documento_relacionado=None,
             referencia="", comprobante=_comprobante(), usuario=usuario,
         )
 
