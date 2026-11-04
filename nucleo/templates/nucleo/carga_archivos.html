@@ -1,4 +1,5 @@
 {% extends "nucleo/base.html" %}
+{% load formato %}
 {% block titulo %}Carga de archivos · {{ dia.fecha }}{% endblock %}
 {% block contenido %}
 <div style="padding:30px 34px 34px">
@@ -106,6 +107,19 @@
     </div>
   </div>
 
+  {% if sin_forma_de_pago %}
+  <div style="margin-bottom:18px;padding:14px 18px;background:#FDF3E3;border-left:3px solid var(--hu-warn);font-size:13px;line-height:1.55">
+    <strong style="color:var(--hu-warn)">{{ sin_forma_de_pago|length }} comanda{{ sin_forma_de_pago|length|pluralize }} sin forma de pago.</strong>
+    El archivo de ventas de Resto no informa cómo se pagaron (por ejemplo, Redelcom de la heladería). Sus cobros con tarjeta quedan como «movimiento sin pago».
+    <div style="margin:6px 0;color:var(--hu-gray)">{% for v in sin_forma_de_pago|slice:":12" %}{{ v.n_interno }} · {{ v.caja }} · ${{ v.total_comanda|miles }}{% if not forloop.last %} — {% endif %}{% endfor %}{% if sin_forma_de_pago|length > 12 %} …{% endif %}</div>
+    {% if puede_completar_medios %}
+    <form method="post" action="{% url 'completar_medios' fecha=dia.fecha|date:'Y-m-d' %}" style="margin-top:6px">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-2">Completar desde el libro contable y conciliar</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
   <div class="kick" style="margin-bottom:10px">Validaciones de carga</div>
   <table class="tbl" style="margin-bottom:20px">
     <thead><tr><th>Validación</th><th>Resultado</th><th>Detalle</th></tr></thead>

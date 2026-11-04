@@ -88,7 +88,52 @@ MEDIOS_LIBRO = {
     "TRANSFERENCIAS": "transferencia",
     "TARJETA DE DEBITO": "debito",
     "TARJETA DE CREDITO": "credito",
+    # Redelcom = terminal Point de Mercado Pago de la heladería (Karla, 2026-11-04). VENTAS POR ARTICULO no
+    # trae columna para este medio (las comandas llegan con todos los medios en $0); el libro contable sí.
+    # Se declara como tarjeta (débito): el motor la calza con el cobro de Mercado Pago y, si Mercado Pago la
+    # informa como crédito, queda como «medio contradictorio» para confirmar.
+    "REDELCOM": "debito",
 }
+
+
+def pagos_del_libro(libro) -> dict:
+    """Medios de pago de cada boleta (FAC) según el libro contable: {N_COMP: {medio: monto}}. Un medio que la
+    app no conoce queda con su nombre original en mayúsculas, para poder informarlo."""
+    pagos: dict = {}
+    for _, fila in libro[libro["COD_COMP"] == "FAC"].iterrows():
+        cuenta = str(fila.get("DESC_CTA", "")).strip()
+        if not cuenta or cuenta.lower() == "nan":
+            continue
+        monto = float(fila.get("DEBE") or 0) or float(fila.get("HABER") or 0)
+        if not monto:
+            continue
+        medio = MEDIOS_LIBRO.get(cuenta.upper(), cuenta.upper())
+        por_medio = pagos.setdefault(fila["N_COMP"], {})
+        por_medio[medio] = por_medio.get(medio, 0.0) + monto
+    return pagos
+
+
+def comandas_sin_forma_de_pago(ventas) -> list:
+    """Comandas cuyos medios de pago no suman el total (ni con el libro contable): no se puede saber cómo se
+    pagaron. Las anuladas y las guías de despacho no se exigen (Karla, 2026-11-04)."""
+    return [
+        v for v in ventas
+        if str(v.estado).upper() != "ANULADA" and str(v.tipo_doc).upper() != "DES"
+        and abs(sum(p.monto for p in v.pagos) - v.total_comanda) > 1
+    ]
+
+
+def completar_pagos_con_libro(venta, pagos_libro: dict | None) -> bool:
+    """Si los medios de VENTAS POR ARTICULO no suman el total de la comanda y el libro contable sí trae medios
+    conocidos que lo suman, se usan los del libro (caso Redelcom, 27-10-2026). Devuelve True si los completó."""
+    suma = sum(p.monto for p in venta.pagos)
+    if abs(suma - venta.total_comanda) <= 1 or not pagos_libro:
+        return False
+    conocidos = set(MEDIOS_PAGO.values())
+    if any(m not in conocidos for m in pagos_libro) or abs(sum(pagos_libro.values()) - venta.total_comanda) > 1:
+        return False
+    venta.pagos = [PagoDeclarado(n_interno=venta.n_interno, medio=m, monto=x) for m, x in pagos_libro.items() if x > 0]
+    return True
 
 
 def folio_documento(cod_comp: str, n_comp: str) -> str:
@@ -298,6 +343,7 @@ def importar_ventas_con_libro_contable(
 
     ventas: list[Venta] = []
 
+    medios_libro = pagos_del_libro(libro)
     for comprobante, grupo in df.groupby("NRO. COMPROBANTE", sort=False):
         n_interno = mapa_n_interno.get(comprobante)
         if n_interno is None:
@@ -307,6 +353,11 @@ def importar_ventas_con_libro_contable(
             )
             continue
         venta, avisos_venta = _armar_venta(int(n_interno), grupo, fecha)
+        if completar_pagos_con_libro(venta, medios_libro.get(comprobante)):
+            # La forma de pago vino del libro contable: el aviso de «suma de medios» ya no corresponde.
+            avisos_venta = [a for a in avisos_venta if "suma de medios" not in a]
+            avisos.append(f"Comanda {venta.n_interno}: forma de pago tomada del libro contable "
+                          f"({', '.join(sorted(medios_libro[comprobante]))}).")
         avisos.extend(avisos_venta)
         ventas.append(venta)
 

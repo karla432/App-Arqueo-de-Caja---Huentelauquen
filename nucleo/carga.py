@@ -13,12 +13,38 @@ from pathlib import Path
 from django.db import transaction
 
 from arqueo_diario.importadores.mercadopago import importar_settlement_mercadopago
-from arqueo_diario.importadores.pos import importar_ventas_con_libro_contable, importar_ventas_por_articulo
+from arqueo_diario.importadores.pos import (
+    comandas_sin_forma_de_pago, importar_ventas_con_libro_contable, importar_ventas_por_articulo,
+)
 from arqueo_diario.importadores.transbank import importar_cartola_transbank
 from nucleo.models import (
     DiaArqueo, LineaVenta, LoteCarga, MovimientoProveedor, PagoDeclarado, Venta,
 )
 from nucleo.regularizacion_servicio import crear_desde_libro
+
+
+class FormaDePagoIncompleta(Exception):
+    """El archivo del POS trae comandas sin forma de pago (ni en el libro contable): la carga se rechaza
+    (Karla, 2026-11-04: «que no permita hacer la carga, que exija los campos como corresponde»)."""
+
+    def __init__(self, ventas):
+        self.ventas = ventas
+        def pesos(x):
+            return f"${x:,.0f}".replace(",", ".")
+        total = sum(v.total_comanda for v in ventas)
+        detalle = ", ".join(f"{v.n_interno} ({v.caja}, {pesos(v.total_comanda)})" for v in ventas[:10])
+        super().__init__(
+            f"{len(ventas)} comanda(s) por {pesos(total)} sin forma de pago completa"
+            + f": {detalle}{' …' if len(ventas) > 10 else ''}. El archivo de ventas no informa cómo se pagaron y el "
+            "libro contable tampoco lo resuelve. Revisa los dos archivos en Resto (que el medio de pago aparezca) y "
+            "vuelve a cargarlos."
+        )
+
+
+def _exigir_forma_de_pago(resultado) -> None:
+    sin_medio = comandas_sin_forma_de_pago(resultado.ventas)
+    if sin_medio:
+        raise FormaDePagoIncompleta(sin_medio)
 
 
 def calcular_huella(path: str | Path) -> str:
@@ -73,6 +99,7 @@ def cargar_pos(path: str | Path, fecha: date, usuario) -> LoteCarga:
     dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
 
     resultado = importar_ventas_por_articulo(path, fecha)
+    _exigir_forma_de_pago(resultado)
 
     lote = LoteCarga.objects.create(
         dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo=Path(path).name,
@@ -93,6 +120,7 @@ def cargar_pos_con_libro_contable(
     dia, _ = DiaArqueo.objects.get_or_create(fecha=fecha)
 
     resultado = importar_ventas_con_libro_contable(archivo_ventas, archivo_libro_contable, fecha)
+    _exigir_forma_de_pago(resultado)
 
     lote = LoteCarga.objects.create(
         dia=dia, fuente=LoteCarga.Fuente.POS, nombre_archivo=Path(archivo_ventas).name,

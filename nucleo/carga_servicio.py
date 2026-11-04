@@ -15,7 +15,7 @@ from django.core.files.uploadedfile import UploadedFile
 
 from nucleo.archivos_seguros import ExcelInvalido, nombre_seguro as nombre_de_archivo_seguro, validar_xlsx_subido
 from nucleo.permisos import Permiso, exigir
-from nucleo.carga import calcular_huella, cargar_mercado_pago, cargar_pos, cargar_pos_con_libro_contable, cargar_transbank
+from nucleo.carga import FormaDePagoIncompleta, calcular_huella, cargar_mercado_pago, cargar_pos, cargar_pos_con_libro_contable, cargar_transbank
 from nucleo.models import DiaArqueo, EventoAuditoria, LoteCarga
 
 EXTENSIONES_PERMITIDAS = {".xlsx"}
@@ -101,6 +101,8 @@ def procesar_carga(dia: DiaArqueo, archivo: UploadedFile, fuente: str, usuario) 
             lote = cargar_mercado_pago(ruta_temporal, dia.fecha, usuario)
         else:
             lote = cargar_transbank(ruta_temporal, dia.fecha, usuario)
+    except FormaDePagoIncompleta as exc:
+        raise ArchivoInvalido(f"Carga rechazada: {exc}")
     except (ValueError, KeyError) as exc:
         raise ArchivoInvalido(
             f"No se pudo leer \"{archivo.name}\" — revisa que sea el archivo correcto para esta fuente "
@@ -160,6 +162,8 @@ def procesar_carga_pos(dia: DiaArqueo, archivo_ventas: UploadedFile, archivo_lib
 
     try:
         lote = cargar_pos_con_libro_contable(ruta_ventas, ruta_libro, dia.fecha, usuario)
+    except FormaDePagoIncompleta as exc:
+        raise ArchivoInvalido(f"Carga rechazada: {exc}")
     except (ValueError, KeyError) as exc:
         detalle = str(exc)
         if detalle.startswith("este archivo es"):

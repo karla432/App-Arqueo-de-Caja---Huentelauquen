@@ -99,6 +99,7 @@ def test_los_perfiles_son_excluyentes_y_gana_el_mas_restrictivo(django_user_mode
 # perfil PASA el control la vista responde 404/302, nunca 403.
 POSTS = [
     ("reconciliar_dia", [FECHA.isoformat()], Permiso.OPERAR),
+    ("completar_medios", [FECHA.isoformat()], Permiso.OPERAR),
     ("registrar_conteo", [999], Permiso.OPERAR),
     ("asignar_cajera", [999], Permiso.OPERAR),
     ("registrar_gasto_caja", [999], Permiso.OPERAR),

@@ -45,6 +45,7 @@ urlpatterns = [
     path("dashboard/<str:fecha>/", views.dashboard_dia, name="dashboard_dia"),
     path("carga/archivo/<int:lote_id>/", views.descargar_archivo_original, name="descargar_archivo_original"),
     path("carga/<str:fecha>/", views.carga_de_archivos, name="carga_de_archivos"),
+    path("carga/<str:fecha>/completar-medios/", views.completar_medios_view, name="completar_medios"),
     path("carga/<str:fecha>/pos-resto/", views.cargar_archivo_pos_view, name="cargar_archivo_pos"),
     path("carga/<str:fecha>/<str:fuente>/", views.cargar_archivo_view, name="cargar_archivo"),
     path("historico/", views.historico, name="historico"),

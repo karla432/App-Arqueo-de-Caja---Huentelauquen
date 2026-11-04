@@ -714,7 +714,31 @@ def carga_de_archivos(request, fecha):
         "resumen_mp": {"movimientos": dia.movimientos.filter(proveedor="mercado_pago").count()},
         "validaciones": validaciones_de_carga(dia),
     }
+    from nucleo.medios_libro_servicio import comandas_sin_forma_de_pago
+    contexto["sin_forma_de_pago"] = comandas_sin_forma_de_pago(dia)
+    contexto["puede_completar_medios"] = tiene_permiso(request.user, Permiso.OPERAR) and dia.estado not in (
+        DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO)
     return render(request, "nucleo/carga_archivos.html", contexto)
+
+
+@require_POST
+@requiere(Permiso.OPERAR)
+def completar_medios_view(request, fecha):
+    """Comandas cargadas sin forma de pago (caso Redelcom): se completa desde el libro contable y se reconcilia."""
+    from nucleo.medios_libro_servicio import CompletarInvalido, completar_desde_libro
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    try:
+        r = completar_desde_libro(dia, request.user)
+        if r["completadas"]:
+            resultado = ejecutar_conciliacion(dia, request.user)
+            messages.success(request, f"Forma de pago completada en {len(r['completadas'])} comanda(s) desde el libro contable. "
+                             f"Conciliación ejecutada: {len(resultado.excepciones)} excepción(es) abiertas.")
+        if r["sin_resolver"]:
+            messages.error(request, f"{len(r['sin_resolver'])} comanda(s) siguen sin forma de pago: el libro contable no la resuelve "
+                           f"({', '.join(str(n) for n in r['sin_resolver'][:10])}).")
+    except CompletarInvalido as exc:
+        messages.error(request, str(exc))
+    return redirect("carga_de_archivos", fecha=fecha)
 
 
 @requiere(Permiso.OPERAR)
