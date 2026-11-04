@@ -121,3 +121,8 @@ def test_pantalla_de_carga_avisa_y_ofrece_completar(client, db, tmp_path, encarg
     assert "2 comandas sin forma de pago" in html and reverse("completar_medios", args=[DIA.isoformat()]) in html
     client.post(reverse("completar_medios", args=[DIA.isoformat()]))
     assert "sin forma de pago." not in client.get(url).content.decode()
+
+
+def test_mercado_pago_prepaid_card_es_prepago():
+    from arqueo_diario.importadores.mercadopago import MEDIOS_PAGO
+    assert MEDIOS_PAGO["prepaid_card"] == "prepago" and MEDIOS_PAGO["debit_card"] == "debito"

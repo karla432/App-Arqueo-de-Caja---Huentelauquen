@@ -28,6 +28,13 @@ from arqueo_diario.importadores.comun import MovimientoProveedor, ResultadoImpor
 MEDIOS_PAGO = {
     "Tarjeta de débito": "debito",
     "Tarjeta de crédito": "credito",
+    # Karla, 2026-11-04 (27-10-2026, cobro Point de $3.790 a las 15:34): Mercado Pago informa las tarjetas
+    # prepago con el código en inglés. Se tratan como «prepago», compatible con débito en el motor.
+    "prepaid_card": "prepago",
+    "Tarjeta prepago": "prepago",
+    "Tarjeta prepaga": "prepago",
+    "debit_card": "debito",
+    "credit_card": "credito",
 }
 
 # Solo se ha visto "Pago aprobado" en un ejemplo real. Se normaliza al
