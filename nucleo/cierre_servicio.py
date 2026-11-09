@@ -169,6 +169,8 @@ def puede_aprobar_usuario(dia: DiaArqueo, usuario) -> tuple[bool, str]:
     que preparó; la Gerente solo con motivo) y el nivel que exigen los documentos y las pérdidas pendientes."""
     if not tiene_permiso(usuario, Permiso.APROBAR_CIERRE):
         return False, "Tu perfil no puede aprobar cierres."
+    if dia.anulaciones_carga.filter(estado="pendiente").exists():
+        return False, "Hay una solicitud de anulación de carga pendiente: apruébala o recházala antes de cerrar el día."
     if not puede_aprobar(dia):
         return False, "Quedan pendientes bloqueantes en la lista de verificación."
     if perfil_de(usuario) == Perfil.JEFE and preparo_el_dia(dia, usuario):

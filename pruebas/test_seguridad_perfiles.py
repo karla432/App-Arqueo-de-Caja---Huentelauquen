@@ -100,6 +100,9 @@ def test_los_perfiles_son_excluyentes_y_gana_el_mas_restrictivo(django_user_mode
 POSTS = [
     ("reconciliar_dia", [FECHA.isoformat()], Permiso.OPERAR),
     ("completar_medios", [FECHA.isoformat()], Permiso.OPERAR),
+    ("solicitar_anulacion", [FECHA.isoformat()], Permiso.OPERAR),
+    ("aprobar_anulacion", [999], Permiso.VALIDAR),
+    ("rechazar_anulacion", [999], Permiso.VALIDAR),
     ("registrar_conteo", [999], Permiso.OPERAR),
     ("asignar_cajera", [999], Permiso.OPERAR),
     ("registrar_gasto_caja", [999], Permiso.OPERAR),

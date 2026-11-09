@@ -413,6 +413,8 @@ def cierre_y_exportacion(request, fecha):
     contexto["descuentos_no_cuadran"] = [d for d in contexto["descuentos"] if not d.valido]
     contexto.update(_contexto_del_cierre(dia, contexto["checklist"], dia_ya_aprobado))
     contexto["requiere_motivo"] = (not dia_ya_aprobado) and requiere_motivo_de_excepcion(dia, request.user)
+    contexto.update(_contexto_anulacion(dia, request.user))
+    contexto["puede_solicitar_anulacion"] = False  # la solicitud se hace desde Cargar Archivos
     return render(request, "nucleo/cierre_exportacion.html", contexto)
 
 
@@ -719,7 +721,57 @@ def carga_de_archivos(request, fecha):
     contexto["guias_sin_desglose"] = guias_sin_desglose(dia)
     contexto["puede_completar_medios"] = tiene_permiso(request.user, Permiso.OPERAR) and dia.estado not in (
         DiaArqueo.Estado.APROBADO, DiaArqueo.Estado.CERRADO, DiaArqueo.Estado.EXPORTADO)
+    contexto.update(_contexto_anulacion(dia, request.user))
     return render(request, "nucleo/carga_archivos.html", contexto)
+
+
+def _contexto_anulacion(dia, usuario) -> dict:
+    """Recuadro «Anular carga del día» (Cargar Archivos y Cierre del Día)."""
+    from nucleo.anulacion_carga_servicio import ESTADOS_BLOQUEADOS, fuentes_cargadas, pendiente_del_dia
+    pendiente = pendiente_del_dia(dia)
+    nombres = dict(LoteCarga.Fuente.choices)
+    return {
+        "anulacion_pendiente": pendiente,
+        "anulaciones_resueltas": dia.anulaciones_carga.exclude(estado="pendiente").select_related("solicitada_por", "resuelta_por")[:5],
+        "fuentes_anulables": [(f, nombres[f]) for f in fuentes_cargadas(dia)],
+        "puede_solicitar_anulacion": tiene_permiso(usuario, Permiso.OPERAR) and dia.estado not in ESTADOS_BLOQUEADOS and not pendiente,
+        "puede_resolver_anulacion": bool(pendiente) and tiene_permiso(usuario, Permiso.VALIDAR) and pendiente.solicitada_por_id != usuario.pk,
+    }
+
+
+@require_POST
+@requiere(Permiso.OPERAR)
+def solicitar_anulacion_view(request, fecha):
+    from nucleo.anulacion_carga_servicio import AnulacionInvalida, solicitar
+    dia = get_object_or_404(DiaArqueo, fecha=date.fromisoformat(fecha))
+    try:
+        solicitar(dia, request.POST.getlist("fuentes"), request.POST.get("motivo", ""), request.user)
+        messages.success(request, "Solicitud de anulación enviada: debe aprobarla el Jefe de Contabilidad o la Gerente.")
+    except AnulacionInvalida as exc:
+        messages.error(request, str(exc))
+    return redirect("carga_de_archivos", fecha=fecha)
+
+
+@require_POST
+@requiere(Permiso.VALIDAR)
+def resolver_anulacion_view(request, solicitud_id, accion):
+    from nucleo.anulacion_carga_servicio import AnulacionInvalida, aprobar, rechazar
+    from nucleo.models import SolicitudAnulacionCarga
+    solicitud = get_object_or_404(SolicitudAnulacionCarga, pk=solicitud_id)
+    comentario = request.POST.get("comentario", "")
+    try:
+        if accion == "aprobar":
+            aprobar(solicitud, request.user, comentario)
+            messages.success(request, f"Carga anulada ({solicitud.fuentes_texto}). El día quedó listo para volver a cargar los archivos.")
+        else:
+            rechazar(solicitud, request.user, comentario)
+            messages.success(request, "Solicitud de anulación rechazada.")
+    except AnulacionInvalida as exc:
+        messages.error(request, str(exc))
+    destino = request.POST.get("volver") or "cierre_y_exportacion"
+    if destino not in ("cierre_y_exportacion", "carga_de_archivos"):
+        destino = "cierre_y_exportacion"
+    return redirect(destino, fecha=solicitud.dia.fecha.isoformat())
 
 
 @require_POST

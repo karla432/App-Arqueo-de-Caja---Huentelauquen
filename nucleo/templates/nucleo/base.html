@@ -104,6 +104,9 @@ form.inline{display:inline}
     <a class="nav-i{% if url == 'bandeja_excepciones' %} nav-on{% endif %}" href="{% url 'bandeja_excepciones' fecha=fecha_nav %}">Excepciones</a>
     <a class="nav-i{% if url == 'arqueo_efectivo' %} nav-on{% endif %}" href="{% url 'arqueo_efectivo' fecha=fecha_nav %}">Arqueo de Efectivo</a>
     <a class="nav-i{% if url == 'cierre_y_exportacion' %} nav-on{% endif %}" href="{% url 'cierre_y_exportacion' fecha=fecha_nav %}">Cierre del Día</a>
+    {% for s in anulaciones_por_aprobar %}
+    <a class="nav-i" href="{% url 'cierre_y_exportacion' fecha=s.dia.fecha|date:'Y-m-d' %}" title="Solicitud de anulación de carga por aprobar">Anular carga {{ s.dia.fecha|date:"d-m" }} <span class="pill p-warn" style="margin-left:6px;padding:1px 7px">por aprobar</span></a>
+    {% endfor %}
     <a class="nav-i{% if url == 'exportaciones_odoo' %} nav-on{% endif %}" href="{% url 'exportaciones_odoo' %}">Archivos para Odoo{% if exportaciones_por_generar %} <span class="pill p-warn" style="margin-left:6px;padding:1px 7px" title="Días cerrados sin archivos para Odoo">{{ exportaciones_por_generar }}</span>{% endif %}</a>
     {% endwith %}
     {% endwith %}

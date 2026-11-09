@@ -1,0 +1,43 @@
+{% load formato %}
+{# Anular carga del día (Karla, 2026-11-09): la Encargada solicita, el Jefe de Contabilidad o la Gerente aprueba. #}
+{% if anulacion_pendiente %}
+<div style="margin-bottom:18px;padding:14px 18px;background:#FDF3E3;border-left:3px solid var(--hu-warn);font-size:13px;line-height:1.55">
+  <strong style="color:var(--hu-warn)">Anulación de carga pendiente de aprobación</strong> · {{ anulacion_pendiente.fuentes_texto }}<br>
+  Solicitada por {{ anulacion_pendiente.solicitada_por }} el {{ anulacion_pendiente.solicitada_en|date:"d-m-Y H:i" }}. Motivo: «{{ anulacion_pendiente.motivo }}»
+  <div style="color:var(--hu-gray);margin-top:4px">Al aprobar se borran los datos de esos archivos y toda la conciliación del día{% if "pos" in anulacion_pendiente.fuentes %}, las guías y notas de crédito del día y el arqueo de efectivo de cada caja{% endif %}. La bitácora y los archivos originales se conservan.</div>
+  {% if puede_resolver_anulacion %}
+  <form method="post" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    {% csrf_token %}
+    <input type="hidden" name="volver" value="{{ request.resolver_match.url_name }}">
+    <input type="text" name="comentario" placeholder="Comentario (obligatorio para rechazar)" style="flex:1;min-width:220px;padding:7px 10px;border:1px solid var(--hu-line);font:inherit">
+    <button type="submit" class="btn" formaction="{% url 'aprobar_anulacion' solicitud_id=anulacion_pendiente.pk %}"
+            onclick="return confirm('Se borrará la carga de {{ anulacion_pendiente.fuentes_texto }} del {{ anulacion_pendiente.dia.fecha|date:"d-m-Y" }}. ¿Continuar?')">Aprobar y anular</button>
+    <button type="submit" class="btn btn-2" formaction="{% url 'rechazar_anulacion' solicitud_id=anulacion_pendiente.pk %}">Rechazar</button>
+  </form>
+  {% else %}
+  <div style="margin-top:4px;color:var(--hu-gray)">Debe aprobarla el Jefe de Contabilidad o la Gerente (no quien la solicitó).</div>
+  {% endif %}
+</div>
+{% elif puede_solicitar_anulacion and fuentes_anulables %}
+<details style="margin-bottom:18px;border:1px solid var(--hu-line);padding:12px 18px;font-size:13px">
+  <summary style="cursor:pointer;color:var(--hu-maroon);font-weight:700">¿Se cargó mal algún archivo? Solicitar anulación de la carga</summary>
+  <form method="post" action="{% url 'solicitar_anulacion' fecha=dia.fecha|date:'Y-m-d' %}" style="margin-top:10px">
+    {% csrf_token %}
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px">
+      {% for valor, nombre in fuentes_anulables %}
+      <label><input type="checkbox" name="fuentes" value="{{ valor }}"> {{ nombre }}</label>
+      {% endfor %}
+    </div>
+    <textarea name="motivo" required rows="2" placeholder="Motivo: qué se cargó mal" style="width:100%;padding:7px 10px;border:1px solid var(--hu-line);font:inherit"></textarea>
+    <div style="color:var(--hu-gray);margin:6px 0">La anulación borra los datos de los archivos marcados y la conciliación del día; si incluye el punto de venta, también las guías, notas de crédito y el arqueo de efectivo. Debe aprobarla el Jefe de Contabilidad o la Gerente.</div>
+    <button type="submit" class="btn btn-2">Solicitar anulación</button>
+  </form>
+</details>
+{% endif %}
+{% if anulaciones_resueltas %}
+<div style="margin-bottom:18px;font-size:12.5px;color:var(--hu-gray)">
+  {% for s in anulaciones_resueltas %}
+  <div>Anulación {{ s.get_estado_display|lower }} · {{ s.fuentes_texto }} · pedida por {{ s.solicitada_por }}, resuelta por {{ s.resuelta_por }} el {{ s.resuelta_en|date:"d-m-Y H:i" }}{% if s.comentario_resolucion %} · «{{ s.comentario_resolucion }}»{% endif %}</div>
+  {% endfor %}
+</div>
+{% endif %}

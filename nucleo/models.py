@@ -1156,3 +1156,36 @@ class CierreMes(models.Model):
     def __str__(self) -> str:
         return f"{self.mes:02d}/{self.anio}"
 
+
+
+class SolicitudAnulacionCarga(models.Model):
+    """Anular la carga de un día (Karla, 2026-11-09: el 05-11 Nathaly se equivocó en los archivos de ventas,
+    Transbank y Mercado Pago). La Encargada solicita con motivo; aprueba el Jefe de Contabilidad o la Gerente
+    (nunca quien la solicitó). Al aprobarse se borra la carga elegida y todo lo calculado del día. Ver
+    nucleo.anulacion_carga_servicio."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente de aprobación"
+        EJECUTADA = "ejecutada", "Aprobada y ejecutada"
+        RECHAZADA = "rechazada", "Rechazada"
+
+    dia = models.ForeignKey(DiaArqueo, related_name="anulaciones_carga", on_delete=models.PROTECT)
+    fuentes = models.JSONField(default=list, help_text="pos, transbank y/o mercado_pago")
+    motivo = models.TextField()
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE)
+    solicitada_por = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="anulaciones_solicitadas", on_delete=models.PROTECT)
+    solicitada_en = models.DateTimeField(auto_now_add=True)
+    resuelta_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, related_name="anulaciones_resueltas", on_delete=models.PROTECT,
+    )
+    resuelta_en = models.DateTimeField(null=True, blank=True)
+    comentario_resolucion = models.TextField(blank=True)
+    resumen = models.JSONField(default=dict, blank=True, help_text="Lo que se borró: para la bitácora y la pantalla.")
+
+    class Meta:
+        ordering = ["-solicitada_en"]
+
+    @property
+    def fuentes_texto(self) -> str:
+        nombres = dict(LoteCarga.Fuente.choices)
+        return ", ".join(nombres.get(f, f) for f in self.fuentes)
