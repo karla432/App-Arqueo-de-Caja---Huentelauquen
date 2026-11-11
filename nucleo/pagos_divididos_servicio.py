@@ -56,6 +56,9 @@ class PlanPagoDividido:
         return " / ".join(f"{_SIGLA[m]} {monto:,.0f}".replace(",", ".") for m, monto in self.partes.items())
 
 
+TOLERANCIA_REDONDEO = Decimal(1)
+
+
 def _pesos(monto) -> str:
     return f"${monto:,.0f}".replace(",", ".")
 
@@ -121,6 +124,11 @@ def plan_de_pago_dividido(venta: Venta) -> PlanPagoDividido | None:
             "una parte se pagó por transferencia y no hay una cuenta configurada para ella — "
             "decide a mano cómo exportar esta comanda"
         )
+    # Redondeo de Resto (Karla, 2026-11-11; comanda 692980 del 09-11: $33.282 = efectivo $30.000 + débito $3.281):
+    # hasta $1 de diferencia lo absorbe el medio principal; los traspasos quedan con el monto exacto del cobro.
+    diferencia = venta.total_comanda - sum(partes.values(), Decimal(0))
+    if diferencia and abs(diferencia) <= TOLERANCIA_REDONDEO and principal in partes and not problemas:
+        partes[principal] += diferencia
     if abs(sum(partes.values(), Decimal(0)) - venta.total_comanda) > 0 and not problemas:
         problemas.append(
             f"los pagos suman {_pesos(sum(partes.values(), Decimal(0)))} y la comanda {_pesos(venta.total_comanda)}"

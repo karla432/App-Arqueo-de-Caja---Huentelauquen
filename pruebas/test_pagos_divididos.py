@@ -164,6 +164,15 @@ def test_si_los_pagos_no_suman_el_total_de_la_comanda_bloquea(dia, usuario, tmp_
         svc.generar_exportacion(dia, usuario)
 
 
+def test_un_peso_de_redondeo_lo_absorbe_el_medio_principal(dia):
+    # caso real 692980 del 09-11-2026: $33.282 = efectivo $30.000 + débito $3.281
+    venta, (_, debito) = _venta(dia, 692980, 33282, [("efectivo", 30000), ("debito", 3281)])
+    _calzar(dia, debito)
+    plan = plan_de_pago_dividido(venta)
+    assert plan.problemas == [] and plan.partes["efectivo"] == 30001
+    assert plan.traspasos == [("transbank", Decimal(3281))]
+
+
 def test_el_cierre_muestra_las_comandas_con_pago_dividido(client, dia, usuario):
     _caso_real(dia)
     client.force_login(usuario)
